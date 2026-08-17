@@ -28,4 +28,5 @@ ShellRoot {
     Modules.PowerMenu {}
     Modules.MonitorPicker {}
     Modules.KeyHints {}
+    Modules.WallpaperPicker {}
 }

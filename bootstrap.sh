@@ -195,7 +195,7 @@ sudo usermod -aG video,render,input "$USER"
 # --- 8. Stow the actual dotfiles -------------------------------------------
 log "Stowing dotfiles"
 cd "$(dirname "${BASH_SOURCE[0]}")"
-for pkg in hypr quickshell kitty zsh mako wallust scripts fastfetch cava; do
+for pkg in hypr quickshell kitty zsh mako wallust scripts fastfetch cava wallpaper; do
     stow --target="$HOME" --restow "$pkg"
 done
 
