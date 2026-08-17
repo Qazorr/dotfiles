@@ -6,9 +6,8 @@ import "../theme"
 
 // Live spectrum bars in the Quickshell bar, driven by cava's raw output
 // mode (cava/.config/cava/bar-config — separate from the standalone TUI
-// config used by SUPER+ALT+C). Format verified directly against the cava
-// binary: one line per frame, semicolon-separated integers 0-7, e.g.
-// "0;3;7;2;0;0;1;4;2;0;".
+// config used by SUPER+ALT+C). cava's raw ascii format: one line per
+// frame, semicolon-separated integers 0-7, e.g. "0;3;7;2;0;0;1;4;2;0;".
 RowLayout {
     id: root
     spacing: 2

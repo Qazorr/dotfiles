@@ -33,6 +33,8 @@ zsh/                             Shell (.zshrc, .zprofile — the latter autosta
                                   Hyprland on tty1 login)
 mako/.config/mako/              Notification daemon config
 wallust/.config/wallust/        Wallpaper -> color palette -> Hyprland + Quickshell theme
+fastfetch/.config/fastfetch/    System info banner (runs on new terminals)
+cava/.config/cava/              Audio visualizer (standalone + bar widget configs)
 scripts/.local/bin/             monitor-switch, wallust-apply
 bootstrap.sh                     Single entrypoint: packages + build + symlinks
 vm/                               Throwaway QEMU test VM, see vm/README.md
@@ -55,6 +57,9 @@ Full list (with descriptions) via `SUPER+SHIFT+/`, live from
 | `SUPER+CTRL+hjkl` | Resize |
 | `SUPER+ALT+hjkl` | Swap window |
 | `SUPER+1-0` | Workspaces |
+| `SUPER+ALT+C` | Audio visualizer (cava) |
+| `SUPER+ALT+N` | Network manager |
+| `SUPER+ALT+B` | Bluetooth manager |
 
 Monitor profiles live in `hypr/.config/hypr/conf.d/monitors/*.conf` — add one
 per layout you actually use (real output names from `hyprctl monitors`),
