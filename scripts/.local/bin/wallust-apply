@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Regenerate the color palette from the current wallpaper. Call this after
+# changing wallpaper, or leave it in hypr autostart to run once at login.
+set -euo pipefail
+
+# swww/wallust live in ~/.cargo/bin — not on PATH when this runs via
+# Hyprland's exec-once, which doesn't go through .zshrc.
+export PATH="$HOME/.cargo/bin:$PATH"
+
+WALLPAPER="${1:-$(swww query | grep -oP 'image: \K.*' | head -1)}"
+[ -n "$WALLPAPER" ] || { echo "No wallpaper set and none given" >&2; exit 1; }
+
+wallust run "$WALLPAPER"
+# Writes ~/.cache/wallust/colors.json per wallust/.config/wallust/wallust.toml.
+# Quickshell's theme/colors.qml watches that path and picks up the change
+# automatically — no need to restart the shell.

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Apply a named monitor profile from hypr/conf.d/monitors/*.conf, live,
+# no Hyprland reload needed.
+#
+# Usage: monitor-switch <profile-name>
+#        monitor-switch --list
+set -euo pipefail
+
+PROFILE_DIR="$HOME/.config/hypr/conf.d/monitors"
+
+list_profiles() {
+    for f in "$PROFILE_DIR"/*.conf; do
+        basename "$f" .conf
+    done
+}
+
+if [ "${1:-}" = "--list" ] || [ -z "${1:-}" ]; then
+    list_profiles
+    exit 0
+fi
+
+PROFILE="$PROFILE_DIR/$1.conf"
+[ -f "$PROFILE" ] || {
+    echo "No such profile: $1 (available: $(list_profiles | tr '\n' ' '))" >&2
+    exit 1
+}
+
+# Push every `monitor=...` line live via hyprctl. Note: `workspace=` lines
+# in the same file (workspace-to-monitor binding) only take effect on the
+# next Hyprland reload/restart, not live — a known limitation for now.
+while IFS= read -r line; do
+    case "$line" in
+        monitor=*) hyprctl keyword monitor "${line#monitor=}" ;;
+    esac
+done < "$PROFILE"
+
+echo "Applied monitor profile: $1"
