@@ -1,0 +1,15 @@
+[general]
+bars = 0
+autosens = 1
+framerate = 60
+
+[color]
+gradient = 1
+gradient_count = 3
+gradient_color_1 = '#89b4fa'
+gradient_color_2 = '#cba6f7'
+gradient_color_3 = '#f38ba8'
+background = '#1e1e2e'
+
+[smoothing]
+noise_reduction = 55

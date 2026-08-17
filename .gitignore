@@ -1,0 +1,7 @@
+# VM test environment: ISO/disk images are multi-GB binaries, not repo content
+vm/iso/
+vm/disk/
+# Host's SSH access key for the VM — local machine access config, not dotfiles content
+vm/host-access/
+# cava writes its default GL shader assets here on first run — not something we author
+cava/.config/cava/shaders/
