@@ -14,8 +14,8 @@
 #    install, no source patching.
 #  - swww and wallust are Rust, not packaged for Debian; installed via cargo.
 #
-# Run this on the test VM first (see vm/README.md), not bare-metal, until
-# you've watched it succeed end to end.
+# Run this on the test VM first (see vm/README.md) before trusting it on
+# real hardware — package lists and Hyprland's own config schema both drift.
 set -euo pipefail
 
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
