@@ -4,11 +4,13 @@
 # stow. Idempotent-ish: safe to re-run (e.g. just to re-symlink after
 # editing a dotfile — it'll skip anything already installed/built).
 #
-# Facts this script relies on (verified 2026-08-17):
+# Facts this script relies on (re-verified 2026-08-27 on a fresh trixie
+# install; backports had moved 0.54.x -> 0.55.2 since the first pass):
 #  - Hyprland + hyprlock/hypridle/hyprpolkitagent/xdg-desktop-portal-hyprland/
 #    hyprland-guiutils and the libhypr* libraries are packaged in
-#    trixie-backports (NOT plain trixie) as of Hyprland 0.54.x. No source
-#    build, no compiler-compat patching required.
+#    trixie-backports (NOT plain trixie) as of Hyprland 0.55.2. No source
+#    build, no compiler-compat patching required. `Hyprland --verify-config`
+#    reports the conf.d/ tree clean against 0.55.2.
 #  - Quickshell is not packaged for any Debian release; built from source
 #    (CMake + Ninja + Qt6). Its BUILD.md build is a plain configure/build/
 #    install, no source patching.
@@ -48,10 +50,10 @@ sudo apt install -y -t trixie-backports \
     xdg-desktop-portal-hyprland
 
 # --- 3. General desktop/dev packages ---------------------------------------
-# -t trixie-backports here too: none of these have a backports-only
-# candidate except qt6-base-dev, but keeping the target consistent avoids
-# accidentally resolving it against main before step 4 needs the backports
-# version (see the libxkbcommon note there).
+# -t trixie-backports here too. Note qt6-base-dev is NOT in backports at all
+# (it resolves from main either way) — the flag matters because it keeps apt
+# resolving consistently against backports before step 4 pulls the newer
+# libxkbcommon from there (see the libxkbcommon note in step 4).
 log "Installing terminal, shell, notifications, screenshot/clipboard tools"
 sudo apt install -y -t trixie-backports \
     kitty zsh stow \
@@ -82,7 +84,7 @@ QS_BUILD="$HOME/.cache/dotfiles-build/quickshell-build"
 if ! command -v qs >/dev/null 2>&1; then
     log "Installing Quickshell build dependencies"
     # -t trixie-backports matters here, not just cosmetic: step 2 already
-    # pulled a newer libxkbcommon0 from backports (Hyprland 0.54 needs it).
+    # pulled a newer libxkbcommon0 from backports (Hyprland 0.55 needs it).
     # Without this flag, plain `apt install` pulls qt6-base-private-dev's
     # libxkbcommon-dev from trixie main, which demands the exact main-suite
     # libxkbcommon0 — a hard version conflict with what's already installed.
@@ -120,37 +122,6 @@ if ! command -v qs >/dev/null 2>&1; then
         -DVENDOR_CPPTRACE=ON
     cmake --build "$QS_BUILD"
     sudo cmake --install "$QS_BUILD"
-
-    # Debian's Qt6 packaging is missing QtQuick.Effects.RectangularShadow;
-    # a lot of Quickshell configs (including ours) use it for drop shadows.
-    # Shim it with MultiEffect, which IS present.
-    OVR_DIR=/usr/local/share/quickshell-overrides/QtQuick/Effects
-    sudo install -d -m 755 "$OVR_DIR"
-    sudo tee "$OVR_DIR/RectangularShadow.qml" >/dev/null <<'QML'
-import QtQuick
-import QtQuick.Effects
-
-Item {
-    id: root
-    property alias source: fx.source
-    property color color: "#000000"
-    property real opacity: 0.4
-    property real blur: 32
-    property real xOffset: 0
-    property real yOffset: 6
-
-    MultiEffect {
-        id: fx
-        anchors.fill: parent
-        shadowEnabled: true
-        shadowColor: root.color
-        shadowOpacity: root.opacity
-        shadowBlur: root.blur
-        shadowHorizontalOffset: root.xOffset
-        shadowVerticalOffset: root.yOffset
-    }
-}
-QML
 else
     log "Quickshell already installed, skipping build"
 fi
@@ -195,6 +166,28 @@ sudo usermod -aG video,render,input "$USER"
 # --- 8. Stow the actual dotfiles -------------------------------------------
 log "Stowing dotfiles"
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# oh-my-zsh's --keep-zshrc only preserves a .zshrc that ALREADY exists; on a
+# genuinely fresh machine there is none, so its installer writes its own
+# template and stow then (correctly) refuses to clobber it. Move any
+# non-symlink dotfile we're about to own out of the way first.
+for f in .zshrc .zprofile; do
+    if [ -e "$HOME/$f" ] && [ ! -L "$HOME/$f" ]; then
+        warn "Backing up existing $f -> $f.pre-dotfiles"
+        mv "$HOME/$f" "$HOME/$f.pre-dotfiles"
+    fi
+done
+
+# wallust rewrites colors-hyprland.conf on every wallpaper change. Because
+# ~/.config/hypr is a stow symlink into this repo, that write lands on a
+# tracked file and leaves the repo permanently dirty. Ship the palette as a
+# .default and seed the generated copy from it (gitignored) instead.
+HYPR_WALLUST="hypr/.config/hypr/wallust"
+if [ -f "$HYPR_WALLUST/colors-hyprland.conf.default" ] \
+   && [ ! -f "$HYPR_WALLUST/colors-hyprland.conf" ]; then
+    cp "$HYPR_WALLUST/colors-hyprland.conf.default" \
+       "$HYPR_WALLUST/colors-hyprland.conf"
+fi
 for pkg in hypr quickshell kitty zsh mako wallust scripts fastfetch cava wallpaper; do
     stow --target="$HOME" --restow "$pkg"
 done

@@ -56,6 +56,18 @@ Rectangle {
         // --- CPU / mem ---
         Modules.SysMonitor {}
 
+        // --- Backlight (hidden if no backlight class) ---
+        Modules.Brightness {}
+
+        // --- Volume ---
+        Modules.Volume {}
+
+        // --- Network ---
+        Modules.Network {}
+
+        // --- Battery (hidden on machines with no battery) ---
+        Modules.Battery {}
+
         // --- System tray ---
         RowLayout {
             spacing: 4
