@@ -16,6 +16,10 @@
 #
 # Run this on the test VM first (see vm/README.md) before trusting it on
 # real hardware — package lists and Hyprland's own config schema both drift.
+#
+# CI=1 skips the two steps that need a real system (systemd service enable,
+# usermod) so this can run as an install smoke test in a plain container —
+# see .github/workflows/install-smoke.yml.
 set -euo pipefail
 
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
@@ -65,9 +69,13 @@ sudo apt install -y -t trixie-backports \
     liblz4-dev \
     qt6-base-dev
 
-log "Enabling NetworkManager + Bluetooth services"
-sudo systemctl enable --now NetworkManager
-sudo systemctl enable --now bluetooth
+if [ -z "${CI:-}" ]; then
+    log "Enabling NetworkManager + Bluetooth services"
+    sudo systemctl enable --now NetworkManager
+    sudo systemctl enable --now bluetooth
+else
+    log "CI: skipping systemd service enable (no systemd in the container)"
+fi
 
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
     log "Installing oh-my-zsh (unattended, keeping our own .zshrc)"
@@ -159,7 +167,7 @@ fi
 if ! command -v cargo >/dev/null 2>&1; then
     log "Installing Rust toolchain via rustup (Debian's apt cargo/rustc lag too far behind)"
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    # shellcheck disable=SC1090
+    # shellcheck disable=SC1090,SC1091
     source "$HOME/.cargo/env"
 fi
 
@@ -189,8 +197,12 @@ if [ ! -d "$FONT_DIR" ]; then
 fi
 
 # --- 7. User groups needed for a DM-less Hyprland session ------------------
-log "Ensuring $USER is in video/render/input groups (DRM/input access without a display manager)"
-sudo usermod -aG video,render,input "$USER"
+if [ -z "${CI:-}" ]; then
+    log "Ensuring $USER is in video/render/input groups (DRM/input access without a display manager)"
+    sudo usermod -aG video,render,input "$USER"
+else
+    log "CI: skipping usermod (meaningless in a throwaway container)"
+fi
 
 # --- 8. Stow the actual dotfiles -------------------------------------------
 log "Stowing dotfiles"

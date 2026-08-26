@@ -53,6 +53,9 @@ Rectangle {
         // --- Audio visualizer ---
         Modules.CavaViz {}
 
+        // --- Commute (tram/bus countdown) ---
+        Modules.Commute {}
+
         // --- CPU / mem ---
         Modules.SysMonitor {}
 

@@ -1,0 +1,39 @@
+name: Install smoke test (Debian trixie)
+
+# Runs the real bootstrap.sh (apt installs, Quickshell/swww/wallust builds,
+# stow) in a throwaway Debian trixie container. CI=1 skips the two steps
+# that need a real system (systemd service enable, usermod) — see the
+# comment near the top of bootstrap.sh. Everything else runs for real, so
+# this is what actually catches upstream package/build drift, not just a
+# syntax check.
+#
+# Not run on every push: it's slow (Quickshell is a from-source C++ build)
+# and only Debian package availability drifts, not this repo's own code.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 6 * * 1' # weekly, to catch upstream drift even without a push
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up a non-root sudo user (bootstrap.sh refuses to run as root)
+        run: |
+          apt-get update
+          apt-get install -y sudo git curl ca-certificates
+          useradd -m -s /bin/bash ci
+          echo 'ci ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ci
+          chmod 440 /etc/sudoers.d/ci
+          chown -R ci:ci "$GITHUB_WORKSPACE"
+
+      - name: Run bootstrap.sh
+        run: su - ci -c "CI=1 bash '$GITHUB_WORKSPACE/bootstrap.sh'"

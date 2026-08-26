@@ -2,8 +2,14 @@
 
 Personal Hyprland + Quickshell setup for Debian 13 (trixie). No waybar, no
 rofi, no wlogout — Quickshell covers the bar, app launcher, power menu,
-monitor-profile picker, and keybind cheat sheet; mako handles notifications;
-swww + wallust drive wallpaper-based theming.
+monitor-profile picker, wallpaper picker, and keybind cheat sheet; mako
+handles notifications; swww + wallust drive wallpaper-based theming.
+
+CI: shellcheck + a real `stow` run on every push
+([lint.yml](.github/workflows/lint.yml)), plus a weekly/on-push-to-master
+run of `bootstrap.sh` itself in a throwaway Debian trixie container
+([install-smoke.yml](.github/workflows/install-smoke.yml)) to catch upstream
+package drift.
 
 ## Install
 
@@ -36,8 +42,11 @@ wallust/.config/wallust/        Wallpaper -> color palette -> Hyprland + Quicksh
 fastfetch/.config/fastfetch/    System info banner (runs on new terminals)
 cava/.config/cava/              Audio visualizer (standalone + bar widget configs)
 scripts/.local/bin/             monitor-switch, wallust-apply
+wallpaper/.local/share/wallpapers/  Default wallpaper + anything the wallpaper
+                                  picker (SUPER+W) lists — drop images here
 bootstrap.sh                     Single entrypoint: packages + build + symlinks
 vm/                               Throwaway QEMU test VM, see vm/README.md
+.github/workflows/               CI: lint + install smoke test (see intro)
 ```
 
 ## Key bindings
@@ -51,6 +60,7 @@ Full list (with descriptions) via `SUPER+SHIFT+/`, live from
 | `SUPER+D` | App launcher |
 | `SUPER+V` | Power menu |
 | `SUPER+M` | Monitor-profile picker |
+| `SUPER+W` | Wallpaper picker |
 | `SUPER+Escape` | Lock |
 | `SUPER+hjkl` | Focus |
 | `SUPER+SHIFT+hjkl` | Move window |

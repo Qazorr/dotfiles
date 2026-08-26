@@ -29,4 +29,5 @@ ShellRoot {
     Modules.MonitorPicker {}
     Modules.KeyHints {}
     Modules.WallpaperPicker {}
+    Modules.CommutePanel {}
 }

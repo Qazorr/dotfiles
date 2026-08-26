@@ -1,0 +1,26 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shellcheck bootstrap.sh, scripts, and vm helpers
+        run: shellcheck bootstrap.sh scripts/.local/bin/* vm/*.sh
+
+  stow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stow
+        run: sudo apt-get update && sudo apt-get install -y stow
+      - name: Stow every package into a throwaway HOME
+        run: |
+          fake_home="$(mktemp -d)"
+          for pkg in hypr quickshell kitty zsh mako wallust scripts fastfetch cava wallpaper; do
+            stow -v --target="$fake_home" "$pkg"
+          done
