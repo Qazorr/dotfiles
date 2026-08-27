@@ -4,5 +4,8 @@
   },
   "quickCapture": {
     "enabled": true
+  },
+  "krkCommute": {
+    "enabled": true
   }
 }

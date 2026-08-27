@@ -581,6 +581,7 @@
         "battery",
         "idleInhibitToggle",
         "quickCapture",
+        "krkCommute",
         "controlCenterButton"
       ],
       "spacing": 4,
