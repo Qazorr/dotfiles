@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Keyboard shortcut cheat sheet, rendered from `hyprctl binds -j`.
-
-Reads the live binds rather than parsing keybindings.conf, so it can never
-drift from what Hyprland is actually doing. Descriptions come from the
-`bindd`/`binded`/`bindeld` lines — anything bound with plain `bind` shows its
-dispatcher instead.
+"""Keyboard shortcut cheat sheet, read live from `hyprctl binds -j` — never
+parses keybindings.conf, so it can't drift from what Hyprland is actually
+doing. Descriptions come from `bindd`/`binded`/`bindeld` lines; anything
+bound with plain `bind` shows its dispatcher instead.
 
     keybind-help            interactive fuzzy search (needs fzf)
     keybind-help --list     plain grouped list, no interaction
