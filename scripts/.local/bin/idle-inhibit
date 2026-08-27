@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Prevent the screen from locking/dimming, on demand — JaKooLit's idea, a
+# different mechanism.
+#
+# JaKooLit's version (their waybar idle_inhibitor module) works by killing
+# and restarting the whole hypridle process. That also cancels dpms-off,
+# suspend and any other listener hypridle owns, not just the lock — a bigger
+# hammer than "don't lock while I'm watching this".
+#
+# This uses `systemd-inhibit --what=idle` instead — the same real inhibitor
+# lock a video player or presentation app takes automatically, and one
+# hypridle explicitly checks (config knob: general:ignore_systemd_inhibit).
+# Verified directly against hypridle's own log output: with the lock held,
+# hypridle logs `Ignoring from onIdled(), inhibit locks: 1` and skips the
+# timeout action; on-timeout fires normally once released.
+#
+#   idle-inhibit on|off|toggle|status
+#
+# NOT the same thing as `dms ipc call inhibit toggle` — that flips a flag
+# private to DankMaterialShell's own (inactive by default, 24h-fallback)
+# idle/lock system. It has no dbus/systemd/Wayland registration at all, so it
+# has zero effect on hypridle, which is what's actually locking this session.
+# Wiring a keybind to it would look like it worked and lock you out anyway.
+set -euo pipefail
+
+STATE="${XDG_RUNTIME_DIR:-/tmp}/idle-inhibit.pid"
+
+notify() {
+    # DMS owns the toast UI already; prefer it so feedback matches the shell
+    # theme. Fall back to notify-send, then to nothing rather than erroring —
+    # this must never block on a missing notifier.
+    if command -v dms >/dev/null 2>&1 && pgrep -x qs >/dev/null 2>&1; then
+        dms ipc call toast "${2:-info}" "$1" >/dev/null 2>&1 && return 0
+    fi
+    command -v notify-send >/dev/null 2>&1 && notify-send "Idle inhibit" "$1" 2>/dev/null || true
+}
+
+active() {
+    [ -f "$STATE" ] && kill -0 "$(cat "$STATE" 2>/dev/null)" 2>/dev/null
+}
+
+turn_on() {
+    if active; then
+        echo "already on"
+        return 0
+    fi
+    # --mode=block, not --mode=delay: this should hold for as long as you
+    # want it, not just delay hypridle briefly.
+    systemd-inhibit --what=idle --who="idle-inhibit" \
+        --why="manually inhibited" --mode=block \
+        sleep infinity &
+    disown
+    echo "$!" > "$STATE"
+    notify "Enabled — screen won't lock or dim" "info"
+    echo "on"
+}
+
+turn_off() {
+    if ! active; then
+        echo "already off"
+        return 0
+    fi
+    kill "$(cat "$STATE")" 2>/dev/null || true
+    rm -f "$STATE"
+    notify "Disabled — normal idle timeouts apply" "info"
+    echo "off"
+}
+
+case "${1:-toggle}" in
+    on)     turn_on ;;
+    off)    turn_off ;;
+    toggle) active && turn_off || turn_on ;;
+    status) active && echo "on" || echo "off" ;;
+    *) echo "usage: idle-inhibit {on|off|toggle|status}" >&2; exit 1 ;;
+esac

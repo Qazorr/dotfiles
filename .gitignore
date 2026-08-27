@@ -5,3 +5,10 @@ vm/disk/
 vm/host-access/
 # cava writes its default GL shader assets here on first run — not something we author
 cava/.config/cava/shaders/
+# DMS's matugen hook regenerates this on every theme change, and
+# ~/.config/hypr is a stow symlink into this repo — so the write lands here.
+# Scoped to the generated file only: dms/binds.conf next to it IS ours.
+hypr/.config/hypr/dms/colors.lua
+# matugen (via DMS) regenerates these on every theme change, and
+# ~/.config/kitty is a stow symlink into this repo — so the writes land here.
+kitty/.config/kitty/dank-*.conf
