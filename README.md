@@ -87,6 +87,8 @@ Installed by `bootstrap.sh` alongside the desktop:
 | | |
 |---|---|
 | `code` | VS Code, from Microsoft's apt repo (not in any Debian release). The `code` alias in `.zshrc` adds `--ozone-platform=wayland` so it runs natively rather than through XWayland. |
+| `claude-desktop` | Claude Desktop, from Anthropic's own apt repo. |
+| `brave-browser` | Brave, from its own apt repo (deb822 `.sources` file, per brave.com/linux's current documented method). |
 | `ripgrep` `fd-find` `bat` `fzf` `zoxide` `eza` | Search/navigation tooling. Debian renames two of these — `fd-find` installs `fdfind`, `bat` installs `batcat` — and `.zshrc` aliases them back. |
 | `btop` `htop` `git-delta` `neovim` | Monitoring, diffs, editing. |
 
@@ -99,11 +101,20 @@ zsh/                            Shell (.zshrc, .zprofile — the latter sets PAT
                                   and autostarts Hyprland on tty1 login)
 fastfetch/.config/fastfetch/    System info banner (runs on new terminals)
 cava/.config/cava/              Audio visualizer (SUPER+ALT+C)
-dms/.config/DankMaterialShell/  DMS settings.json — your shell config
-scripts/.local/bin/             monitor-switch
+dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json, and
+                                  the idleInhibitToggle plugin — your shell
+                                  config, everything else in that directory
+                                  is upstream (see below)
+scripts/.local/bin/             dotfiles-backup, idle-inhibit, keybind-help,
+                                  lock-session, new-app
 wallpaper/.local/share/wallpapers/  Default wallpaper
-bootstrap.sh                    Single entrypoint: packages + Quickshell + DMS
-                                  + symlinks
+bootstrap.sh                    Thin entrypoint — sourcing + the runner only
+setup/steps/                    One file per install stage (step_<name>() {
+                                  # description ... }); add a step by adding
+                                  a file here and to bootstrap.sh's STEPS
+lib/                            Shared helpers: log/warn/die, apt install +
+                                  repo-add wrappers, GitHub-release fetching
+                                  — sourced by bootstrap.sh and scripts/
 vm/                             Throwaway QEMU test VM, see vm/README.md
 ```
 
@@ -302,6 +313,33 @@ settings set <key> <value>` sets one. Themes live under `currentThemeName` /
 kitty follows the shell theme automatically — `kitty.conf` ends with
 `globinclude dank-*.conf`, picking up matugen's generated palette, with a
 hardcoded fallback above it for a fresh clone.
+
+## Adding a new app launcher
+
+`new-app` scaffolds a `.desktop` file for anything that doesn't ship its
+own — a script, an AppImage, a one-off tool:
+
+```
+new-app "My Tool" /path/to/my-tool --icon /path/to/icon.png
+new-app "My Tool" /path/to/my-tool [icon] [--terminal] [--comment "..."] [--categories "Cat;"]
+```
+
+Verified against DMS's actual launcher (Quickshell's `DesktopEntries`,
+which scans `~/.local/share/applications`): a genuinely new file appears in
+`SUPER+D` within a second or two, no restart needed. Two things worth
+knowing, both found by testing rather than assumed:
+
+- An **icon given as a file path** renders reliably. An **icon given as a
+  bare theme name** (e.g. `firefox`) depends on whatever icon theme is
+  currently active and can silently fall back to a plain letter avatar —
+  verified with a real icon (`utilities-terminal`) that exists in the
+  `gnome` theme but wasn't found through DMS's own icon lookup. `new-app`
+  warns when a theme name can't be found in any installed theme, but can't
+  promise a name that *is* found will actually render.
+- **Editing an existing entry in place doesn't reliably refresh live** —
+  only a genuinely new filename is guaranteed to show up immediately.
+  Re-running `new-app` on the same name may need a moment, or a DMS
+  restart, before the change is visible.
 
 ## Backups
 

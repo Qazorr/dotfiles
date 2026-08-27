@@ -1,26 +1,15 @@
 #!/usr/bin/env bash
-# Prevent the screen from locking/dimming, on demand — JaKooLit's idea, a
-# different mechanism.
-#
-# JaKooLit's version (their waybar idle_inhibitor module) works by killing
-# and restarting the whole hypridle process. That also cancels dpms-off,
-# suspend and any other listener hypridle owns, not just the lock — a bigger
-# hammer than "don't lock while I'm watching this".
-#
-# This uses `systemd-inhibit --what=idle` instead — the same real inhibitor
-# lock a video player or presentation app takes automatically, and one
-# hypridle explicitly checks (config knob: general:ignore_systemd_inhibit).
-# Verified directly against hypridle's own log output: with the lock held,
-# hypridle logs `Ignoring from onIdled(), inhibit locks: 1` and skips the
-# timeout action; on-timeout fires normally once released.
+# Prevent the screen from locking/dimming, on demand.
 #
 #   idle-inhibit on|off|toggle|status
 #
-# NOT the same thing as `dms ipc call inhibit toggle` — that flips a flag
-# private to DankMaterialShell's own (inactive by default, 24h-fallback)
-# idle/lock system. It has no dbus/systemd/Wayland registration at all, so it
-# has zero effect on hypridle, which is what's actually locking this session.
-# Wiring a keybind to it would look like it worked and lock you out anyway.
+# Takes a real `systemd-inhibit --what=idle` lock — the same one a video
+# player takes automatically, and one hypridle explicitly checks for
+# (general:ignore_systemd_inhibit). Verified against hypridle's own log: with
+# the lock held it logs `Ignoring from onIdled(), inhibit locks: 1`.
+#
+# NOT the same as `dms ipc call inhibit toggle`, which is a no-op here — see
+# the README's "Idle inhibitor" section for why.
 set -euo pipefail
 
 STATE="${XDG_RUNTIME_DIR:-/tmp}/idle-inhibit.pid"
