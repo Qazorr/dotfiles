@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Lock the session, defensively.
+#
+# hypridle's documented lock_cmd is `pidof hyprlock || hyprlock`. That has a
+# failure mode we hit for real: if hyprlock starts but hangs without ever
+# presenting a lock surface, the process sticks around, `pidof` then succeeds
+# forever, and the session NEVER locks again — silently. An idle timeout that
+# quietly stops locking is worse than one that errors.
+#
+# So: only skip if hyprlock is both running AND actually locking. Otherwise
+# clear the corpse and start a fresh one.
+set -euo pipefail
+
+locking() {
+    pgrep -x hyprlock >/dev/null 2>&1 || return 1
+    # A real lock owns a session-lock surface. A hung hyprlock does not.
+    hyprctl layers 2>/dev/null | grep -qi 'hyprlock' && return 0
+    # Fall back to logind's view, in case the compositor names it differently.
+    [ "$(loginctl show-session "${XDG_SESSION_ID:-}" -p LockedHint --value 2>/dev/null)" = "yes" ]
+}
+
+DRY=0
+[ "${1:-}" = "--dry-run" ] && DRY=1
+
+if locking; then
+    [ "$DRY" = 1 ] && echo "would do nothing: hyprlock is already locking"
+    exit 0
+fi
+
+if pgrep -x hyprlock >/dev/null 2>&1; then
+    if [ "$DRY" = 1 ]; then
+        echo "would clear a stale hyprlock (running but not locking), then lock"
+        exit 0
+    fi
+    echo "lock-session: clearing a hyprlock that isn't presenting a lock surface" >&2
+    pkill -x hyprlock || true
+    sleep 0.3
+fi
+
+if [ "$DRY" = 1 ]; then
+    echo "would start hyprlock (none running)"
+    exit 0
+fi
+
+exec hyprlock

@@ -1,7 +1,0 @@
-# Two outputs from one wallust run: a JSON dump for Quickshell's
-# theme/colors.qml, and a hyprlang variable file for Hyprland's own
-# border/decoration colors (see hypr/.config/hypr/wallust/colors-hyprland.conf
-# for the committed default that exists before wallust ever runs).
-[templates]
-quickshell = { template = "colors.json.template", target = "~/.cache/wallust/colors.json" }
-hyprland = { template = "hyprland-colors.conf.template", target = "~/.config/hypr/wallust/colors-hyprland.conf" }

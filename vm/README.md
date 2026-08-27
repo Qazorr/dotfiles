@@ -1,8 +1,8 @@
 # Test VM
 
 A throwaway Debian 13 (trixie) VM for testing this dotfiles repo — bootstrap
-script, Hyprland/Quickshell config, the works — without touching the host
-Omarchy setup. Plain QEMU/KVM, no libvirt.
+script, Hyprland config, the DankMaterialShell install, the works — without
+risking a working machine. Plain QEMU/KVM, no libvirt.
 
 ## First-time setup
 
@@ -45,6 +45,14 @@ sudo mount -a
 
 `/mnt/dotfiles` inside the guest is now this repo on the host, live. Run
 `bootstrap.sh` from there, or symlink it into `~/dotfiles` if you'd rather
+
+Inside the VM, skip both snapshot steps — the qcow2 snapshots below already
+give you a faster, cheaper rollback than timeshift copying the whole rootfs
+onto a virtual disk:
+
+```
+DOTFILES_SKIP_BACKUP=1 DOTFILES_SKIP_TIMESHIFT=1 ./bootstrap.sh
+```
 not type `/mnt/dotfiles` every time.
 
 If you'd genuinely rather have a real independent clone in the guest (e.g.

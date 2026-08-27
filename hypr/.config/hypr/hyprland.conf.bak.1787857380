@@ -2,10 +2,8 @@
 # Actual config lives in conf.d/, split by concern so it's easy to iterate
 # on one piece (e.g. keybinds) without wading through everything else.
 
-# No monitor= line here on purpose: monitor layout is hyprmon's job now
-# (see conf.d/keybindings.conf — SUPER+M / SUPER+SHIFT+M), not a sourced
-# conf.d file. With nothing specified, Hyprland's own default takes over —
-# preferred mode, auto-arranged — until hyprmon profiles exist.
+source = ~/.config/hypr/conf.d/monitors/solo.conf
+
 source = ~/.config/hypr/conf.d/environment.conf
 source = ~/.config/hypr/conf.d/autostart.conf
 source = ~/.config/hypr/conf.d/input.conf
@@ -20,6 +18,3 @@ source = ~/.config/hypr/conf.d/windowrules.conf
 # `hyprctl binds -j`, which is the live source of truth and already carries
 # the descriptions from the `bindd` lines below.
 source = ~/.config/hypr/conf.d/keybindings.conf
-
-
-monitor=eDP-1,1920x1080@60.02,0x0,1.00,cm,auto
