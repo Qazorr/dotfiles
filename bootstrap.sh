@@ -49,6 +49,17 @@ export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
 APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-confdef")
 
+# Some steps (krkcommute) shell out to a tool another step installs (uv) to a
+# real, non-stow location. .zprofile/.zshrc put these on PATH too, but only
+# for shells started after that line was added — a script invocation from an
+# already-open terminal, or `./bootstrap.sh krkcommute` on its own without
+# `uv` run first in the same process, would still miss it even though the
+# binary is genuinely there. Set it here as well so this run sees it
+# regardless. Directories that don't exist yet (nothing installed there so
+# far) are harmless on PATH. Keep in sync with zsh/.zprofile, zsh/.zshrc, and
+# hypr/.config/hypr/conf.d/environment.conf.
+export PATH="$HOME/.local/share/dms/bin:$HOME/.local/share/uv/bin:$HOME/.local/share/krk-commute/bin:$HOME/.local/bin:$PATH"
+
 # ---------------------------------------------------------------------------
 # Preconditions
 # ---------------------------------------------------------------------------
@@ -132,7 +143,7 @@ unset _step_file
 
 STEPS=(
     backup timeshift backports hyprland desktop services ohmyzsh
-    quickshell hyprmon cli vscode claudedesktop brave dms quickcapture fonts groups stow summary
+    quickshell hyprmon cli vscode claudedesktop brave dms quickcapture uv krkcommute fonts groups stow summary
 )
 
 # ---------------------------------------------------------------------------
@@ -152,6 +163,7 @@ Run all:          ./bootstrap.sh
 Run some:         ./bootstrap.sh dms vscode
 Skip a snapshot:  DOTFILES_SKIP_TIMESHIFT=1 ./bootstrap.sh
                   DOTFILES_SKIP_BACKUP=1 ./bootstrap.sh
+Different projects dir:  DOTFILES_KRKCOMMUTE_DIR=~/code/krk-commute ./bootstrap.sh krkcommute
 EOF
 }
 

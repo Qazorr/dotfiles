@@ -47,9 +47,9 @@ command -v direnv >/dev/null && eval "$(direnv hook zsh)"
 # dotfiles — DMS ships prebuilt binaries).
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
-# Local scripts (monitor-switch, etc.) + DMS binaries. Login shells already
-# get these from .zprofile; this covers non-login interactive shells.
-export PATH="$HOME/.local/share/dms/bin:$HOME/.local/bin:$PATH"
+# Local scripts (scripts/.local/bin) + DMS binaries + uv. Login shells
+# already get these from .zprofile; this covers non-login interactive shells.
+export PATH="$HOME/.local/share/dms/bin:$HOME/.local/share/uv/bin:$HOME/.local/share/krk-commute/bin:$HOME/.local/bin:$PATH"
 
 # --- System info banner on new terminals ---
 command -v fastfetch >/dev/null && fastfetch

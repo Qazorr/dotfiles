@@ -80,6 +80,50 @@ plain `sleep`. The bar also carries a Quick Capture icon
 (`rightWidgets` in `settings.json`) — click for the same thing, or middle-
 click it directly for a region capture (per the plugin's own shortcuts).
 
+## Transit widget (krk-commute)
+
+`bootstrap.sh krkcommute` installs [krk-commute](https://github.com/Qazorr/krk-commute)
+— a personal GTFS/GTFS-Realtime departure-countdown project, private repo,
+not vendored into these dotfiles. It clones to `~/Projects/krk-commute` (the
+path its own docs assume) and re-`pull`s on every run rather than pinning a
+tag: unlike DMS/hyprmon/Quick Capture, this one has no releases and changes
+whenever its own repo does.
+
+Two processes joined only by a JSON file: a `systemd --user` daemon
+(`krk-commute.service`) polls the live feed and writes
+`~/.cache/krk-commute/state.json`; a bar widget reads that file via
+`krk-commute show --json` — no network on the widget side, so it can poll
+every few seconds for free.
+
+The widget was originally built for a different shell (Omarchy's own
+Quickshell fork); `plugin-dms/` is a DMS-native port living inside the
+krk-commute repo itself (co-located with the daemon it talks to, not
+duplicated into this repo), symlinked from
+`~/.config/DankMaterialShell/plugins/krkCommute`. Same countdown logic, only
+the surrounding widget-library components changed (DMS's `PluginComponent`/
+`Theme`/`DankFlickable` in place of Omarchy's `Panel`/`Style`/`Color`).
+
+Its own installer (`install.sh`) and uv both default to symlinking their
+binary into `~/.local/bin` — which here is a stow symlink into this repo,
+so that default would silently commit a binary to git. Both are redirected
+(`XDG_BIN_HOME` / `UV_INSTALL_DIR`) to `~/.local/share/krk-commute/bin` and
+`~/.local/share/uv/bin` instead, added to `PATH` in `.zprofile`/`.zshrc`.
+The shipped systemd unit also hardcodes `ExecStart=%h/.local/bin/krk-commute`
+— wrong for the same reason — so the bootstrap step `sed`s in the real path
+when installing the unit rather than copying it as-is.
+
+Routes aren't configured by this step — that's an interactive wizard asking
+about your actual commute, which nothing here can answer for you:
+
+```bash
+krk-commute configure
+```
+
+Until you do, the daemon exits (no `config.toml` yet) and the bar widget
+shows a warning-triangle icon — correct, not broken. `krk-commute
+favourites` lists saved route names for the plugin's settings panel
+(`favourite`, under the widget's own gear icon).
+
 ## Applications
 
 Installed by `bootstrap.sh` alongside the desktop:
@@ -295,9 +339,8 @@ rofi theme selector, oh-my-zsh theme switcher, and the waybar style/layout
 menus (there's no waybar here — `SUPER+CTRL+ALT+B` toggles the DMS bar
 instead).
 
-Monitor profiles live in `hypr/.config/hypr/conf.d/monitors/*.conf` — add one
-per layout you actually use (real output names from `hyprctl monitors`),
-switch with `monitor-switch <name>`, or cycle with `SUPER+M`.
+Monitor layout/profiles are hyprmon's job now, not a conf.d file — see
+[Monitor management (hyprmon)](#monitor-management-hyprmon) above.
 
 ## Ricing DMS
 
