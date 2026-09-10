@@ -45,15 +45,20 @@ sudo mount -a
 
 `/mnt/dotfiles` inside the guest is now this repo on the host, live. Run
 `bootstrap.sh` from there, or symlink it into `~/dotfiles` if you'd rather
+not type `/mnt/dotfiles` every time.
 
 Inside the VM, skip both snapshot steps — the qcow2 snapshots below already
 give you a faster, cheaper rollback than timeshift copying the whole rootfs
 onto a virtual disk:
 
 ```
-DOTFILES_SKIP_BACKUP=1 DOTFILES_SKIP_TIMESHIFT=1 ./bootstrap.sh
+DOTFILES_SKIP_BACKUP=1 DOTFILES_SKIP_TIMESHIFT=1 ./bootstrap.sh --all
 ```
-not type `/mnt/dotfiles` every time.
+
+`--all` skips the interactive picker a bare `./bootstrap.sh` would open: the
+point of the VM is to test what a fresh machine gets, so run the lot. (Or
+untick the `safety` group in the picker, which is the same thing as those two
+environment variables.)
 
 If you'd genuinely rather have a real independent clone in the guest (e.g.
 to commit VM-only test changes) — `git bundle create /tmp/dotfiles.bundle

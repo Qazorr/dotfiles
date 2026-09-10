@@ -8,121 +8,214 @@ no wlogout, no mako.
 
 ## Install
 
-On a fresh Debian 13 (trixie) machine:
+On a machine that already has Debian 13 (trixie):
 
 ```
 sudo apt install -y git                    # Debian's minimal install has no git
-git clone <this-repo-url> ~/dotfiles
+git clone git@github.com:Qazorr/dotfiles.git ~/dotfiles
 cd ~/dotfiles && ./bootstrap.sh
 ```
 
-**It asks for your sudo password once, at the start, then runs unattended.**
-A background keepalive refreshes the sudo timestamp for the duration, because
-the Quickshell build takes 10-20 minutes with no sudo call in between and
-would otherwise hit the default 15-minute timeout and silently block on a
-password prompt. apt runs with `DEBIAN_FRONTEND=noninteractive` and
-`--force-confold`, so no conffile dialog can stall it either.
+The repo is private, so that clone needs an SSH key or `gh auth login` first —
+and for the same reason there's no `curl | bash` one-liner.
 
-Expect roughly 25-40 minutes, most of it the Quickshell build and the first
-timeshift snapshot.
+**From bare metal**, `./iso/build.sh` builds a Debian netinst image with the
+repo already on it, so a new machine needs no credentials at install time. See
+[iso/README.md](iso/README.md).
 
-That installs the Hyprland stack from trixie-backports, builds Quickshell
-from source (not packaged for any Debian release), installs DankMaterialShell
-and its helper binaries from upstream release tarballs, installs the apps
-below, then symlinks the dotfiles into `$HOME` via GNU Stow. Safe to re-run —
-each step checks whether its work is already done.
+`./bootstrap.sh` with no arguments runs every step in order, and stays the
+command you use afterwards — after adding a step, or changing one.
 
-Every stage is a separate function and can be run on its own:
+### It remembers what it has already done
+
+Each finished step gets a file under `~/.local/state/dotfiles/steps`, and the
+next run skips it. First run: 25-40 minutes. Second: a couple of seconds.
+
+The record is a hash of the step's own file, not just a done flag. Add a
+package to `setup/steps/cli.sh` or bump `LAZYDOCKER_VERSION` in `devtools.sh`,
+and the next run notices and redoes that step — only that step. A plain flag
+would skip your edit forever.
+
+Four steps are exempt and always run: the two snapshots, `stow` (you re-run
+bootstrap precisely because a dotfile changed) and `summary`. The snapshots
+also sit out a run with nothing left to install — nothing to roll back from.
+
+Failures aren't recorded, so the next run retries. Neither is a step that
+returns early without finishing; `krkcommute` calls `stamp_skip` to say so
+when the private repo won't clone.
 
 ```
-./bootstrap.sh --list          show the steps
-./bootstrap.sh dms             reinstall just DankMaterialShell
-./bootstrap.sh vscode cli      just the apps
-./bootstrap.sh stow            just re-symlink after editing a dotfile
+./bootstrap.sh --list             every step, with install and run status
+./bootstrap.sh --force            run it all again, records or no records
+./bootstrap.sh --forget cli       drop one record
+./bootstrap.sh --mark-done        record what already looks installed, run nothing
+./bootstrap.sh --dry-run          print the plan, change nothing
 ```
 
-The first two steps are snapshots — a config backup and a full-system
-timeshift snapshot — so there's a way back before anything changes. Skip
-either with `DOTFILES_SKIP_BACKUP=1` / `DOTFILES_SKIP_TIMESHIFT=1` (the test
-VM wants both).
+`--mark-done` is for a machine set up before any of this existed: it records
+every step whose `--provides` probe already passes, so the next run does only
+the genuinely-remaining work. Name steps explicitly to vouch for ones it
+can't probe.
 
-Any pre-existing config file that a stow package wants to own is moved aside
-to `<name>.pre-dotfiles` first, so the run can't die on a stow conflict. That
-covers oh-my-zsh's own `.zshrc` (its `--keep-zshrc` only preserves one that
-*already* exists, so on a genuinely fresh machine it writes its own) and
-anything an app created before bootstrap ran. Deliberately not `stow --adopt`,
-which would pull the foreign file's contents *into* this repo.
+### Running less than everything
 
-Log out and back in afterward (group membership needs a fresh login), then
-log into **tty1** — `.zprofile` execs Hyprland automatically, no display
-manager involved.
+Naming steps runs them whatever the records say:
+
+```
+./bootstrap.sh dms vscode         named steps (prerequisites pulled in)
+./bootstrap.sh --profile desktop  a named set of groups
+./bootstrap.sh --group dev        one group
+./bootstrap.sh --missing          only what isn't installed yet
+./bootstrap.sh --pick             choose interactively
+```
+
+Profiles: `full`, `desktop` (no dev tooling or personal projects), `cli`
+(shell only — no Hyprland, fine on a server) and `dev`. Groups: `core safety
+shell desktop apps dev personal`.
+
+`--pick` lists every step by group, all ticked, marked `(done)` or
+`(installed)`. `core` steps show `[*]` and can't be unticked.
+
+```
+  1 5 9   toggle those steps        a  everything
+  g dev   toggle a whole group      n  nothing but the locked steps
+  p cli   apply a profile           m  only what looks missing
+  Enter   run the ticked steps      q  quit
+```
+
+**Sudo is asked for once, at the start**, and only if the chosen steps need
+root — `./bootstrap.sh stow` never prompts. A keepalive refreshes the
+timestamp, since the Quickshell build outlasts sudo's 15-minute timeout with
+no sudo call in between. apt runs with `DEBIAN_FRONTEND=noninteractive` and
+`--force-confold`, so no conffile dialog can stall it.
+
+Every step also checks its own work independently of the records, so it still
+behaves on a machine whose records were wiped. A failing step stops the run
+and prints the command to resume from (`--keep-going` runs the rest and lists
+failures at the end).
+
+The first two steps are a config backup and a timeshift snapshot; skip either
+with `DOTFILES_SKIP_BACKUP=1` / `DOTFILES_SKIP_TIMESHIFT=1`.
+
+Pre-existing config a stow package wants to own is moved to
+`<name>.pre-dotfiles` first, so the run can't die on a stow conflict — notably
+oh-my-zsh's own `.zshrc`. Deliberately not `stow --adopt`, which would pull
+the foreign contents *into* this repo.
+
+Afterwards log out and back in (group membership needs it), then log into
+**tty1** — `.zprofile` execs Hyprland, no display manager involved.
+
+### Checking a machine
+
+```
+./bootstrap.sh --doctor
+```
+
+Reads, never writes. Reports which steps aren't installed, whether the stow
+symlinks still point into this repo, whether the four copies of the `PATH`
+additions agree, group membership, leftover `.pre-dotfiles` files, and — with
+`shellcheck` installed — whether the repo's scripts lint clean.
+
+The check that earns its keep is **writethrough**: `~/.local/bin`,
+`~/.config/hypr`, `~/.config/kitty` and `~/.config/DankMaterialShell/plugins`
+are stow symlinks *into this repo*, so anything writing there writes inside a
+tracked git checkout. That has happened seven times — uv, the krk-commute
+installer, Claude Code's self-updater, matugen's generated themes — each
+caught by eye in `git status`. `--doctor` flags any untracked file under a
+stow package, so the eighth is caught by a command instead.
+
+### Adding or changing a step
+
+Each stage is one self-describing file under `setup/steps/`:
+
+```bash
+# setup/steps/docker.sh
+register_step docker \
+    --desc "Docker Engine + Compose/Buildx plugins, from Docker's own apt repo" \
+    --group dev --root --needs prereqs \
+    --provides docker
+
+step_docker() {
+    ...
+}
+```
+
+| | |
+|---|---|
+| `--desc` | what `--list` and the picker print |
+| `--group` | which group/profile it belongs to |
+| `--root` | it calls `sudo`; decides whether a run asks for a password at all |
+| `--always` | never recorded, so it runs every time. Only where repeating is the point: the snapshots, `stow`, `summary` |
+| `--needs` | must *already be done* for this step's install to succeed; pulled in automatically. Install-time only — otherwise `./bootstrap.sh dms` would trigger a 20-minute Quickshell build |
+| `--provides` | a command or path that exists once the step has run. Drives `--list`, `--missing` and `--doctor`. Steps that only change system state declare none |
+
+A step returning 0 without having done its work should call `stamp_skip`, so
+it isn't recorded and the next run retries. A non-zero return needs nothing.
+
+The only other thing to touch is `STEPS` in `bootstrap.sh` — the run order,
+the one fact that can't live in the step's own file. `steps_validate()` aborts
+at startup if the two disagree: an unregistered name, a registered step with
+no function, or a `--needs` pointing at something that runs later.
+
+Every step must be **idempotent**. `set -euo pipefail` is on, so guard
+anything that can legitimately fail — `step_groups` wraps `usermod -aG docker`
+in a `getent group docker` test, because `usermod` against a nonexistent group
+is a hard abort.
 
 ## Screenshots (Quick Capture)
 
-Screenshots go through [Quick Capture](https://github.com/hthienloc/dms-quick-capture)
-— a DMS plugin with a full annotation editor (arrows, redact, stamps, text,
-OCR text recognition, QR scanning, scroll capture, PDF/WebP export), not a
-raw grim/slurp dump. It replaced an earlier grim/slurp
-`scripts/.local/bin/screenshot`.
+Screenshots go through [Quick Capture](https://github.com/hthienloc/dms-quick-capture),
+a DMS plugin with a full annotation editor (arrows, redact, stamps, text, OCR,
+QR scanning, scroll capture, PDF/WebP export) rather than a raw grim/slurp
+dump.
 
-Installed by `bootstrap.sh quickcapture`, pinned to `v5.1.4` (its own repo,
-not vendored into this one — same reasoning as Quickshell/DMS/hyprmon: it's
-upstream code with its own Rust source and translations, refetched fresh
-each install rather than committed here). Its dedicated Rust capture
-backend is downloaded as a version-matched, checksum-verified release
-binary — no Rust toolchain needed. `imagemagick`, `img2pdf`,
-`tesseract-ocr`, and `zbar-tools` cover the export/OCR/QR extras.
+Installed by `bootstrap.sh quickcapture`, pinned to `v5.1.4` and refetched
+each install rather than vendored here — same reasoning as
+Quickshell/DMS/hyprmon. Its Rust capture backend comes as a version-matched,
+checksum-verified release binary, so no toolchain is needed. `imagemagick`,
+`img2pdf`, `tesseract-ocr` and `zbar-tools` cover the export/OCR/QR extras.
 
-All the `Print`-key binds plus `SUPER+SHIFT+S` open the annotator after
-capture (`dms ipc call quickCapture screenshot <mode> edit`). DMS has no
-native capture delay, so the two delayed variants wrap the IPC call in a
-plain `sleep`. The bar also carries a Quick Capture icon
-(`rightWidgets` in `settings.json`) — click for the same thing, or middle-
-click it directly for a region capture (per the plugin's own shortcuts).
+All `Print`-key binds plus `SUPER+SHIFT+S` open the annotator after capture
+(`dms ipc call quickCapture screenshot <mode> edit`). DMS has no native
+capture delay, so the delayed variants wrap the IPC call in a `sleep`. The bar
+also carries a Quick Capture icon — click for the same thing, middle-click for
+a region capture.
 
 ## Transit widget (krk-commute)
 
-`bootstrap.sh krkcommute` installs [krk-commute](https://github.com/Qazorr/krk-commute)
-— a personal GTFS/GTFS-Realtime departure-countdown project, private repo,
-not vendored into these dotfiles. It clones to `~/Projects/krk-commute` (the
-path its own docs assume) and re-`pull`s on every run rather than pinning a
-tag: unlike DMS/hyprmon/Quick Capture, this one has no releases and changes
-whenever its own repo does.
+`bootstrap.sh krkcommute` installs [krk-commute](https://github.com/Qazorr/krk-commute),
+a personal GTFS/GTFS-Realtime departure-countdown project — private repo, not
+vendored here. It clones to `~/Projects/krk-commute` (override with
+`DOTFILES_KRKCOMMUTE_DIR`) and re-`pull`s each run rather than pinning: unlike
+DMS/hyprmon/Quick Capture it has no releases.
 
-Two processes joined only by a JSON file: a `systemd --user` daemon
-(`krk-commute.service`) polls the live feed and writes
-`~/.cache/krk-commute/state.json`; a bar widget reads that file via
+Two processes joined by a JSON file: a `systemd --user` daemon polls the live
+feed into `~/.cache/krk-commute/state.json`, and a bar widget reads it via
 `krk-commute show --json` — no network on the widget side, so it can poll
 every few seconds for free.
 
-The widget was originally built for a different shell (Omarchy's own
-Quickshell fork); `plugin-dms/` is a DMS-native port living inside the
-krk-commute repo itself (co-located with the daemon it talks to, not
-duplicated into this repo), symlinked from
+The widget was built for a different shell (Omarchy's Quickshell fork);
+`plugin-dms/` is a DMS-native port living in the krk-commute repo next to the
+daemon it talks to, symlinked from
 `~/.config/DankMaterialShell/plugins/krkCommute`. Same countdown logic, only
-the surrounding widget-library components changed (DMS's `PluginComponent`/
-`Theme`/`DankFlickable` in place of Omarchy's `Panel`/`Style`/`Color`).
+the widget-library components differ.
 
-Its own installer (`install.sh`) and uv both default to symlinking their
-binary into `~/.local/bin` — which here is a stow symlink into this repo,
-so that default would silently commit a binary to git. Both are redirected
-(`XDG_BIN_HOME` / `UV_INSTALL_DIR`) to `~/.local/share/krk-commute/bin` and
-`~/.local/share/uv/bin` instead, added to `PATH` in `.zprofile`/`.zshrc`.
-The shipped systemd unit also hardcodes `ExecStart=%h/.local/bin/krk-commute`
-— wrong for the same reason — so the bootstrap step `sed`s in the real path
-when installing the unit rather than copying it as-is.
+Its installer and uv both default to symlinking their binary into
+`~/.local/bin` — a stow symlink into this repo, so that default would commit a
+binary to git. Both are redirected (`XDG_BIN_HOME` / `UV_INSTALL_DIR`) under
+`~/.local/share`, which `.zprofile`/`.zshrc` add to `PATH`. The shipped
+systemd unit hardcodes the same wrong path, so the step `sed`s in the real one.
 
-Routes aren't configured by this step — that's an interactive wizard asking
-about your actual commute, which nothing here can answer for you:
+Routes aren't configured here — that's an interactive wizard about your actual
+commute:
 
 ```bash
 krk-commute configure
 ```
 
-Until you do, the daemon exits (no `config.toml` yet) and the bar widget
-shows a warning-triangle icon — correct, not broken. `krk-commute
-favourites` lists saved route names for the plugin's settings panel
-(`favourite`, under the widget's own gear icon).
+Until then the daemon exits (no `config.toml`) and the widget shows a warning
+triangle, which is correct rather than broken. `krk-commute favourites` lists
+saved route names for the plugin's settings panel.
 
 ## Applications
 
@@ -135,6 +228,71 @@ Installed by `bootstrap.sh` alongside the desktop:
 | `brave-browser` | Brave, from its own apt repo (deb822 `.sources` file, per brave.com/linux's current documented method). |
 | `ripgrep` `fd-find` `bat` `fzf` `zoxide` `eza` | Search/navigation tooling. Debian renames two of these — `fd-find` installs `fdfind`, `bat` installs `batcat` — and `.zshrc` aliases them back. |
 | `btop` `htop` `git-delta` `neovim` | Monitoring, diffs, editing. |
+| `jq` `tmux` `direnv` `gh` `command-not-found` | JSON, multiplexing, per-project env vars, GitHub CLI (also what `krkcommute` clones its private repo with), the plugin that makes zsh's `command-not-found` suggestion actually fire. |
+| `shellcheck` | This repo is almost entirely bash and a quoting mistake here half-provisions a machine. `--doctor` runs it over `bootstrap.sh`, `lib/`, `setup/steps/` and `scripts/` when it's installed. |
+| `curl` `git` `gnupg` `unzip` `fontconfig` | The `prereqs` step — what every other step assumes already exists. Debian's minimal install has none of them. |
+
+## Developer tooling
+
+**Docker** (`bootstrap.sh docker`) — Engine + Compose/Buildx from Docker's own
+apt repo, not Debian's `docker.io`, which trails upstream badly. `bootstrap.sh
+groups` adds `$USER` to the `docker` group once it exists; like
+`video`/`render`/`input` that needs a fresh login, not just a re-run.
+
+**lazydocker** / **lazygit** (`bootstrap.sh devtools`) — pinned release
+binaries (`v0.25.2` / `v0.64.1`) in `/usr/local/bin`, the same non-stow
+location hyprmon uses and for the same reason.
+
+**oh-my-zsh plugins** (`bootstrap.sh ohmyzsh`) — `docker`, `fzf`, `extract`
+and `command-not-found` ship with oh-my-zsh and only need naming in `.zshrc`.
+`zsh-autosuggestions` and `zsh-syntax-highlighting` are separate repos, cloned
+into `custom/plugins/` and re-`pull`ed later (no tags to pin). Order matters:
+syntax-highlighting must be last, or anything after it is silently ignored.
+
+## NVIDIA
+
+`bootstrap.sh nvidia` sets up Debian's packaged NVIDIA driver, following
+JaKooLit's `Debian-Hyprland/install-scripts/nvidia.sh`. It detects the card
+itself (PCI vendor `10de`) and no-ops without one, so it's safe in a full run.
+
+- Enables `contrib`/`non-free` in a separate `sources.list.d` file — a stock
+  trixie install has `main non-free-firmware` only, and `nvidia-driver`
+  (550.163.01) is in `non-free`.
+- Installs `nvidia-driver`, `nvidia-kernel-dkms`, `firmware-misc-nonfree`,
+  `linux-headers-amd64`, and the Wayland/VA-API bits. `linux-headers-amd64`
+  rather than `linux-headers-$(uname -r)` so dkms still has headers after the
+  next kernel upgrade.
+- `options nvidia-drm modeset=1 fbdev=1` (modeset is what makes the driver
+  usable under Wayland at all) and `NVreg_PreserveVideoMemoryAllocations=1`,
+  plus the `nvidia-suspend`/`resume`/`hibernate` units it depends on.
+- Puts the nvidia modules in the initramfs and blacklists nouveau on the
+  kernel command line, then rebuilds the initramfs and GRUB config.
+
+Reboot afterwards to actually switch off nouveau.
+
+### Hybrid laptops
+
+The NVIDIA Hyprland env goes in `~/.config/hypr/conf.d/local.conf` —
+untracked, because `GBM_BACKEND=nvidia-drm` on a card-less machine breaks
+rendering outright. `hyprland.conf` sources it last and `step_stow` creates an
+empty one so that source always resolves. (A glob would be tidier, but
+Hyprland 0.55 errors with `source= globbing error: found no match` when one
+matches nothing.)
+
+- **Discrete only** — the full block: `LIBVA_DRIVER_NAME`,
+  `__GLX_VENDOR_LIBRARY_NAME`, `NVD_BACKEND`, `GBM_BACKEND`.
+- **Hybrid** (e.g. this machine's Renoir + GTX 1660 Ti) — none of them.
+  Pointing GBM/GLX at the discrete card forces the whole session onto it:
+  hotter, slower to the internal panel, and on some laptops the panel stays
+  dark. The session stays on the iGPU; single apps go to the NVIDIA card with
+  `prime-run`:
+
+```
+prime-run blender
+```
+
+If Hyprland picks the wrong GPU to render on, `AQ_DRM_DEVICES` in
+`local.conf` pins it to a specific `/dev/dri/by-path/...` node.
 
 ## Layout
 
@@ -145,20 +303,29 @@ zsh/                            Shell (.zshrc, .zprofile — the latter sets PAT
                                   and autostarts Hyprland on tty1 login)
 fastfetch/.config/fastfetch/    System info banner (runs on new terminals)
 cava/.config/cava/              Audio visualizer (SUPER+ALT+C)
-dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json, and
-                                  the idleInhibitToggle plugin — your shell
-                                  config, everything else in that directory
-                                  is upstream (see below)
+dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json and
+                                  the idleInhibitToggle plugin. Everything
+                                  else in that directory is upstream
 scripts/.local/bin/             dotfiles-backup, idle-inhibit, keybind-help,
-                                  lock-session, new-app
+                                  lock-session, new-app, prime-run
 wallpaper/.local/share/wallpapers/  Default wallpaper
-bootstrap.sh                    Thin entrypoint — sourcing + the runner only
-setup/steps/                    One file per install stage (step_<name>() {
-                                  # description ... }); add a step by adding
-                                  a file here and to bootstrap.sh's STEPS
-lib/                            Shared helpers: log/warn/die, apt install +
-                                  repo-add wrappers, GitHub-release fetching
-                                  — sourced by bootstrap.sh and scripts/
+bootstrap.sh                    Entrypoint: the run order and command line
+setup/steps/                    One self-describing file per stage:
+                                  register_step + step_<name>()
+lib/common.sh                   log / warn / die
+lib/paths.sh                    The PATH dirs this setup adds — the reference
+                                  the other three copies are checked against
+lib/apt.sh                      apt install + third-party repo-add wrappers
+lib/fetch.sh                    GitHub-release fetching
+lib/steps.sh                    The step registry: metadata, dependency
+                                  resolution, drift validation
+lib/state.sh                    What has already run, one file per step under
+                                  ~/.local/state/dotfiles/steps
+lib/picker.sh                   --pick's interactive picker (plain bash: runs
+                                  on tty1 before anything is installed)
+lib/doctor.sh                   --doctor's checks
+iso/                            Builds a netinst image with this repo baked
+                                  in, see iso/README.md
 vm/                             Throwaway QEMU test VM, see vm/README.md
 ```
 
@@ -182,12 +349,10 @@ letter mnemonics, and it's why the layout can't be mixed with vim-style hjkl
 movement.
 
 `SUPER+H` opens a **fuzzy-searchable** list of every binding (`keys` in a
-shell). Type to filter across the key combo, the description and the command;
-**Enter runs the selected binding**. JaKooLit's rofi version deliberately
-disables that — "pressing ENTER will have NO function" — but running it is
-genuinely useful for the bindings you can never remember, so instead the
-destructive ones (exit, poweroff, reboot, suspend, lock) ask for confirmation
-first.
+shell), filtering across combo, description and command. **Enter runs the
+selected binding** — JaKooLit's rofi version disables that, but it's useful
+for the ones you can never remember, so destructive bindings (exit, poweroff,
+reboot, suspend, lock) confirm first instead.
 
 ```
 keybind-help              fuzzy search (fzf)
@@ -195,9 +360,8 @@ keybind-help --list       plain grouped list
 keybind-help workspace    open with a filter already applied
 ```
 
-It reads `hyprctl binds -j`, so it always matches the live config — add a
-`bindd` line and it appears with no extra work. Without a terminal or without
-fzf it degrades to the plain list rather than failing.
+It reads `hyprctl binds -j`, so it always matches the live config. Without a
+terminal or fzf it degrades to the plain list rather than failing.
 
 | Binding | Action |
 |---|---|
@@ -233,106 +397,74 @@ fzf it degrades to the plain list rather than failing.
 ### Monitor management (hyprmon)
 
 Monitor layout and profiles are [hyprmon](https://github.com/erans/hyprmon)'s
-job, not a hand-rolled script. It replaced an earlier
-`conf.d/monitors/*.conf` + `monitor-switch` setup — built from source
-(`bootstrap.sh hyprmon`, pinned to `v0.0.17`; Go isn't packaged for Debian
-at a new enough version, so it's built the same way Quickshell is).
+job, replacing an earlier `conf.d/monitors/*.conf` + `monitor-switch` setup.
+Built from source (`bootstrap.sh hyprmon`, pinned to `v0.0.17`) since Debian's
+Go is too old.
 
 - `SUPER+SHIFT+M` — the layout editor: a visual "desk map" TUI, drag monitors
   into place with the mouse or arrow keys, set resolution/refresh/scale/HDR/
   rotation, then `P` to save a named profile.
 - `SUPER+M` — the profile picker: pick a saved profile and switch live.
 
-hyprmon's own profile store (`~/.config/hyprmon/profiles/*.json`) is
-deliberately **not** tracked in this repo — profiles are specific to actual
-attached hardware, discovered by using the tool, not something meaningful to
-ship from a machine that only ever had one panel to test against. First time
-on a new machine: `SUPER+SHIFT+M`, arrange things, `P` to save, then `SUPER+M`
-to switch between whatever you've saved.
+hyprmon's profile store (`~/.config/hyprmon/profiles/*.json`) is deliberately
+**not** tracked: profiles are specific to actually-attached hardware. On a new
+machine, `SUPER+SHIFT+M`, arrange, `P` to save.
 
-Nothing in `hyprland.conf` declares a `monitor=` line any more — with none
-present, Hyprland's own default (preferred mode, auto-arranged) covers a
-fresh install until hyprmon profiles exist.
+Nothing declares a `monitor=` line any more; with none present Hyprland's
+default (preferred mode, auto-arranged) covers a fresh install.
 
-**One thing worth knowing before you hit `S` (save to config) instead of
-just applying live**: read hyprmon's own source
-(`writeHyprlangConfig` in `hyprland.go`) confirmed it only scans the
-top-level `hyprland.conf` for existing `monitor=` lines to replace. Since
-this config never declares one there, a save appends fresh lines at the end
-instead of erroring — which works (last declaration wins), but if any
-`source`d conf.d file ever gains a `monitor=` line again, that file would go
-silently overridden rather than actually doing anything. There isn't one now
-(this section replaced the one that did), so it's not live risk today — just
-the trap to remember before adding monitor config anywhere but hyprmon.
+**Before using `S` (save to config) rather than applying live**: hyprmon's
+`writeHyprlangConfig` only scans the top-level `hyprland.conf` for existing
+`monitor=` lines to replace. Since this config declares none there, a save
+appends at the end — which works (last declaration wins), but a `monitor=`
+line in any `source`d conf.d file would be silently overridden. There isn't
+one today; it's the trap to remember before putting monitor config anywhere
+but hyprmon.
 
 ### Idle inhibitor
 
-`SUPER+I` toggles "don't lock or dim the screen right now" — the JaKooLit
-feature, a different mechanism. JaKooLit's version (a waybar module) works by
-killing and restarting the whole `hypridle` process, which cancels dpms-off
-and suspend too, not just the lock — a bigger hammer than the job needs.
+`SUPER+I` toggles "don't lock or dim right now". JaKooLit's version kills and
+restarts `hypridle` entirely, cancelling dpms-off and suspend too — a bigger
+hammer than the job needs.
 
-`scripts/.local/bin/idle-inhibit` instead takes a real `systemd-inhibit
---what=idle` lock — the same mechanism a video player or presentation app
-takes automatically, and one hypridle explicitly checks for
-(`general:ignore_systemd_inhibit`). Verified directly against hypridle's own
-log output: with the lock held it logs `Ignoring from onIdled(), inhibit
-locks: 1` and skips the timeout; releasing it lets the next timeout fire
-normally. Feedback is a DMS toast (falls back to `notify-send`, then to
-nothing, rather than erroring if neither is available).
+`scripts/.local/bin/idle-inhibit` takes a real `systemd-inhibit --what=idle`
+lock instead, the same one a video player takes and one hypridle explicitly
+honours (`general:ignore_systemd_inhibit`). Verified against hypridle's log:
+with the lock held it logs `Ignoring from onIdled(), inhibit locks: 1`.
 
 ```
 idle-inhibit on|off|toggle|status
 ```
 
-There's also a bar widget and `SUPER+I` — same script either way, so the
-icon can never disagree with what's actually inhibited. It's a DMS plugin
+The bar widget and `SUPER+I` both call that script, so the icon can't disagree
+with reality — it polls `idle-inhibit status` every 4s rather than tracking
+its own boolean. It's a DMS plugin
 (`dms/.config/DankMaterialShell/plugins/idleInhibitToggle/`), not a patch to
-DMS's own QML: anything edited directly in `~/.config/quickshell/dms` gets
-wiped by `bootstrap.sh dms` (it does `rm -rf` and re-extracts the pinned
-release), but `~/.config/DankMaterialShell/plugins/` is a separate directory
-DMS's own plugin scanner watches, untouched by that step. The plugin polls
-`idle-inhibit status` every 4s via `Proc.runCommand` rather than tracking its
-own boolean, so it reflects reality even if you toggle it from the keybind or
-a terminal instead of clicking the bar icon.
+DMS's QML: `bootstrap.sh dms` does `rm -rf` and re-extracts the pinned
+release, so anything edited in `~/.config/quickshell/dms` is wiped, while
+`~/.config/DankMaterialShell/plugins/` is untouched.
 
-Enabling it took two files DMS itself writes and isn't obvious from the
-plugin.json alone, both now tracked in `dms/.config/DankMaterialShell/`:
-`plugin_settings.json` (holds `{"enabled": true}`, in a separate file from
-`settings.json` — found by watching what actually changed on disk after
-`dms ipc call plugins enable idleInhibitToggle`, not by reading the docs,
-which describe a different config shape than this version actually uses) and
-the `idleInhibitToggle` entry in `settings.json`'s `rightWidgets`.
+Enabling it takes two files DMS writes itself, both tracked here:
+`plugin_settings.json` (`{"enabled": true}` — a separate file from
+`settings.json`, found by watching what changed on disk, since the docs
+describe a different config shape) and the `idleInhibitToggle` entry in
+`settings.json`'s `rightWidgets`. A Control Center tile was tried and dropped:
+it rendered as a bare "Unknown" instead of picking up `ccWidgetIcon` etc.
 
-A Control Center toggle was attempted too (`ccWidgetIcon`/`ccWidgetToggled`
-etc., documented in DMS's own plugin README) and dropped — it rendered as a
-bare "Unknown" tile with a question-mark icon instead of picking up those
-properties. Bar-only for now; the code for it wasn't kept.
-
-**Not the same thing as `dms ipc call inhibit toggle`.** DMS ships its own
-idle/lock/suspend system (`Services/IdleService.qml`) with a real bar widget
-for it (`Widgets/IdleInhibitor.qml`, not enabled in this bar's default
-layout) — but its toggle flips a flag private to DMS's own system, with no
-D-Bus, systemd, or Wayland-protocol registration at all. It has zero effect
-on hypridle, which is what's actually locking this session. Verified by
-reading `Services/SessionService.qml`: `idleInhibited` is consulted only by
-DMS's own `IdleService`, nowhere else. Enabling that bar widget would give
-you a toggle that looks like it worked and locks you out anyway — left off
-on purpose.
-
-(Also probably explains why DMS's own idle timeouts default to 0 in
-`settings.json` rather than actually being off: at 0, `IdleService` falls
-back to a 24-hour timeout rather than disabling itself, and it runs whether
-or not hypridle also does. Two independent lock/suspend systems, on very
-different timescales, is a low-risk mismatch as long as it's understood.)
+**Not the same as `dms ipc call inhibit toggle`.** DMS's own idle system
+(`Services/IdleService.qml`) flips a flag private to itself, with no D-Bus,
+systemd or Wayland registration — zero effect on hypridle, which is what
+actually locks this session (`idleInhibited` is read only by `IdleService`).
+Its bar widget would look like it worked and lock you out anyway, so it's left
+off. That also explains DMS's idle timeouts defaulting to 0: at 0 `IdleService`
+falls back to 24 hours rather than disabling itself, and runs alongside
+hypridle regardless.
 
 ### What didn't port
 
-JaKooLit's emoji picker and calculator are rofi scripts. DMS 1.5.3's spotlight
-has neither built in — verified by querying it directly (`=2+2` and `:smile`
-both return nothing). They're available in DMS's plugin registry
-(plugins.danklinux.com) if you want them; binding dead keys would be worse
-than leaving them free.
+JaKooLit's emoji picker and calculator are rofi scripts, and DMS 1.5.3's
+spotlight has neither (`=2+2` and `:smile` both return nothing). Both exist in
+DMS's plugin registry if wanted; binding dead keys would be worse.
 
 Also dropped, with no DMS or Hyprland equivalent: game mode, animations menu,
 rofi theme selector, oh-my-zsh theme switcher, and the waybar style/layout
@@ -345,9 +477,9 @@ Monitor layout/profiles are hyprmon's job now, not a conf.d file — see
 ## Ricing DMS
 
 `dms/.config/DankMaterialShell/settings.json` is stowed, and DMS rewrites it
-in place rather than atomically — so the symlink survives and everything you
-change in the shell's settings UI (`SUPER+S`) lands in this repo as a diff.
-Change something, then `git diff dms/` to see exactly which key moved.
+in place rather than atomically — so the symlink survives and anything changed
+in the settings UI (`SUPER+S`) lands here as a diff. `git diff dms/` shows
+exactly which key moved.
 
 `dms ipc call settings dump` prints the whole current config; `dms ipc call
 settings set <key> <value>` sets one. Themes live under `currentThemeName` /
@@ -367,22 +499,17 @@ new-app "My Tool" /path/to/my-tool --icon /path/to/icon.png
 new-app "My Tool" /path/to/my-tool [icon] [--terminal] [--comment "..."] [--categories "Cat;"]
 ```
 
-Verified against DMS's actual launcher (Quickshell's `DesktopEntries`,
-which scans `~/.local/share/applications`): a genuinely new file appears in
-`SUPER+D` within a second or two, no restart needed. Two things worth
-knowing, both found by testing rather than assumed:
+A genuinely new file appears in `SUPER+D` within a second or two, no restart
+needed. Two things found by testing:
 
-- An **icon given as a file path** renders reliably. An **icon given as a
-  bare theme name** (e.g. `firefox`) depends on whatever icon theme is
-  currently active and can silently fall back to a plain letter avatar —
-  verified with a real icon (`utilities-terminal`) that exists in the
-  `gnome` theme but wasn't found through DMS's own icon lookup. `new-app`
-  warns when a theme name can't be found in any installed theme, but can't
-  promise a name that *is* found will actually render.
-- **Editing an existing entry in place doesn't reliably refresh live** —
-  only a genuinely new filename is guaranteed to show up immediately.
-  Re-running `new-app` on the same name may need a moment, or a DMS
-  restart, before the change is visible.
+- Give the **icon as a file path**. A bare theme name depends on the active
+  icon theme and can silently fall back to a letter avatar — `utilities-terminal`
+  exists in the `gnome` theme but wasn't found through DMS's own lookup.
+  `new-app` warns on a name it can't find anywhere, but can't promise one it
+  does find will render.
+- **Editing an existing entry doesn't reliably refresh live.** Only a new
+  filename is guaranteed to appear immediately; re-running `new-app` on the
+  same name may need a DMS restart.
 
 ## Backups
 
@@ -399,21 +526,19 @@ Snapshots go to `~/.local/share/dotfiles-backups/`, newest 10 kept. They live
 outside the repo on purpose — a backup a bad `git checkout` can delete is not
 a backup.
 
-The file list is **derived from the stow packages**, not hardcoded, so it
-can't drift: add a file to any package and it's covered automatically. Files
-that already resolve into this repo are skipped (they're version-controlled
-already), so re-running after install saves ~150KB, not 88MB. DMS's ~570
-upstream QML files are deliberately excluded — they're pinned by version in
-`bootstrap.sh` and a download replaces them exactly.
+The file list is **derived from the stow packages**, so it can't drift — add
+a file to any package and it's covered. Files already resolving into this repo
+are skipped (they're version-controlled), so a post-install run saves ~150KB,
+not 88MB. DMS's ~570 upstream QML files are excluded: pinned by version, and a
+download replaces them exactly.
 
 Each snapshot also records system state you can't restore automatically but
-will want to read if an install goes wrong: `dpkg --get-selections`,
-`apt-mark showmanual`, `/etc/apt/sources.list*`, and your group membership.
+will want if an install goes wrong: `dpkg --get-selections`, `apt-mark
+showmanual`, `/etc/apt/sources.list*`, group membership.
 
-`--restore` replaces stow symlinks with the original files. It materialises
-any parent directory that is a stow symlink first — restoring
-`~/.config/hypr/hyprland.conf` while `~/.config/hypr` is a symlink would
-otherwise write *through* it and overwrite the repo's own copy.
+`--restore` replaces stow symlinks with the original files, materialising any
+parent directory that is itself a symlink first — otherwise restoring
+`~/.config/hypr/hyprland.conf` writes *through* it onto the repo's own copy.
 
 ### What this does not cover
 
@@ -422,25 +547,19 @@ install and the DMS binaries are not rolled back — only recorded. For real
 system-level rollback on this ext4 setup there's no cheap CoW snapshot, so
 either:
 
-- **`bootstrap.sh timeshift`** — runs automatically as step 2. Installs
-  timeshift, then takes a full-system rsync-mode snapshot before anything is
-  touched. It skips itself if a snapshot from the last 24h already exists (so
-  re-running bootstrap stays cheap) or if `/` has under 25GB free. Roll back
-  with `sudo timeshift --restore`.
+- **`bootstrap.sh timeshift`** — step 2, a full-system rsync snapshot before
+  anything is touched. Skipped if one from the last 24h exists, if `/` has
+  under 25GB free, or if the run has nothing left to install. Roll back with
+  `sudo timeshift --restore`. Single ext4 root, so snapshots land on the same
+  disk: that covers a bad install, not disk failure.
 
-  This is a single ext4 root, so snapshots land on the same disk. That covers
-  a bad install; it does **not** cover disk failure. Keep real backups
-  elsewhere.
-
-- **`vm/`** — try `bootstrap.sh` in the throwaway QEMU VM first. Still the
-  safest option, and what the script's own header recommends.
+- **`vm/`** — try `bootstrap.sh` in the throwaway QEMU VM first.
 
 ## Keyboard shortcuts
 
 `SUPER+SHIFT+/` opens `keybind-help` (also `keys` in a shell). It renders
-`hyprctl binds -j` — the *live* binds — so it can't drift from the config,
-and it picks up the descriptions from the `bindd` lines automatically. Add a
-binding with a description and it shows up with no extra work.
+`hyprctl binds -j` — the *live* binds — so it can't drift, and picks up
+descriptions from the `bindd` lines. Add a described binding and it appears.
 
 DMS ships its own keybind viewer, but it only parses Hyprland's Lua config
 format; on this hyprlang config `dms keybinds show hyprland` returns
@@ -476,15 +595,12 @@ hyprlang at all right now.
   use it instead, drop `hypridle` from `conf.d/autostart.conf` and bind
   `dms ipc call lock lock`.
 
-  `hypridle`'s `lock_cmd` goes through `scripts/.local/bin/lock-session`
-  rather than the documented `pidof hyprlock || hyprlock`. That documented
-  form has a real failure mode, hit on this machine: hyprlock started, hung
-  without ever presenting a lock surface, and stayed running. `pidof` then
-  succeeds forever, so every later idle timeout thinks a lock is already up
-  and the session silently stops locking altogether. `lock-session` checks
-  whether hyprlock is *actually* locking (owns a session-lock surface), not
-  merely running, and clears a hung one before starting a fresh lock.
-  `lock-session --dry-run` reports what it would do.
+  `hypridle`'s `lock_cmd` goes through `scripts/.local/bin/lock-session`, not
+  the documented `pidof hyprlock || hyprlock`. That form failed here: hyprlock
+  hung without presenting a lock surface but kept running, so `pidof` succeeded
+  forever and the session stopped locking altogether. `lock-session` checks
+  whether hyprlock owns a session-lock surface, not merely that it's running,
+  and clears a hung one first. `--dry-run` reports what it would do.
 - **DMS versions are pinned** in `bootstrap.sh`. The QML and the CLI share an
   API version (the shell logs `Connected (API vNN)` at startup), so bump
   `DMS_VERSION` and the QML together, not independently.

@@ -1,5 +1,9 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_quickshell() { # Build Quickshell from source (DMS runs on it)
+register_step quickshell \
+    --desc "Build Quickshell from source (DMS runs on it)" \
+    --group desktop --root --needs prereqs backports \
+    --provides qs
+
+step_quickshell() {
     if command -v qs >/dev/null 2>&1; then
         log "Quickshell already installed, skipping build"
         return 0
@@ -10,11 +14,9 @@ step_quickshell() { # Build Quickshell from source (DMS runs on it)
 
     require_disk_space 8
     log "Installing Quickshell build dependencies"
-    # -t trixie-backports matters here, not just cosmetic: the hyprland step
-    # already pulled a newer libxkbcommon0 from backports (Hyprland 0.55 needs
-    # it). Without this flag, plain `apt install` pulls qt6-base-private-dev's
-    # libxkbcommon-dev from trixie main, which demands the exact main-suite
-    # libxkbcommon0 — a hard version conflict with what's already installed.
+    # -t trixie-backports is load-bearing: hyprland already pulled a newer
+    # libxkbcommon0 from there, and libxkbcommon-dev from main would demand
+    # the main-suite version — a hard conflict.
     apt_install_backports \
         build-essential cmake ninja-build pkg-config \
         qt6-base-dev qt6-base-private-dev \

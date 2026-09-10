@@ -1,18 +1,15 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_stow() { # Symlink the dotfiles into $HOME
+register_step stow \
+    --desc "Symlink the dotfiles into \$HOME" \
+    --group core --always
+
+step_stow() {
     log "Stowing dotfiles"
     cd "$REPO"
 
-    # stow aborts the whole package if any target already exists as a real
-    # file, and `set -e` would then kill the run. On a fresh machine that is
-    # easy to hit: oh-my-zsh writes its own .zshrc (its --keep-zshrc only
-    # preserves one that ALREADY exists), and any app run once before this
-    # point may have created its own config.
-    #
-    # So move every conflicting target aside first. Deterministic, and the
-    # backup step already has a copy. Deliberately NOT `stow --adopt`, which
-    # would pull the foreign file's contents INTO this repo and overwrite the
-    # version-controlled one.
+    # stow aborts on a target that already exists as a real file, killing the
+    # run under `set -e` — oh-my-zsh's own .zshrc does this on a fresh machine.
+    # Move conflicts aside first. Not `stow --adopt`, which would pull the
+    # foreign contents INTO this repo.
     local pkg rel target moved=0
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || continue
@@ -22,6 +19,11 @@ step_stow() { # Symlink the dotfiles into $HOME
             [ -e "$target" ] || [ -L "$target" ] || continue
             # Already ours: a symlink resolving back into this repo.
             [[ "$(readlink -f "$target" 2>/dev/null)" == "$REPO"/* ]] && continue
+            # Also ours: a link inside a package pointing outside the repo,
+            # so it resolves outside — the gitignored claude and krkCommute
+            # links. Same file as the repo's, reached through the package
+            # symlink; without this, restow renames our own file aside.
+            [ "$target" -ef "$pkg/$rel" ] && continue
             warn "Moving aside $rel -> $rel.pre-dotfiles"
             mv "$target" "$target.pre-dotfiles"
             moved=$((moved + 1))
@@ -29,11 +31,18 @@ step_stow() { # Symlink the dotfiles into $HOME
     done
     [ "$moved" -gt 0 ] && log "Moved $moved pre-existing file(s) aside; originals kept as *.pre-dotfiles"
 
-    # `dms` carries ~/.config/DankMaterialShell/settings.json. DMS rewrites
-    # that file in place rather than atomically, so the stow symlink survives
-    # and your shell settings track into this repo automatically.
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || { warn "no such stow package: $pkg (skipping)"; continue; }
         stow --target="$HOME" --restow "$pkg"
     done
+
+    # hyprland.conf sources this unconditionally, so it must exist even when
+    # empty. Untracked; step_nvidia writes into it.
+    local local_conf="$HOME/.config/hypr/conf.d/local.conf"
+    if [ ! -f "$local_conf" ]; then
+        printf '%s\n' \
+            "# Machine-local Hyprland config. Not tracked in the dotfiles repo." \
+            "# bootstrap.sh writes the NVIDIA env block here when it finds a card." \
+            > "$local_conf"
+    fi
 }

@@ -1,15 +1,17 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_brave() { # Brave, from its own apt repo
+register_step brave \
+    --desc "Brave, from its own apt repo" \
+    --group apps --root --needs prereqs \
+    --provides brave-browser
+
+step_brave() {
     local key=/usr/share/keyrings/brave-browser-archive-keyring.gpg
     if [ ! -f "$key" ]; then
         log "Adding Brave's apt repo"
         sudo curl -fsSLo "$key" \
             https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
     fi
-    # Brave's own documented method: a deb822 .sources file fetched directly,
-    # not hand-built — verified against https://brave.com/linux/ 2026-08-27.
-    # Different enough from ensure_apt_list's single-line .list shape (this
-    # fetches a whole pre-written file) that it stays hand-written here.
+    # Brave's documented method is a whole pre-written deb822 .sources file,
+    # not ensure_apt_list's single .list line. Verified 2026-08-27.
     if [ ! -f /etc/apt/sources.list.d/brave-browser-release.sources ]; then
         sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources \
             https://brave-browser-apt-release.s3.brave.com/brave-browser.sources

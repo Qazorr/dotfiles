@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-# Scaffold a .desktop launcher entry — for a script, an AppImage, anything
-# that doesn't ship one of its own. Verified live against DMS's launcher
-# (Quickshell's DesktopEntries, which scans ~/.local/share/applications):
-# a genuinely new file shows up within a second or two, no restart needed.
-# Editing an existing entry in place is NOT guaranteed to refresh live —
-# re-running this on the same name may need a moment or a DMS restart to
-# show the change.
+# Scaffold a .desktop launcher entry. New entries appear in DMS's launcher
+# within seconds; editing an existing one may need a DMS restart.
 #
 #   new-app <name> <exec> [icon]
 #       --terminal            run in a terminal window
@@ -13,14 +8,8 @@
 #       --categories "Cat;"   defaults to "Utility;" — see the desktop-entry
 #                             spec's registered category list
 #
-# <exec> is written to the Exec= line verbatim, including any arguments or
-# %f/%u/%F/%U field codes — this does not rewrite or validate it beyond a
-# soft "found on PATH?" check.
-#
-# <icon> can be a path to an image (resolved to absolute and used as-is —
-# verified more reliable than a themed icon name, which silently falls back
-# to a letter avatar if the active icon theme doesn't have it) or a bare
-# icon-theme name if you already know one that resolves.
+# <exec> goes to Exec= verbatim, field codes and all. Give <icon> as a path:
+# a bare theme name silently falls back to a letter avatar when missing.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../.." && pwd)"
@@ -51,8 +40,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# First word of Exec, so "code --ozone-platform=wayland %U" checks "code"
-# rather than failing on its own flags.
+# First word of Exec, so flags don't break the PATH check.
 first_word="${EXEC%% *}"
 if [[ "$first_word" != /* ]] && ! command -v "$first_word" >/dev/null 2>&1; then
     warn "'$first_word' isn't on PATH right now — the entry will still be created, but won't launch until it is"

@@ -1,9 +1,11 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_desktop() { # Terminal, shell, screenshot/clipboard, network, Qt runtime
-    # -t trixie-backports here too. Note qt6-base-dev is NOT in backports at
-    # all (it resolves from main either way) — the flag matters because it
-    # keeps apt resolving consistently against backports before the quickshell
-    # step pulls the newer libxkbcommon from there (see the note there).
+register_step desktop \
+    --desc "Terminal, shell, screenshot/clipboard, network, Qt runtime" \
+    --group desktop --root --needs backports \
+    --provides kitty zsh stow grim slurp wl-copy fastfetch cava
+
+step_desktop() {
+    # -t trixie-backports keeps apt resolving consistently against backports
+    # before the quickshell step pulls the newer libxkbcommon from there.
     log "Installing terminal, shell, screenshot/clipboard, network tools"
     apt_install_backports \
         kitty zsh stow \

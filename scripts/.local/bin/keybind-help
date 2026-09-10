@@ -78,10 +78,8 @@ def label(bind):
     return f"{d} {a}".strip() or "(no description)"
 
 
-# Flattened once at import time: (head, category), longest head first. A
-# multi-word head like "Toggle bar" must be checked before the single-word
-# "Toggle" or it can never win — "Toggle bar".startswith("Toggle") is true,
-# so the generic head would always match first otherwise.
+# (head, category), longest head first: "Toggle bar" must be checked before
+# "Toggle", or the generic head always wins.
 _HEAD_TABLE = sorted(
     ((head, name) for name, heads in CATEGORIES for head in heads),
     key=lambda pair: len(pair[0]), reverse=True,
@@ -132,8 +130,8 @@ def interactive(binds, query=""):
     for i, b in enumerate(binds):
         d, a = b.get("dispatcher", ""), b.get("arg", "")
         cmd = f"{d} {a}".strip()
-        # Index first, hidden from display, so the selection maps back exactly
-        # even when two bindings share a description.
+        # Index first, hidden, so the selection maps back exactly when two
+        # bindings share a description.
         lines.append(
             f"{i}\t{KEYC}{combo(b):<{keyw}}{RESET}{DESCC}{label(b):<34}{RESET}{DIM}{cmd}{RESET}"
         )
@@ -170,8 +168,7 @@ def main():
     except json.JSONDecodeError:
         sys.exit("could not parse `hyprctl binds -j`")
 
-    # De-duplicate first: the same combo+description can appear twice when a
-    # bind is declared with several flag variants.
+    # The same combo+description appears twice when a bind has flag variants.
     seen = set()
     uniq = []
     for b in binds:

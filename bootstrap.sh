@@ -1,76 +1,78 @@
 #!/usr/bin/env bash
-# Single entrypoint: installs every package/dependency this setup needs,
-# builds Quickshell/hyprmon from source, installs DankMaterialShell + Quick
-# Capture, then symlinks the dotfiles into $HOME via stow.
+# Provisions a Hyprland desktop on Debian 13 (trixie). See README.md.
 #
-# This file is just the runner. Each stage lives in its own file under
-# setup/steps/ (step_<name>() { # description ... }), sourced below; shared
-# helpers (log/warn/die, apt wrappers, GitHub-release fetching) live in lib/.
-# Add a step by dropping a new setup/steps/<name>.sh and adding <name> to the
-# STEPS array (and ROOT_STEPS, if it calls sudo) — nothing else changes.
+#   ./bootstrap.sh              run everything not done yet
+#   ./bootstrap.sh --list       the steps, and what has already run
+#   ./bootstrap.sh --doctor     check this machine, change nothing
 #
-#   ./bootstrap.sh                 run everything, in order
-#   ./bootstrap.sh --list          show the steps
-#   ./bootstrap.sh dms             reinstall just DankMaterialShell
-#   ./bootstrap.sh vscode cli      just the apps
-#   ./bootstrap.sh stow            just re-symlink after editing a dotfile
+# Completed steps are recorded in ~/.local/state/dotfiles/steps (lib/state.sh)
+# and skipped next time; editing a step's file un-records it.
 #
-# Idempotent: each step checks whether its work is already done and skips
-# if so. Package/version facts below were re-verified 2026-08-27 on a fresh
-# trixie install; both apt's package set and Hyprland's config schema drift,
-# so try the test VM first (vm/README.md) before trusting a change here on
-# real hardware.
-#
-#  - Hyprland + hyprlock/hypridle/xdg-desktop-portal-hyprland ship from
-#    trixie-backports (0.55.2), not plain trixie.
-#  - Quickshell and hyprmon aren't packaged for Debian at all; built from
-#    source. Qt 6.8.2 from trixie is new enough for Quickshell; hyprmon's
-#    go.mod needs Go 1.26, only in backports.
-#  - DMS and Quick Capture ship prebuilt binaries/QML from pinned upstream
-#    releases — no toolchain needed for either. Both install to a REAL
-#    directory outside any stow package (~/.config/quickshell/dms,
-#    ~/.config/DankMaterialShell/plugins/quickCapture) since they're
-#    upstream software, not a dotfile, and get replaced wholesale on
-#    version bumps.
+# This file owns the run order and the command line. Steps live in
+# setup/steps/, helpers in lib/. Test changes in the VM first (vm/README.md).
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$REPO/lib/common.sh"
+# shellcheck source=lib/paths.sh
+source "$REPO/lib/paths.sh"
 # shellcheck source=lib/apt.sh
 source "$REPO/lib/apt.sh"
 # shellcheck source=lib/fetch.sh
 source "$REPO/lib/fetch.sh"
+# shellcheck source=lib/steps.sh
+source "$REPO/lib/steps.sh"
+# shellcheck source=lib/state.sh
+source "$REPO/lib/state.sh"
+# shellcheck source=lib/picker.sh
+source "$REPO/lib/picker.sh"
+# shellcheck source=lib/doctor.sh
+source "$REPO/lib/doctor.sh"
 
-# Never let apt or debconf stop to ask a question halfway through an
-# unattended run. --force-confold keeps any config file you have already
-# modified, rather than opening the interactive conffile prompt.
+# --force-confold keeps your modified config files instead of opening the
+# conffile prompt, which would stall an unattended run.
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
 APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-confdef")
 
-# Some steps (krkcommute) shell out to a tool another step installs (uv) to a
-# real, non-stow location. .zprofile/.zshrc put these on PATH too, but only
-# for shells started after that line was added — a script invocation from an
-# already-open terminal, or `./bootstrap.sh krkcommute` on its own without
-# `uv` run first in the same process, would still miss it even though the
-# binary is genuinely there. Set it here as well so this run sees it
-# regardless. Directories that don't exist yet (nothing installed there so
-# far) are harmless on PATH. Keep in sync with zsh/.zprofile, zsh/.zshrc, and
-# hypr/.config/hypr/conf.d/environment.conf.
-export PATH="$HOME/.local/share/dms/bin:$HOME/.local/share/uv/bin:$HOME/.local/share/krk-commute/bin:$HOME/.local/bin:$PATH"
+# So this run sees a binary an earlier step just installed.
+export PATH="$DOTFILES_PATH_PREFIX:$PATH"
+
+# Used by step_stow and by --doctor's writethrough check.
+STOW_PACKAGES=(hypr kitty zsh scripts fastfetch cava wallpaper dms)
+
+# register_step runs at source time, so this must follow lib/steps.sh.
+for _step_file in "$REPO"/setup/steps/*.sh; do
+    # shellcheck source=/dev/null
+    source "$_step_file"
+done
+unset _step_file
+
+# Run order — the one fact that can't live in a step's own file. A step's
+# --needs must appear before it; steps_validate enforces that.
+STEPS=(
+    backup timeshift prereqs backports nvidia hyprland desktop services ohmyzsh
+    quickshell hyprmon cli vscode claudedesktop brave dms quickcapture
+    uv krkcommute docker devtools fonts groups stow summary
+)
+
+# `core` is never optional: locked in the picker, implicit in every profile.
+GROUP_ORDER=(core safety shell desktop apps dev personal)
+
+# Named sets of groups, on top of core.
+declare -A PROFILES=(
+    [full]="safety shell desktop apps dev personal"
+    [desktop]="safety shell desktop"
+    [cli]="safety shell"
+    [dev]="safety shell apps dev"
+)
+
+steps_validate
 
 # ---------------------------------------------------------------------------
 # Preconditions
 # ---------------------------------------------------------------------------
-# Steps that call sudo. Used to decide whether to ask for a password at all:
-# `./bootstrap.sh stow` should never prompt.
-ROOT_STEPS=" timeshift backports hyprland desktop services quickshell cli vscode hyprmon claudedesktop brave groups "
-
-# Every stow package this repo has. Named once here; step_stow uses it twice
-# (moving conflicts aside, then the actual restow) instead of repeating the list.
-STOW_PACKAGES=(hypr kitty zsh scripts fastfetch cava wallpaper dms)
-
 SUDO_KEEPALIVE_PID=""
 
 cleanup() {
@@ -79,8 +81,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Only the steps that actually build or download something care about disk
-# space; `./bootstrap.sh stow` should not refuse to run on a full disk.
+# Only called by steps that build or download, so `./bootstrap.sh stow`
+# doesn't refuse to run on a full disk.
 require_disk_space() {
     local need_gb="$1" avail_gb
     avail_gb="$(df -BG --output=avail "$HOME" | tail -1 | tr -dc '0-9')"
@@ -98,10 +100,8 @@ ensure_sudo() {
     log "Installing system packages needs sudo — asking once, now, so the rest runs unattended."
     sudo -v || die "sudo authentication failed"
 
-    # Refresh the timestamp until this script exits. Without this, the
-    # Quickshell build (10-20 minutes with no sudo call in between) outlasts
-    # the default 15-minute timeout and the next sudo silently blocks on a
-    # password prompt you have already walked away from.
+    # The Quickshell build outlasts sudo's 15-minute timeout with no sudo call
+    # in between, so without this the next one blocks on an unattended prompt.
     ( while true; do
           sleep 50
           kill -0 "$$" 2>/dev/null || exit 0
@@ -117,90 +117,295 @@ check_environment() {
         warn "This was written for Debian 13 (trixie). Continuing anyway, but expect drift."
     fi
 
-    # Fail fast and say why, rather than dying twenty minutes in.
     command -v sudo >/dev/null || die "sudo is not installed. Install it and add yourself to the sudo group first."
     command -v apt  >/dev/null || die "apt not found — is this really Debian?"
 
     if ! curl -fsS --max-time 10 -o /dev/null http://deb.debian.org/debian/ 2>/dev/null; then
-        # curl may legitimately be missing on a minimal install; only treat a
-        # reachable-network failure as fatal, not a missing tool.
+        # Missing curl is normal on a minimal install; only a real network
+        # failure is fatal.
         if command -v curl >/dev/null 2>&1; then
             die "can't reach deb.debian.org — check your network connection."
         fi
-        warn "curl not installed yet; skipping the network check (the desktop step installs it)."
+        warn "curl not installed yet; skipping the network check (the prereqs step installs it)."
     fi
 }
 
 # ---------------------------------------------------------------------------
-# Steps — one file per stage under setup/steps/, sourced here. Order of
-# definition doesn't matter; the STEPS array below controls run order.
+# Command line
 # ---------------------------------------------------------------------------
-for _step_file in "$REPO"/setup/steps/*.sh; do
-    # shellcheck source=/dev/null
-    source "$_step_file"
-done
-unset _step_file
+list_steps() {
+    local g s rc status root needs done_
+    printf 'Steps, in run order. sudo = needs root.\n'
+    for g in "${GROUP_ORDER[@]}"; do
+        printf '\n\033[1m%s\033[0m\n' "$g"
+        for s in "${STEPS[@]}"; do
+            [ "${STEP_GROUP[$s]}" = "$g" ] || continue
+            rc=0; step_installed "$s" || rc=$?
+            case "$rc" in
+                0) status=$'\033[32m✓\033[0m' ;;
+                1) status=$'\033[33m·\033[0m' ;;
+                *) status=' ' ;;
+            esac
+            root=""; step_is_root "$s" && root=" [sudo]"
+            needs=""; [ -n "${STEP_NEEDS[$s]}" ] && needs=" (needs: ${STEP_NEEDS[$s]% })"
+            done_="$(_list_ran "$s")"
+            printf '  %s %-13s %s%s%s%s\n' \
+                "$status" "$s" "${STEP_DESC[$s]}" "$root" "$needs" "$done_"
+        done
+    done
+    printf '\n  \033[32m✓\033[0m installed   \033[33m·\033[0m not installed   (blank: nothing to probe)\n'
+    printf '  The trailing note is what a previous run recorded, in %s\n' "$STAMP_DIR"
+}
 
-STEPS=(
-    backup timeshift backports hyprland desktop services ohmyzsh
-    quickshell hyprmon cli vscode claudedesktop brave dms quickcapture uv krkcommute fonts groups stow summary
-)
+# The run-record note at the end of a --list line.
+_list_ran() {
+    local rc=0
+    step_is_always "$1" && { printf '\033[2m  (always runs)\033[0m'; return 0; }
+    step_stamp_state "$1" || rc=$?
+    case "$rc" in
+        0) printf '\033[2m  ran %s\033[0m' "$(step_stamp_when "$1")" ;;
+        2) printf '\033[33m  changed since it ran\033[0m' ;;
+    esac
+    return 0
+}
+
+usage() {
+    cat <<EOF
+Usage: ./bootstrap.sh [options] [step ...]
+
+  (no arguments)     every step that hasn't run yet, in order
+
+Choosing less than everything:
+  --profile <name>   a named set of groups: ${!PROFILES[*]}
+  --group <name>     one group: ${GROUP_ORDER[*]}
+  --missing          only steps whose tools aren't installed yet
+  --pick             choose interactively
+  <step> ...         named steps; anything they --need is pulled in too.
+                     Naming a step runs it even if it's recorded as done.
+
+What has already run is remembered in
+$STAMP_DIR — one file per step, so a
+re-run skips it. Editing setup/steps/<name>.sh un-remembers that step.
+  --force, -f        run everything selected, done or not
+  --forget [step…]   drop those records (all of them if none named)
+  --mark-done [step…]  record steps as done without running them. With no
+                     names, every step that already looks installed — for a
+                     machine set up before these records existed
+
+  --list, -l         show every step, grouped, with install and run status
+  --doctor           check this machine against the repo, change nothing
+  --dry-run, -n      print the plan and stop
+  --keep-going, -k   don't abort on the first failing step
+  --all, -a          same as no arguments, kept for older muscle memory
+  --yes, -y          never prompt
+  --help, -h         this
+
+Environment overrides:
+  DOTFILES_SKIP_BACKUP=1      skip the config snapshot
+  DOTFILES_SKIP_TIMESHIFT=1   skip the full-system snapshot
+  DOTFILES_KRKCOMMUTE_DIR=…   clone krk-commute somewhere other than ~/Projects
+  DOTFILES_STATE_DIR=…        keep the run records somewhere else
+EOF
+}
 
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
-list_steps() {
-    echo "Steps, in run order:"
-    local s desc
-    for s in "${STEPS[@]}"; do
-        # The trailing comment on each function definition is its description.
-        desc="$(sed -n "s/^step_$s() { # \(.*\)$/\1/p" "$REPO/setup/steps/$s.sh" 2>/dev/null)"
-        printf '  %-12s %s\n' "$s" "$desc"
+run_steps() {
+    local plan=("$@")
+    local total=${#plan[@]} i=0 s failed=()
+    for s in "${plan[@]}"; do
+        i=$((i + 1))
+        printf '\033[1;35m[%d/%d]\033[0m %s\n' "$i" "$total" "$s"
+        STAMP_SKIP=0
+        if "step_$s"; then
+            # --always steps are never recorded; nor is one that called
+            # stamp_skip, meaning it returned 0 without finishing.
+            if ! step_is_always "$s" && [ "$STAMP_SKIP" != "1" ]; then
+                step_stamp_write "$s" || warn "ran $s but couldn't record it in $STAMP_DIR"
+            fi
+            continue
+        fi
+        failed+=("$s")
+        if [ "$KEEP_GOING" = "1" ]; then
+            warn "step '$s' failed — continuing because of --keep-going"
+            continue
+        fi
+        # So a 40-minute install isn't restarted from the top over one 404.
+        warn "step '$s' failed."
+        warn "Resume with: ./bootstrap.sh ${plan[*]:$((i - 1))}"
+        return 1
     done
-    cat <<'EOF'
+    if [ ${#failed[@]} -gt 0 ]; then
+        warn "${#failed[@]} step(s) failed: ${failed[*]}"
+        warn "Retry them with: ./bootstrap.sh ${failed[*]}"
+        return 1
+    fi
+    return 0
+}
 
-Run all:          ./bootstrap.sh
-Run some:         ./bootstrap.sh dms vscode
-Skip a snapshot:  DOTFILES_SKIP_TIMESHIFT=1 ./bootstrap.sh
-                  DOTFILES_SKIP_BACKUP=1 ./bootstrap.sh
-Different projects dir:  DOTFILES_KRKCOMMUTE_DIR=~/code/krk-commute ./bootstrap.sh krkcommute
-EOF
+KEEP_GOING=0
+FORCE=0
+# NAMED holds the steps named literally on the command line.
+declare -A NAMED=()
+
+# Split a plan into PENDING and SKIPPED, by run record.
+plan_pending() {
+    PENDING=(); SKIPPED=()
+    local s rc
+    for s in "$@"; do
+        # Naming a step means run it now, record or no record.
+        if [ "$FORCE" = "1" ] || [ -n "${NAMED[$s]+x}" ] || step_is_always "$s"; then
+            PENDING+=("$s"); continue
+        fi
+        rc=0; step_stamp_state "$s" || rc=$?
+        case "$rc" in
+            0) SKIPPED+=("$s") ;;
+            2) log "setup/steps/$s.sh changed since it last ran — doing it again"
+               PENDING+=("$s") ;;
+            *) PENDING+=("$s") ;;
+        esac
+    done
+    return 0
 }
 
 main() {
-    case "${1:-}" in
-        --list|-l) list_steps; exit 0 ;;
-        --help|-h) list_steps; exit 0 ;;
-    esac
+    local requested=() mode="" dry=0 pick=0 yes=0
+    local s grp rc needs_root=0 plan=() added=() forget=() real=0 keep=() still=()
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --list|-l)     list_steps; exit 0 ;;
+            --help|-h)     usage; exit 0 ;;
+            --doctor)      run_doctor; exit $? ;;
+            --all|-a)      mode=all; shift ;;
+            --missing)     mode=missing; shift ;;
+            --pick)        pick=1; shift ;;
+            --dry-run|-n)  dry=1; shift ;;
+            --keep-going|-k) KEEP_GOING=1; shift ;;
+            --force|-f)    FORCE=1; shift ;;
+            --yes|-y)      yes=1; shift ;;
+            # For a machine set up before these records existed. With no
+            # names, every step whose --provides probe already passes.
+            --mark-done)
+                shift
+                while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
+                    step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
+                    forget+=("$1"); shift
+                done
+                if [ ${#forget[@]} -eq 0 ]; then
+                    for s in "${STEPS[@]}"; do
+                        step_is_always "$s" && continue
+                        step_installed "$s" && forget+=("$s")
+                    done
+                fi
+                for s in "${forget[@]}"; do
+                    step_is_always "$s" && { warn "$s always runs — nothing to record"; continue; }
+                    step_stamp_write "$s"
+                done
+                log "Recorded as done without running: ${forget[*]:-nothing}"
+                exit 0 ;;
+            --forget)
+                shift
+                while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
+                    step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
+                    forget+=("$1"); shift
+                done
+                [ ${#forget[@]} -gt 0 ] || forget=("${STEPS[@]}")
+                for s in "${forget[@]}"; do step_stamp_clear "$s"; done
+                log "Forgot ${#forget[@]} run record(s) — the next run does those steps again."
+                exit 0 ;;
+            --profile)
+                [ -n "${2:-}" ] || die "--profile needs a name (${!PROFILES[*]})"
+                [ -n "${PROFILES[$2]:-}" ] || die "unknown profile: $2 (have: ${!PROFILES[*]})"
+                mode=set
+                for grp in core ${PROFILES[$2]}; do
+                    for s in "${STEPS[@]}"; do
+                        [ "${STEP_GROUP[$s]}" = "$grp" ] && requested+=("$s")
+                    done
+                done
+                shift 2 ;;
+            --group)
+                [ -n "${2:-}" ] || die "--group needs a name (${GROUP_ORDER[*]})"
+                [[ " ${GROUP_ORDER[*]} " == *" $2 "* ]] || die "unknown group: $2 (have: ${GROUP_ORDER[*]})"
+                mode=set
+                for s in "${STEPS[@]}"; do
+                    [ "${STEP_GROUP[$s]}" = "$2" ] && requested+=("$s")
+                done
+                shift 2 ;;
+            -*)            die "unknown option: $1 (see ./bootstrap.sh --help)" ;;
+            *)
+                step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
+                mode=set; requested+=("$1"); NAMED[$1]=1; shift ;;
+        esac
+    done
 
     check_environment
 
-    local to_run=()
-    if [ $# -gt 0 ]; then
-        to_run=("$@")
-        local s
-        for s in "${to_run[@]}"; do
-            declare -F "step_$s" >/dev/null \
-                || die "unknown step: $s (see ./bootstrap.sh --list)"
-        done
-    else
-        to_run=("${STEPS[@]}")
+    case "$mode" in
+        all)     requested=("${STEPS[@]}") ;;
+        missing) for s in "${STEPS[@]}"; do
+                     # rc 2 is "no probe, can't tell" — include it anyway.
+                     rc=0; step_installed "$s" || rc=$?
+                     [ "$rc" != "0" ] && requested+=("$s")
+                 done
+                 [ ${#requested[@]} -gt 0 ] || { log "Nothing missing."; exit 0; } ;;
+        set)     ;;
+        # Nothing chosen: everything. The records below cut it back.
+        *)       requested=("${STEPS[@]}") ;;
+    esac
+
+    if [ "$pick" = "1" ] && [ "$yes" != "1" ]; then
+        [ -t 0 ] || die "--pick needs a terminal to ask on."
+        pick_steps "${requested[@]}" || { log "Nothing to do."; exit 0; }
+        requested=("${PICKED[@]}")
     fi
 
-    # Ask for the password once, up front, before any long build — but only
-    # if something in this run actually needs it.
-    local s needs_root=0
-    for s in "${to_run[@]}"; do
-        [[ "$ROOT_STEPS" == *" $s "* ]] && needs_root=1 && break
+    [ ${#requested[@]} -gt 0 ] || { log "Nothing selected."; exit 0; }
+
+    mapfile -t plan < <(steps_resolve "${requested[@]}")
+    mapfile -t added < <(steps_added "${requested[*]}" "${plan[@]}")
+
+    plan_pending "${plan[@]}"
+    [ ${#SKIPPED[@]} -gt 0 ] && log "Already done, skipping: ${SKIPPED[*]}"
+
+    # Nothing left to install means nothing to roll back from — don't spend
+    # ten minutes and several GB snapshotting it. (The safety steps are
+    # --always so that a run which DOES install always gets its snapshot.)
+    for s in "${PENDING[@]}"; do
+        [ "${STEP_GROUP[$s]}" = "safety" ] && continue
+        step_is_always "$s" || real=1
+    done
+    if [ "$real" = "0" ]; then
+        for s in "${PENDING[@]}"; do
+            [ "${STEP_GROUP[$s]}" = "safety" ] || keep+=("$s")
+        done
+        PENDING=("${keep[@]}")
+    fi
+
+    plan=("${PENDING[@]}")
+    [ ${#plan[@]} -gt 0 ] || { log "Everything is already done. Redo it all with --force."; exit 0; }
+    [ "$real" = "0" ] && log "Nothing new to install — just re-stowing."
+
+    # Only worth saying for prerequisites that survived the skip filter.
+    still=()
+    for s in "${added[@]}"; do
+        [[ " ${plan[*]} " == *" $s "* ]] && still+=("$s")
+    done
+    [ ${#still[@]} -gt 0 ] && log "Also running (required by what you picked): ${still[*]}"
+
+    if [ "$dry" = "1" ]; then
+        log "Plan (${#plan[@]} steps): ${plan[*]}"
+        exit 0
+    fi
+
+    # Once, up front, before any long build — and only if this run needs it.
+    for s in "${plan[@]}"; do
+        step_is_root "$s" && needs_root=1 && break
     done
     [ "$needs_root" = "1" ] && ensure_sudo
 
-    local total=${#to_run[@]} i=0
-    for s in "${to_run[@]}"; do
-        i=$((i + 1))
-        printf '\033[1;35m[%d/%d]\033[0m %s\n' "$i" "$total" "$s"
-        "step_$s"
-    done
+    run_steps "${plan[@]}"
 }
 
 main "$@"

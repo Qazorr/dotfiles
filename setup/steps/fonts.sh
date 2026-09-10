@@ -1,6 +1,10 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_fonts() { # JetBrainsMono Nerd Font, for the terminal
-    # DMS bundles and FontLoader's its own fonts; this one is for kitty.
+register_step fonts \
+    --desc "JetBrainsMono Nerd Font, for the terminal" \
+    --group shell --needs prereqs \
+    --provides "$HOME/.local/share/fonts/JetBrainsMonoNerdFont"
+
+step_fonts() {
+    # DMS bundles its own fonts; this one is for kitty.
     local dir="$HOME/.local/share/fonts/JetBrainsMonoNerdFont"
     if [ -d "$dir" ]; then
         log "JetBrainsMono Nerd Font already installed, skipping"

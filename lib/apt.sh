@@ -1,14 +1,10 @@
-# apt helpers, sourced by bootstrap.sh (which defines APT_OPTS) and the step
-# files under setup/steps/. Not a stow package, not standalone-executable.
+# apt helpers. bootstrap.sh defines APT_OPTS.
 
 apt_install() { sudo apt install "${APT_OPTS[@]}" "$@"; }
 apt_install_backports() { sudo apt install "${APT_OPTS[@]}" -t trixie-backports "$@"; }
 
-# Fetch a signing key to $2 if it isn't there yet. Pass "dearmor" as $3 for
-# vendors that serve an ASCII-armored PGP key needing conversion to a binary
-# keyring (e.g. Microsoft's); omit it for vendors whose key is already in a
-# form apt's signed-by= accepts directly (e.g. Anthropic's .asc — verified
-# working as-is, no dearmor, on this machine).
+# Fetch a signing key to $2 if missing. $3 = "dearmor" for vendors serving
+# ASCII-armored keys (Microsoft); omit for keys signed-by= takes as-is.
 ensure_apt_key() {
     local url="$1" path="$2" mode="${3:-}"
     [ -f "$path" ] && return 0
@@ -19,11 +15,9 @@ ensure_apt_key() {
     fi
 }
 
-# Idempotently write a one-line "deb [...] URL suite component" apt source
-# and refresh apt. $1 = target .list path, $2 = the full deb line, $3 = a
-# substring already unique to this source, used to detect one already
-# present (from a previous run, or set up by hand before this repo existed)
-# without needing to know it was written by this exact mechanism.
+# Write a one-line apt source and refresh, unless $3 (a substring unique to
+# it) already appears in sources.list.d — matching content, not our filename,
+# so a repo added by hand is found too.
 ensure_apt_list() {
     local list_path="$1" deb_line="$2" needle="$3"
     grep -Rqs "$needle" /etc/apt/sources.list.d/ 2>/dev/null && return 0

@@ -1,5 +1,9 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_claudedesktop() { # Claude Desktop, from Anthropic's own apt repo
+register_step claudedesktop \
+    --desc "Claude Desktop, from Anthropic's own apt repo" \
+    --group apps --root --needs prereqs \
+    --provides claude-desktop
+
+step_claudedesktop() {
     local key=/usr/share/keyrings/claude-desktop-archive-keyring.asc
     log "Ensuring Anthropic's apt repo is set up"
     ensure_apt_key https://downloads.claude.ai/claude-desktop/key.asc "$key"

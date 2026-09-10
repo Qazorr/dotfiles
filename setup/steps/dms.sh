@@ -1,22 +1,19 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-#
-# DMS is the desktop shell: bar, launcher, control centre, notifications,
-# polkit agent, wallpaper and matugen theming.
-#
-# Pinned rather than "latest": DMS moves fast and its QML tracks the CLI's
-# API version (the shell logs "Connected (API vNN)" on start). Bump these
-# together after testing, not independently.
+# Pinned, not "latest": the QML tracks the CLI's API version. Bump together.
 DMS_VERSION=v1.5.3
 DGOP_VERSION=v0.2.3
 DSEARCH_VERSION=v0.3.2
 MATUGEN_VERSION=v4.2.0
 
-# Not ~/.local/bin: that path is a stow symlink into this repo, so anything
-# written there would land in git.
+# Not ~/.local/bin: stow symlink into this repo.
 DMS_BIN="$HOME/.local/share/dms/bin"
 DMS_QML="$HOME/.config/quickshell/dms"
 
-step_dms() { # DankMaterialShell + dgop, dsearch, matugen
+register_step dms \
+    --desc "DankMaterialShell + dgop, dsearch, matugen" \
+    --group desktop --needs prereqs \
+    --provides "$HOME/.local/share/dms/bin/dms" "$HOME/.config/quickshell/dms"
+
+step_dms() {
     if [ -x "$DMS_BIN/dms" ] && [ "$("$DMS_BIN/dms" version 2>/dev/null | head -1)" = "dms $DMS_VERSION" ]; then
         log "DankMaterialShell $DMS_VERSION already installed, skipping"
         return 0
@@ -28,17 +25,14 @@ step_dms() { # DankMaterialShell + dgop, dsearch, matugen
     local tmp; tmp="$(mktemp -d)"
     trap 'rm -rf "$tmp"' RETURN
 
-    # DMS's own tarball isn't a bare binary release (it's a binary plus a
-    # whole QML tree that gets copied elsewhere), so it stays hand-written
-    # rather than going through install_github_release_binary.
+    # A binary plus a QML tree, so not install_github_release_binary's shape.
     curl -fsSL -o "$tmp/dms.tar.gz" \
         "https://github.com/AvengeMedia/DankMaterialShell/releases/download/$DMS_VERSION/dms-full-amd64.tar.gz"
     mkdir -p "$tmp/dms" && tar xzf "$tmp/dms.tar.gz" -C "$tmp/dms"
     install -m755 "$tmp/dms/bin/dms" "$DMS_BIN/dms"
 
-    # QML goes to a real directory. Replaced wholesale on upgrade so removed
-    # upstream files don't linger; user settings live in
-    # ~/.config/DankMaterialShell and are untouched by this.
+    # Replaced wholesale so removed upstream files don't linger. Settings in
+    # ~/.config/DankMaterialShell are untouched.
     mkdir -p "$(dirname "$DMS_QML")"
     rm -rf "$DMS_QML"
     cp -r "$tmp/dms/dms" "$DMS_QML"
