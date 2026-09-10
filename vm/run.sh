@@ -4,6 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+[ -f disk/debian13.qcow2 ] \
+    || { echo "no VM disk yet — run vm/install.sh first" >&2; exit 1; }
+
 exec qemu-system-x86_64 \
   -enable-kvm \
   -machine q35 \

@@ -1,14 +1,29 @@
 #!/usr/bin/env bash
-# One-time: boot the Debian 13 installer against the empty disk image.
-# After install completes and the VM shuts itself down, use run.sh from then on.
+# One-time: create the disk image if it's missing, then boot the Debian 13
+# installer against it. After the install finishes, use run.sh from then on.
+# Start over with: rm -f vm/disk/debian13.qcow2
 #
 # DOTFILES_TEST_ISO points this at a different image — that's how iso/build.sh's
 # output gets tested before it goes anywhere near real hardware.
 set -euo pipefail
-cd "$(dirname "$0")"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 
-ISO="${DOTFILES_TEST_ISO:-iso/debian-13.6.0-amd64-netinst.iso}"
+# Resolved before the cd below, so a path relative to the repo root works —
+# that's how iso/build.sh and both READMEs spell it.
+ISO="${DOTFILES_TEST_ISO:-$HERE/iso/debian-13.6.0-amd64-netinst.iso}"
+[ -f "$ISO" ] || [ ! -f "$HERE/$ISO" ] || ISO="$HERE/$ISO"
 [ -f "$ISO" ] || { echo "no such ISO: $ISO" >&2; exit 1; }
+ISO="$(readlink -f "$ISO")"
+
+cd "$HERE"
+
+# disk/ is gitignored, so it doesn't exist on a fresh clone and qemu-img won't
+# create a missing parent.
+DISK=disk/debian13.qcow2
+if [ ! -f "$DISK" ]; then
+    mkdir -p "$(dirname "$DISK")"
+    qemu-img create -f qcow2 "$DISK" "${DOTFILES_VM_DISK_SIZE:-40G}"
+fi
 
 exec qemu-system-x86_64 \
   -enable-kvm \

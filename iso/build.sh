@@ -8,9 +8,9 @@
 # repoints origin at the SSH URL. The installer does not run bootstrap.sh;
 # it leaves a motd saying to.
 #
-# Boot menu:
-#   Install Debian + dotfiles          partitioning stays interactive
-#   Install Debian + dotfiles (auto)   ERASES /dev/vda, for the test VM only
+# Adds one boot entry, "Install Debian + dotfiles". Partitioning, the target
+# disk and your username stay interactive by design — there is deliberately no
+# unattended variant that could erase the wrong disk.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -80,13 +80,20 @@ done
 # --- payload ---------------------------------------------------------------
 log "Bundling the repo ($(git -C "$REPO" rev-parse --abbrev-ref HEAD) @ $(git -C "$REPO" log --oneline -1))"
 git -C "$REPO" bundle create "$tree/dotfiles.bundle" --all >/dev/null
-cp "$HERE/preseed.cfg" "$HERE/preseed-auto.cfg" "$tree/"
+cp "$HERE/preseed.cfg" "$tree/"
 
 # --- boot menus ------------------------------------------------------------
-# Both preseeded, written to isolinux (BIOS) and grub (UEFI) — which one runs
-# depends on how the machine boots.
+# Written to isolinux (BIOS) and grub (UEFI) — which one runs depends on how
+# the machine boots.
 log "Adding boot entries"
 common_args="auto=true priority=high"
+
+# Debian's gtk.cfg claims the default before txt.cfg is even included, and
+# menu.cfg includes it first — so an appended `menu default` loses and Enter
+# boots stock Debian, which asks everything interactively and never reads the
+# preseed. Drop its claim so ours below is the only one.
+sed -i -e '/^default installgui$/d' -e '/^[[:space:]]*menu default$/d' \
+    "$tree/isolinux/gtk.cfg"
 
 cat >> "$tree/isolinux/txt.cfg" <<EOF
 
@@ -96,10 +103,7 @@ label dotfiles
     kernel /install.amd/vmlinuz
     append vga=788 initrd=/install.amd/initrd.gz preseed/file=/cdrom/preseed.cfg $common_args ---
 
-label dotfiles-auto
-    menu label Install Debian + dotfiles (^auto, ERASES /dev/vda)
-    kernel /install.amd/vmlinuz
-    append auto=true priority=critical vga=788 initrd=/install.amd/initrd.gz preseed/file=/cdrom/preseed-auto.cfg ---
+default dotfiles
 EOF
 
 cat >> "$tree/boot/grub/grub.cfg" <<EOF
@@ -109,11 +113,9 @@ menuentry 'Install Debian + dotfiles' {
     linux /install.amd/vmlinuz preseed/file=/cdrom/preseed.cfg $common_args ---
     initrd /install.amd/initrd.gz
 }
-menuentry 'Install Debian + dotfiles (auto, ERASES /dev/vda)' {
-    set background_color=black
-    linux /install.amd/vmlinuz auto=true priority=critical preseed/file=/cdrom/preseed-auto.cfg ---
-    initrd /install.amd/initrd.gz
-}
+# grub.cfg is sourced whole before the menu draws, so this overrides the
+# implicit entry 0 ('Graphical install'). Same reasoning as isolinux above.
+set default='Install Debian + dotfiles'
 EOF
 
 # Otherwise the installer's optional integrity check fails on the files we
@@ -145,12 +147,14 @@ cat <<EOF
 
 Test it in the VM before touching real hardware:
 
-    rm -f vm/disk/debian13.qcow2 && qemu-img create -f qcow2 vm/disk/debian13.qcow2 40G
+    rm -f vm/disk/debian13.qcow2        # only if you want a clean disk
     DOTFILES_TEST_ISO="$OUT_ISO" vm/install.sh
 
-Pick the "(auto, ERASES /dev/vda)" entry there. On real hardware, write it with:
+Pick "Install Debian + dotfiles" — it is the default, but the menu's speech-
+synthesis countdown will boot something else if you let it lapse, so press a
+key. On real hardware, write it with:
 
     sudo dd if="$OUT_ISO" of=/dev/sdX bs=4M status=progress oflag=sync
 
-and pick the plain entry, which still asks about partitioning.
+Partitioning and your username are asked either way.
 EOF
