@@ -10,7 +10,9 @@ risking a working machine. Plain QEMU/KVM, no libvirt.
 ./install.sh
 ```
 
-Boots the Debian netinst installer against the empty disk. Do a normal
+Creates `disk/debian13.qcow2` (40G, override with `DOTFILES_VM_DISK_SIZE`) if
+it isn't there, then boots the Debian netinst installer against it. To start
+over, delete that file and run this again. Do a normal
 install (guided partitioning is fine, 40G disk). **Uncheck every desktop
 environment** in tasksel — this dotfiles setup provides its own Hyprland +
 Quickshell session, and a preinstalled DE just gets in the way. Do install

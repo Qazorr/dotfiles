@@ -14,6 +14,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 DISK=disk/debian13.qcow2
+[ -f "$DISK" ] || { echo "no VM disk yet — run vm/install.sh first" >&2; exit 1; }
 cmd="${1:-}"
 name="${2:-}"
 

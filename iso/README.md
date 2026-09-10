@@ -23,14 +23,20 @@ A bundle holds commits, not your working tree. `build.sh` refuses to run with
 uncommitted changes for that reason — otherwise you find out on a freshly
 installed machine that the ISO shipped last week's code.
 
-## Boot entries
+## Boot entry
 
-| Entry | Behaviour |
-|---|---|
-| `Install Debian + dotfiles` | Preseeds locale, mirror, tasksel and packages. **Partitioning, target disk and your username stay interactive**, so a mis-boot can't erase anything. |
-| `Install Debian + dotfiles (auto)` | Fully unattended, **erases `/dev/vda`**. For the test VM only. Its password is in this repo and on every copy of the ISO. |
+One entry, `Install Debian + dotfiles`, set as the menu default in both
+isolinux (BIOS) and GRUB (UEFI). It preseeds locale, keymap, network, mirror,
+timezone, tasksel and packages, and clones the repo into `~/dotfiles`.
 
-Neither runs `bootstrap.sh`. It has to run as your normal user in a real
+**Partitioning, the target disk and your username stay interactive.** There is
+deliberately no unattended variant: an entry that erases a disk on its own is
+one mis-boot away from being a disaster, and it isn't worth the saved minute.
+
+The menu's speech-synthesis countdown boots a plain, un-preseeded installer if
+you let it lapse — press a key when the menu appears.
+
+It doesn't run `bootstrap.sh`. That has to run as your normal user in a real
 session and takes half an hour; the installed system gets an motd saying so:
 
 ```
@@ -40,13 +46,14 @@ cd ~/dotfiles && ./bootstrap.sh
 ## Test it before real hardware
 
 ```
-rm -f vm/disk/debian13.qcow2
-qemu-img create -f qcow2 vm/disk/debian13.qcow2 40G
+rm -f vm/disk/debian13.qcow2        # only if you want a clean disk
 DOTFILES_TEST_ISO=vm/iso/debian-13.6.0-amd64-dotfiles.iso vm/install.sh
 ```
 
-Pick the auto entry there — `/dev/vda` is the VM's virtio disk. Then write it
-to a USB stick:
+`install.sh` creates the disk image if it's missing. Guided partitioning on
+the whole virtual disk is fine in the VM.
+
+Then write it to a USB stick:
 
 ```
 sudo dd if=vm/iso/debian-13.6.0-amd64-dotfiles.iso of=/dev/sdX bs=4M status=progress oflag=sync
