@@ -1,5 +1,8 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_summary() { # Print what to do next
+register_step summary \
+    --desc "Print what to do next" \
+    --group core --always
+
+step_summary() {
     cat <<'TXT'
 
 Done.

@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
-# Snapshot everything this repo is about to touch, before it touches it.
+# Snapshot everything this repo is about to touch. The file list comes from
+# the stow packages themselves, so it can't drift; system state (packages, apt
+# sources, groups) is recorded too.
 #
-# The file list is derived from the stow packages themselves rather than
-# hardcoded, so it cannot drift: add a file to any package and it is covered
-# automatically. Also records system state (package selections, apt sources,
-# group membership) that bootstrap.sh changes but stow does not.
-#
-# Usage:
-#   dotfiles-backup              create a snapshot
-#   dotfiles-backup --list       list existing snapshots
+#   dotfiles-backup                    create a snapshot
+#   dotfiles-backup --list             list them
 #   dotfiles-backup --restore <name>   restore one (prompts first)
 #
-# Snapshots live in ~/.local/share/dotfiles-backups and the newest KEEP are
-# retained. This is deliberately NOT inside the repo: a backup that a bad
-# `git checkout` can delete is not a backup.
+# Snapshots live in ~/.local/share/dotfiles-backups, newest KEEP retained —
+# not in the repo, where a bad `git checkout` could delete them.
 set -euo pipefail
 
 BACKUP_ROOT="${DOTFILES_BACKUP_DIR:-$HOME/.local/share/dotfiles-backups}"
@@ -24,15 +19,12 @@ source "$REPO/lib/common.sh"
 
 [ -f "$REPO/bootstrap.sh" ] || die "can't locate the dotfiles repo (looked in $REPO)"
 
-# True if $1 resolves (through any number of symlinks, including a stow
-# directory-symlink partway down the path) into this repo — i.e. it's
-# already version-controlled, not something to capture or overwrite.
+# True if $1 resolves into this repo, so it's already version-controlled.
 resolves_into_repo() {
     [[ "$(readlink -f "$1" 2>/dev/null || echo "$1")" == "$REPO"/* ]]
 }
 
-# Every top-level directory that is a stow package (has a .config/.local
-# inside). vm/ and .git are not packages.
+# Top-level dirs that are stow packages (they have a .config/.local inside).
 stow_packages() {
     for d in "$REPO"/*/; do
         d="${d%/}"
@@ -67,10 +59,8 @@ if [ "${1:-}" = "--restore" ]; then
     read -r -p "Type 'restore' to continue: " reply
     [ "$reply" = "restore" ] || die "aborted"
 
-    # Replace any ancestor directory that is a stow symlink into the repo
-    # with a real directory. Without this, restoring ~/.config/hypr/x.conf
-    # writes THROUGH the ~/.config/hypr symlink and overwrites the repo's own
-    # copy — destroying the very thing you'd be restoring from.
+    # Without this, restoring ~/.config/hypr/x.conf writes THROUGH the symlink
+    # and overwrites the repo copy you're restoring from.
     materialise_path() {
         local rel="$1" cur="$HOME" part
         local dir; dir="$(dirname "$rel")"
@@ -92,11 +82,9 @@ if [ "${1:-}" = "--restore" ]; then
         [ -n "$rel" ] || continue
         target="$HOME/$rel"
         materialise_path "$rel"
-        # The leaf itself may also be a stow symlink (packages that link
-        # individual files, e.g. ~/.zshrc).
+        # The leaf may be a stow symlink too (e.g. ~/.zshrc).
         [ -L "$target" ] && rm -f "$target"
-        # Belt and braces: never write to anything that still resolves into
-        # the repo.
+        # Never write to anything that still resolves into the repo.
         if resolves_into_repo "$target"; then
             warn "refusing to restore $rel: still resolves into $REPO"
             continue
@@ -125,10 +113,8 @@ for pkg in $(stow_packages); do
         rel="${rel#./}"
         target="$HOME/$rel"
         [ -e "$target" ] || { skipped=$((skipped + 1)); continue; }
-        # Already resolves into the repo: our own stow link, content is
-        # version-controlled, nothing to preserve. Checks the resolved path,
-        # not just the leaf, because stow links whole directories —
-        # ~/.config/hypr is the symlink, so hyprland.conf inside it isn't.
+        # Ours, already version-controlled. Resolved path, not the leaf: stow
+        # links whole dirs, so hyprland.conf under it isn't itself a link.
         if resolves_into_repo "$target"; then
             skipped=$((skipped + 1)); continue
         fi
@@ -139,11 +125,9 @@ for pkg in $(stow_packages); do
     done < <(cd "$REPO/$pkg" && find . -type f -o -type l | sed 's|^\./||')
 done
 
-# Paths bootstrap.sh writes that no stow package owns.
-# Note: ~/.config/quickshell/dms is deliberately absent. That's DankMaterial-
-# Shell's upstream QML — ~570 files, ~60MB — pinned by version in bootstrap.sh
-# and reinstalled from the release tarball. Backing it up ten times over would
-# cost most of a gigabyte to preserve something a download replaces exactly.
+# Paths bootstrap.sh writes that no stow package owns. ~/.config/quickshell/dms
+# is deliberately absent: ~570 upstream QML files a pinned download replaces
+# exactly, and ten copies is a gigabyte.
 capture_file() {
     local rel="$1" target="$HOME/$1"
     [ -e "$target" ] || return 0
@@ -154,14 +138,8 @@ capture_file() {
     saved=$((saved + 1))
 }
 
-# ~/.config/DankMaterialShell/plugins/ is walked separately, one file at a
-# time, and its own plugin subdirectories excluded by name — same reasoning
-# as the quickshell/dms note above. A DMS plugin is either stowed already
-# (idleInhibitToggle, part of the `dms` package — captured by the loop above,
-# skipped here via resolves_into_repo) or upstream and pinned in bootstrap.sh
-# (quickCapture: its own git history, Rust source, docs — ~8MB and growing).
-# A blind recursive copy of the whole DankMaterialShell directory would sweep
-# up whichever of those isn't already excluded.
+# One file at a time, plugin subdirs excluded by name: a DMS plugin is either
+# already stowed or upstream and pinned, and a recursive copy sweeps up both.
 if [ -d "$HOME/.config/DankMaterialShell" ]; then
     while IFS= read -r -d '' f; do
         capture_file "${f#"$HOME"/}"
@@ -179,8 +157,7 @@ do
 done
 
 # --- system state ----------------------------------------------------------
-# Not restorable automatically, but it is the record you need to work out
-# what changed if an install goes wrong.
+# Not restorable automatically; it's the record of what changed.
 dpkg --get-selections            > "$DEST/system/dpkg-selections.txt" 2>/dev/null || true
 apt-mark showmanual              > "$DEST/system/apt-manual.txt"      2>/dev/null || true
 cp -a /etc/apt/sources.list        "$DEST/system/" 2>/dev/null || true

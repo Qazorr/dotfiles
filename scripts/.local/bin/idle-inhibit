@@ -3,21 +3,14 @@
 #
 #   idle-inhibit on|off|toggle|status
 #
-# Takes a real `systemd-inhibit --what=idle` lock — the same one a video
-# player takes automatically, and one hypridle explicitly checks for
-# (general:ignore_systemd_inhibit). Verified against hypridle's own log: with
-# the lock held it logs `Ignoring from onIdled(), inhibit locks: 1`.
-#
-# NOT the same as `dms ipc call inhibit toggle`, which is a no-op here — see
-# the README's "Idle inhibitor" section for why.
+# A real `systemd-inhibit --what=idle` lock, which hypridle checks for. NOT
+# `dms ipc call inhibit toggle`, which is a no-op here — see the README.
 set -euo pipefail
 
 STATE="${XDG_RUNTIME_DIR:-/tmp}/idle-inhibit.pid"
 
 notify() {
-    # DMS owns the toast UI already; prefer it so feedback matches the shell
-    # theme. Fall back to notify-send, then to nothing rather than erroring —
-    # this must never block on a missing notifier.
+    # Falls back to notify-send, then nothing: never block on a missing one.
     if command -v dms >/dev/null 2>&1 && pgrep -x qs >/dev/null 2>&1; then
         dms ipc call toast "${2:-info}" "$1" >/dev/null 2>&1 && return 0
     fi
@@ -33,8 +26,7 @@ turn_on() {
         echo "already on"
         return 0
     fi
-    # --mode=block, not --mode=delay: this should hold for as long as you
-    # want it, not just delay hypridle briefly.
+    # --mode=block, not delay: hold it until told otherwise.
     systemd-inhibit --what=idle --who="idle-inhibit" \
         --why="manually inhibited" --mode=block \
         sleep infinity &

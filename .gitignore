@@ -21,3 +21,12 @@ kitty/.config/kitty/dank-*.conf
 # separately-cloned repo (setup/steps/krkcommute.sh) — nothing here to commit.
 dms/.config/DankMaterialShell/plugins/quickCapture/
 dms/.config/DankMaterialShell/plugins/krkCommute
+# Claude Code's self-updater rewrites ~/.local/bin/claude to point at the
+# version it just installed — and ~/.local/bin is a stow symlink into this
+# repo, so that symlink lands here. It's a pointer at a machine-local install
+# under ~/.local/share/claude, not repo content.
+scripts/.local/bin/claude
+# Machine-local Hyprland config (NVIDIA env block and anything else specific
+# to one box's hardware). Created by step_stow, written by step_nvidia, and
+# ~/.config/hypr is a stow symlink so it lands here.
+hypr/.config/hypr/conf.d/local.conf

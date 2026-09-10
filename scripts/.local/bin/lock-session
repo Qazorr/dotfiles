@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 # Lock the session, defensively.
 #
-# hypridle's documented lock_cmd is `pidof hyprlock || hyprlock`. That has a
-# failure mode we hit for real: if hyprlock starts but hangs without ever
-# presenting a lock surface, the process sticks around, `pidof` then succeeds
-# forever, and the session NEVER locks again — silently. An idle timeout that
-# quietly stops locking is worse than one that errors.
-#
-# So: only skip if hyprlock is both running AND actually locking. Otherwise
-# clear the corpse and start a fresh one.
+# hypridle's documented `pidof hyprlock || hyprlock` fails in practice: a
+# hyprlock that starts without presenting a lock surface sticks around, pidof
+# succeeds forever, and the session never locks again. So skip only if
+# hyprlock is running AND actually locking.
 set -euo pipefail
 
 locking() {

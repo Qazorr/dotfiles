@@ -1,5 +1,9 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_backports() { # Enable trixie-backports and refresh apt
+register_step backports \
+    --desc "Enable trixie-backports and refresh apt" \
+    --group core --root \
+    --provides /etc/apt/sources.list.d/trixie-backports.list
+
+step_backports() {
     log "Ensuring trixie-backports is enabled"
     if ! grep -Rqs 'trixie-backports' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
         echo "deb http://deb.debian.org/debian trixie-backports main" \

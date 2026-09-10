@@ -1,5 +1,9 @@
-# Part of bootstrap.sh — sourced by it, not meant to run standalone.
-step_timeshift() { # Full-system snapshot (rsync mode) before install
+register_step timeshift \
+    --desc "Full-system snapshot (rsync mode) before install" \
+    --group safety --root --always \
+    --provides timeshift
+
+step_timeshift() {
     if [ "${DOTFILES_SKIP_TIMESHIFT:-0}" = "1" ]; then
         warn "DOTFILES_SKIP_TIMESHIFT=1, no system snapshot taken"
         return 0
@@ -7,9 +11,8 @@ step_timeshift() { # Full-system snapshot (rsync mode) before install
 
     command -v timeshift >/dev/null 2>&1 || { log "Installing timeshift"; apt_install timeshift; }
 
-    # Only snapshot if there isn't already a recent one. Without this, a
-    # re-run of bootstrap.sh (which is meant to be cheap) would spend ten
-    # minutes and several GB duplicating a snapshot you already have.
+    # Without this, a re-run would spend ten minutes and several GB
+    # duplicating a snapshot you already have.
     local recent
     recent="$(sudo find /timeshift -maxdepth 3 -name 'info.json' -mtime -1 2>/dev/null | head -1 || true)"
     if [ -n "$recent" ]; then
@@ -17,9 +20,8 @@ step_timeshift() { # Full-system snapshot (rsync mode) before install
         return 0
     fi
 
-    # This machine is a single ext4 root — no btrfs, so rsync mode it is.
-    # Snapshots land on the same disk, which protects against a bad install
-    # but NOT against disk failure. Keep real backups elsewhere.
+    # Snapshots land on the same disk: protects against a bad install, not
+    # against disk failure.
     local root_dev
     root_dev="$(findmnt -no SOURCE / 2>/dev/null || true)"
     [ -n "$root_dev" ] || { warn "couldn't determine the root device, skipping timeshift"; return 0; }
@@ -32,10 +34,8 @@ step_timeshift() { # Full-system snapshot (rsync mode) before install
     fi
 
     log "Creating a timeshift snapshot on $root_dev (first one takes a while)"
-    # --rsync explicitly: timeshift picks btrfs mode when it detects a btrfs
-    # root, and we want the same behaviour regardless of what it guesses.
-    # --tags O marks it on-demand, so timeshift's own retention policy for
-    # scheduled snapshots won't rotate this one away.
+    # --rsync explicitly, so behaviour doesn't change on a btrfs root.
+    # --tags O marks it on-demand, so retention won't rotate it away.
     sudo timeshift --create --rsync \
         --snapshot-device "$root_dev" \
         --comments "before dotfiles bootstrap $(date +%F-%H%M)" \
