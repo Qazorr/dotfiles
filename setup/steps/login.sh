@@ -36,5 +36,5 @@ step_login() {
 
     # Deliberately not started here: it would seize vt1 and kill the terminal
     # this run is printing to. It comes up on the next boot.
-    log "greetd is enabled; it takes over tty1 on the next reboot"
+    log "greetd is enabled; the greeter comes up on the next reboot"
 }

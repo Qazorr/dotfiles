@@ -31,5 +31,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: debian-dotfiles-iso
-          path: vm/iso/*.iso
+          # Not vm/iso/*.iso: build.sh also downloads the plain netinst
+          # source into vm/iso/, and that glob would catch it too.
+          path: vm/iso/*-dotfiles.iso
           retention-days: 14

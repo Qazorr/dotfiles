@@ -97,6 +97,16 @@ sudo dd if=vm/iso/debian-13.6.0-amd64-dotfiles.iso of=/dev/sdX bs=4M status=prog
 | `DOTFILES_ISO_OUT` | where to write the result |
 | `DOTFILES_ISO_ALLOW_DIRTY=1` | build anyway with a dirty tree, shipping the last commit |
 
+### WiFi during the install
+
+The netinst media's bundled firmware doesn't cover every WiFi chip — an
+RTL8822CE shows up as no wireless interface at all, so the network step
+dead-ends with "autoconfiguration failed" and no ESSID prompt. **USB-tether
+a phone** (or use a dongle or a cable): tethering enumerates as a normal
+CDC/RNDIS ethernet device with an in-tree driver, so DHCP just works.
+Afterwards, `apt install firmware-realtek` (or whatever `lspci -k` and
+`dmesg | grep -i firmware` name) gets WiFi going on the installed system.
+
 `preseed.cfg` keeps its keymap in step with `hypr/.config/hypr/conf.d/input.conf`
 (`us`), and the timezone matches this machine (`Europe/Warsaw`). Both are
 plain preseed lines — change them there.

@@ -9,9 +9,9 @@ Done.
 
 - You were added to video/render/input groups, and zsh is now your login
   shell — log out and back in (or reboot) for both to take effect.
-- greetd is enabled but not started, so it takes over tty1 on the next
-  reboot. Pick "Hyprland" at the greeter; it remembers your choice after
-  that.
+- greetd is enabled but not started, so the greeter comes up on the next
+  reboot (VT 7). Pick "Hyprland" — not "Hyprland (uwsm-managed)" — and it
+  remembers the choice. If it ever fails, Ctrl+Alt+F2 gets you a console.
 - First real boot: SUPER+SHIFT+M opens hyprmon's layout editor — arrange
   your actual monitors and press P to save a profile, then SUPER+M switches
   to it.
