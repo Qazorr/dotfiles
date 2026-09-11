@@ -26,24 +26,26 @@ if [ ! -f "$DISK" ]; then
     qemu-img create -f qcow2 "$DISK" "${DOTFILES_VM_DISK_SIZE:-40G}"
 fi
 
-exec qemu-system-x86_64 \
-  -enable-kvm \
-  -machine q35 \
-  -cpu host \
-  -smp 6 \
-  -m 6G \
-  -drive file=disk/debian13.qcow2,if=virtio,cache=writeback \
-  -cdrom "$ISO" \
-  -boot once=d \
-  # Pinned: qemu assigns PCI slots in command-line order, and run.sh has an
-  # extra -virtfs device before this one. Without a fixed address the installed
-  # system sees a different interface name under each script, /etc/network/
-  # interfaces then names one that doesn't exist, and the VM boots with no
-  # network at all.
-  -device virtio-net-pci,netdev=net0,addr=0x5 \
-  -netdev user,id=net0 \
-  -vga virtio \
-  -display gtk,gl=on \
-  -device virtio-tablet-pci \
-  -device intel-hda -device hda-duplex \
-  "$@"
+# An array, not a backslash-continued command — see the note in run.sh.
+args=(
+  -enable-kvm
+  -machine q35
+  -cpu host
+  -smp 6
+  -m 6G
+  -drive file=disk/debian13.qcow2,if=virtio,cache=writeback
+  -cdrom "$ISO"
+  -boot once=d
+  # Pinned, and must match run.sh, which has an extra -virtfs device ahead of
+  # this one. Without a fixed address the installed system sees a different
+  # interface name under each script, and /etc/network/interfaces then names
+  # one that does not exist.
+  -device virtio-net-pci,netdev=net0,addr=0x5
+  -netdev user,id=net0
+  # virtio-gpu, not the default stdvga: Hyprland needs a real DRM render node.
+  -vga virtio
+  -display gtk,gl=on
+  -device virtio-tablet-pci
+  -device intel-hda -device hda-duplex
+)
+exec qemu-system-x86_64 "${args[@]}" "$@"

@@ -12,7 +12,7 @@ declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=(
 #   --always    never recorded, so it runs every time (stow, summary)
 #   --needs     must already be done for this step's INSTALL to succeed;
 #               pulled in automatically. Install-time only — `bootstrap.sh
-#               dms` must not trigger a Quickshell build.
+#               dms` must not trigger an NVIDIA driver install.
 #   --provides  a command or path that exists once the step has run. Drives
 #               --list, --missing and --doctor.
 register_step() {
