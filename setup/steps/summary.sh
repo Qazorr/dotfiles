@@ -7,10 +7,11 @@ step_summary() {
 
 Done.
 
-- You were added to video/render/input groups — log out and back in (or
-  reboot the VM) for that to take effect.
-- No display manager was installed on purpose. Hyprland starts from a TTY
-  login via ~/.zprofile — log into tty1 and it launches automatically.
+- You were added to video/render/input groups, and zsh is now your login
+  shell — log out and back in (or reboot) for both to take effect.
+- greetd is enabled but not started, so it takes over tty1 on the next
+  reboot. Pick "Hyprland" at the greeter; it remembers your choice after
+  that.
 - First real boot: SUPER+SHIFT+M opens hyprmon's layout editor — arrange
   your actual monitors and press P to save a profile, then SUPER+M switches
   to it.

@@ -52,7 +52,7 @@ unset _step_file
 # Run order — the one fact that can't live in a step's own file. A step's
 # --needs must appear before it; steps_validate enforces that.
 STEPS=(
-    backup timeshift prereqs backports nvidia hyprland desktop services ohmyzsh
+    backup timeshift prereqs backports nvidia hyprland desktop services login ohmyzsh
     quickshell hyprmon cli vscode claudedesktop brave dms quickcapture
     uv krkcommute docker devtools fonts groups stow summary
 )
@@ -75,8 +75,23 @@ steps_validate
 # ---------------------------------------------------------------------------
 SUDO_KEEPALIVE_PID=""
 
+# Scratch dirs steps ask for, removed once on exit. Not a `trap ... RETURN`
+# inside the step: that trap stays registered after the step returns and fires
+# again on the next function return, when its `local tmp` no longer exists —
+# `set -u` then killed a fully successful run with "tmp: unbound variable".
+# Takes the variable to fill, rather than printing the path: command
+# substitution would run this in a subshell, where the append below reaches
+# nothing. Same nameref trick as lib/picker.sh's _pick_render.
+SCRATCH_DIRS=()
+scratch_dir() {
+    local -n _dir="$1"
+    _dir="$(mktemp -d)"
+    SCRATCH_DIRS+=("$_dir")
+}
+
 cleanup() {
     [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
+    [ ${#SCRATCH_DIRS[@]} -gt 0 ] && rm -rf "${SCRATCH_DIRS[@]}"
     return 0
 }
 trap cleanup EXIT

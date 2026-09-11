@@ -102,8 +102,9 @@ Pre-existing config a stow package wants to own is moved to
 oh-my-zsh's own `.zshrc`. Deliberately not `stow --adopt`, which would pull
 the foreign contents *into* this repo.
 
-Afterwards log out and back in (group membership needs it), then log into
-**tty1** — `.zprofile` execs Hyprland, no display manager involved.
+Afterwards reboot. `greetd` takes over tty1 with `tuigreet`, a terminal
+greeter — pick **Hyprland** and it remembers the choice. The reboot is also
+what picks up your new group membership and login shell.
 
 ### Checking a machine
 
@@ -249,6 +250,27 @@ and `command-not-found` ship with oh-my-zsh and only need naming in `.zshrc`.
 into `custom/plugins/` and re-`pull`ed later (no tags to pin). Order matters:
 syntax-highlighting must be last, or anything after it is silently ignored.
 
+## Login
+
+`greetd` plus `tuigreet` — two packages, no further dependencies, no Qt or
+GTK. It runs on tty1 and lists whatever is in `/usr/share/wayland-sessions`,
+so Hyprland shows up without this repo naming it anywhere.
+
+That indirection matters: Debian's `hyprland.desktop` is
+`Exec=/usr/bin/start-hyprland`, and launching the `Hyprland` binary directly
+gets you a *"started without start-hyprland, this is highly not recommended"*
+banner on every login. Going through the session entry uses the launcher
+upstream actually wants.
+
+An earlier version had no login manager at all — `~/.zprofile` checked for
+tty1 and `exec`ed Hyprland from the login shell. It worked, but only if zsh
+was your login shell, which Debian doesn't do by default, so a fresh install
+dropped you at a bash prompt with no way in. greetd is both standard and
+fewer moving parts.
+
+`sddm` is the usual pairing if you want a graphical greeter instead — same
+session entries, so only `setup/steps/login.sh` changes. It pulls Qt6.
+
 ## NVIDIA
 
 `bootstrap.sh nvidia` sets up Debian's packaged NVIDIA driver, following
@@ -299,8 +321,8 @@ If Hyprland picks the wrong GPU to render on, `AQ_DRM_DEVICES` in
 ```
 hypr/.config/hypr/              Hyprland, hyprlock, hypridle config
 kitty/.config/kitty/            Terminal
-zsh/                            Shell (.zshrc, .zprofile — the latter sets PATH
-                                  and autostarts Hyprland on tty1 login)
+zsh/                            Shell (.zshrc, .zprofile — the latter sets the
+                                  PATH a login session inherits)
 fastfetch/.config/fastfetch/    System info banner (runs on new terminals)
 cava/.config/cava/              Audio visualizer (SUPER+ALT+C)
 dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json and
