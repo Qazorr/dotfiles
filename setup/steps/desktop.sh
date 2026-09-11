@@ -14,7 +14,7 @@ step_desktop() {
         fontconfig unzip curl git jq gnupg ca-certificates \
         imagemagick img2pdf tesseract-ocr zbar-tools \
         fastfetch cava \
-        accountsservice qt6ct \
+        accountsservice qt6ct mesa-utils \
         qml6-module-qtmultimedia qml6-module-qtcore qml6-module-qtqml \
         qml6-module-qtquick-dialogs qml6-module-qtquick-templates \
         qml6-module-qtquick-window \

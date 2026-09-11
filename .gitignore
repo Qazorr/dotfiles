@@ -30,3 +30,7 @@ scripts/.local/bin/claude
 # to one box's hardware). Created by step_stow, written by step_nvidia, and
 # ~/.config/hypr is a stow symlink so it lands here.
 hypr/.config/hypr/conf.d/local.conf
+# keybind-help is Python, and running it writes __pycache__ next to itself —
+# which is inside a stow package, so the bytecode lands in the repo. Caught
+# only after it had been committed once.
+scripts/.local/bin/__pycache__/

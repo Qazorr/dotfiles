@@ -22,12 +22,23 @@ step_login() {
     # their own login prompt.
     #
     # Not wrapped in sudo: the tool escalates on its own, and bootstrap.sh has
-    # already taken a sudo timestamp by now. -y skips its confirmation prompt.
+    # already taken a sudo timestamp by now. -y skips its confirmation prompt;
+    # bootstrap.sh's DMS_PRIVESC skips its sudo-vs-run0 picker, which -y does
+    # not and which would otherwise stall the run.
     log "Enabling dms-greeter in greetd"
     dms-greeter enable -y
 
     getent passwd greeter >/dev/null 2>&1 \
         || die "dms-greeter is installed but the 'greeter' user is missing — its postinst did not complete."
+
+    # The greeter runs a whole compositor, so it needs the DRM devices —
+    # /dev/dri/card0 is root:video and renderD128 is root:render, both 0660.
+    # Neither the package nor `dms-greeter enable` does this. Without it
+    # Hyprland starts, fails to open a render node ("egl: failed to create
+    # dri2 screen"), falls back to software, exits, and greetd burns through
+    # its five restarts and leaves the tty to getty.
+    log "Adding the greeter user to video/render/input"
+    sudo usermod -aG video,render,input greeter
 
     # Copies this user's DMS theme and wallpaper into the greeter cache. Only
     # meaningful once DMS has settings worth copying, so not fatal this early.
