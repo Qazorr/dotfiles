@@ -10,6 +10,16 @@ cd "$(dirname "$0")"
 # An array, not a backslash-continued command: a `#` comment after a trailing
 # `\` silently comments out the REST of the command, which once dropped the
 # network and -vga virtio here without any syntax error.
+# virtio-vga-gl, not `-vga virtio`: the latter is a 2D device, so pairing it
+# with gl=on gives the guest no 3D at all — Mesa falls back to llvmpipe and
+# the host window can come up black. These two belong together.
+#
+# If the VM shows nothing, fall back to software rendering; the guest still
+# boots either way, and vm/run.sh forwards ssh on 2222 so you are not blind:
+#   DOTFILES_VM_GPU=VGA DOTFILES_VM_DISPLAY=gtk vm/run.sh
+VM_GPU="${DOTFILES_VM_GPU:-virtio-vga-gl}"
+VM_DISPLAY="${DOTFILES_VM_DISPLAY:-gtk,gl=on}"
+
 args=(
   -enable-kvm
   -machine q35
@@ -22,9 +32,9 @@ args=(
   # order, so a device added here would otherwise rename the guest's NIC.
   -device virtio-net-pci,netdev=net0,addr=0x5
   -netdev user,id=net0,hostfwd=tcp::2222-:22
-  # virtio-gpu, not the default stdvga: Hyprland needs a real DRM render node.
-  -vga virtio
-  -display gtk,gl=on
+  -vga none
+  -device "$VM_GPU"
+  -display "$VM_DISPLAY"
   -device virtio-tablet-pci
   -device intel-hda -device hda-duplex
 )

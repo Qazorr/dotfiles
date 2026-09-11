@@ -3,8 +3,10 @@
 # a stock install doesn't enable.
 register_step nvidia \
     --desc "NVIDIA driver + nouveau blacklist + DRM modeset (skipped if no card)" \
-    --group desktop --root --needs prereqs \
-    --provides nvidia-smi
+    --group desktop --root --needs prereqs
+# Deliberately no --provides: this step completes successfully on a machine
+# with no NVIDIA card, where nvidia-smi will never exist. Declaring it made
+# --doctor report "recorded as done but not installed any more" forever.
 
 NVIDIA_MODPROBE_CONF=/etc/modprobe.d/zz-dotfiles-nvidia.conf
 NVIDIA_APT_LIST=/etc/apt/sources.list.d/debian-nonfree.list

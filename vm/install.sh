@@ -27,6 +27,10 @@ if [ ! -f "$DISK" ]; then
 fi
 
 # An array, not a backslash-continued command — see the note in run.sh.
+# Same two knobs as run.sh — see the comment there.
+VM_GPU="${DOTFILES_VM_GPU:-virtio-vga-gl}"
+VM_DISPLAY="${DOTFILES_VM_DISPLAY:-gtk,gl=on}"
+
 args=(
   -enable-kvm
   -machine q35
@@ -42,9 +46,9 @@ args=(
   # one that does not exist.
   -device virtio-net-pci,netdev=net0,addr=0x5
   -netdev user,id=net0
-  # virtio-gpu, not the default stdvga: Hyprland needs a real DRM render node.
-  -vga virtio
-  -display gtk,gl=on
+  -vga none
+  -device "$VM_GPU"
+  -display "$VM_DISPLAY"
   -device virtio-tablet-pci
   -device intel-hda -device hda-duplex
 )

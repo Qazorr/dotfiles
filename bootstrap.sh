@@ -34,6 +34,9 @@ source "$REPO/lib/doctor.sh"
 # conffile prompt, which would stall an unattended run.
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
+# dms-greeter stops to ask which of sudo/run0 to escalate with, and its own
+# -y only skips the confirmation prompt, not that picker.
+export DMS_PRIVESC=sudo
 APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-confdef")
 
 # So this run sees a binary an earlier step just installed.

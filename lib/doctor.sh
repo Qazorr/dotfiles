@@ -13,24 +13,40 @@ _doc_head() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 # stow symlinks INTO this repo, so writing there writes into git. Seven times
 # so far.
 _doc_check_writethrough() {
-    _doc_head "Stow writethrough (untracked files inside the repo)"
-    local untracked pkg found=0 f
+    _doc_head "Stow writethrough (files that landed in the repo)"
+    local untracked tracked pkg found=0 f
+
+    # Untracked files inside a stow package: something wrote through a symlink.
     untracked="$(git -C "$REPO" ls-files --others --exclude-standard || true)"
     if [ -z "$untracked" ]; then
         _doc_ok "no untracked files anywhere in the repo"
-        return 0
+    else
+        while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            for pkg in "${STOW_PACKAGES[@]}"; do
+                if [[ "$f" == "$pkg/"* ]]; then
+                    _doc_note "$f — untracked inside a stow package. Yours? git add it. Written through the symlink by some tool? gitignore it."
+                    found=1
+                    break
+                fi
+            done
+        done <<<"$untracked"
+        [ "$found" = "0" ] && _doc_ok "no untracked files inside a stow package"
     fi
-    while IFS= read -r f; do
-        [ -n "$f" ] || continue
-        for pkg in "${STOW_PACKAGES[@]}"; do
-            if [[ "$f" == "$pkg/"* ]]; then
-                _doc_note "$f — untracked inside a stow package. Yours? git add it. Written through the symlink by some tool? gitignore it."
-                found=1
-                break
-            fi
-        done
-    done <<<"$untracked"
-    [ "$found" = "0" ] && _doc_ok "no untracked files inside a stow package"
+
+    # That scan only sees UNTRACKED files, so a writethrough someone committed
+    # is invisible to it — which is how a __pycache__ .pyc from keybind-help
+    # ended up in the repo. Build artifacts are never ours, tracked or not.
+    tracked="$(git -C "$REPO" ls-files \
+        | grep -E '(^|/)(__pycache__|\.venv|node_modules)/|\.(pyc|pyo|o|so)$' || true)"
+    if [ -n "$tracked" ]; then
+        while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            _doc_bad "$f is tracked but is a build artifact — git rm --cached it, and gitignore it"
+        done <<<"$tracked"
+    else
+        _doc_ok "no build artifacts tracked in the repo"
+    fi
     return 0
 }
 
@@ -126,6 +142,75 @@ _doc_check_state() {
     return 0
 }
 
+# Whether a graphical session can actually start, as opposed to whether the
+# packages are installed. Every check here is a way this has already failed:
+# a greeter with no DRM access restart-looped until systemd gave up on greetd,
+# and a 2D-only GPU device left Hyprland on llvmpipe.
+_doc_check_session() {
+    _doc_head "Graphical session"
+    local n missing drv
+
+    if command -v Hyprland >/dev/null 2>&1; then
+        if Hyprland --verify-config 2>&1 | grep -q 'config ok'; then
+            _doc_ok "Hyprland config parses"
+        else
+            _doc_bad "Hyprland config has errors — run: Hyprland --verify-config"
+        fi
+    fi
+
+    # card0 is root:video, renderD128 is root:render, both 0660. No render
+    # node means EGL falls back to software and Hyprland limps or dies.
+    for n in /dev/dri/card0 /dev/dri/renderD128; do
+        if [ ! -e "$n" ]; then
+            _doc_note "$n missing — no DRM device (expected on a headless machine)"
+        elif [ -r "$n" ]; then
+            _doc_ok "$n readable by $USER"
+        else
+            _doc_bad "$n not readable by $USER — ./bootstrap.sh groups, then log out and back in"
+        fi
+    done
+
+    # The greeter runs its own compositor and needs the same access. Nothing
+    # in the dms-greeter package grants it.
+    if getent passwd greeter >/dev/null 2>&1; then
+        missing=""
+        for n in video render; do
+            id -nG greeter 2>/dev/null | grep -qw "$n" || missing+="$n "
+        done
+        if [ -n "$missing" ]; then
+            _doc_bad "greeter user is not in: ${missing% } — greetd will restart-loop (./bootstrap.sh login)"
+        else
+            _doc_ok "greeter user can reach the DRM devices"
+        fi
+    fi
+
+    if command -v eglinfo >/dev/null 2>&1; then
+        # `|| true` inside the substitution: awk's early exit SIGPIPEs eglinfo,
+        # and pipefail would otherwise make a successful read look like failure.
+        drv="$(eglinfo 2>/dev/null | awk -F': ' '/^EGL driver name/{print $2; exit}' || true)"
+        case "${drv:-}" in
+            "")                    _doc_note "EGL reported no driver — rendering may not work at all" ;;
+            swrast|llvmpipe|softpipe) _doc_bad "EGL is on $drv (software) — Hyprland will be unusably slow. No render node, or the GPU driver isn't loaded" ;;
+            *)                     _doc_ok "EGL driver: $drv" ;;
+        esac
+    else
+        _doc_note "eglinfo not installed (mesa-utils) — can't tell hardware from software rendering"
+    fi
+
+    [ -f /usr/share/wayland-sessions/hyprland.desktop ] \
+        && _doc_ok "hyprland.desktop session entry present" \
+        || _doc_bad "no /usr/share/wayland-sessions/hyprland.desktop — a login manager has no Hyprland to offer"
+
+    if systemctl list-unit-files greetd.service >/dev/null 2>&1; then
+        case "$(systemctl is-active greetd 2>/dev/null)" in
+            failed) _doc_bad "greetd has failed — systemctl status greetd, and note it needs 'systemctl reset-failed greetd' after a start-limit-hit" ;;
+            active) _doc_ok "greetd is running" ;;
+            *)      _doc_note "greetd is enabled but not running (normal until the next reboot)" ;;
+        esac
+    fi
+    return 0
+}
+
 _doc_check_groups() {
     _doc_head "Group membership"
     local g current
@@ -186,6 +271,7 @@ run_doctor() {
     _doc_check_stow
     _doc_check_path
     _doc_check_groups
+    _doc_check_session
     _doc_check_leftovers
     _doc_check_lint
     printf '\n'
