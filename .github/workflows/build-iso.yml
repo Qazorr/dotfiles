@@ -1,13 +1,9 @@
 name: Build ISO
 
-# Runs iso/build.sh (see iso/README.md) on a Linux runner and uploads the
-# result — for building the install ISO with no Linux box handy (xorriso has
-# no good Windows/macOS build). Manual only: it's a slow, bandwidth-heavy job
-# (downloads Debian's netinst, repacks it) nothing should trigger by itself.
+# Runs iso/build.sh on a Linux runner (no Windows/macOS xorriso build) — see
+# iso/README.md. Manual only: slow and bandwidth-heavy.
 #
-# Trigger from the Actions tab ("Run workflow"), or:
 #   gh workflow run build-iso.yml --ref <branch>
-#   gh run watch --exit-status $(gh run list --workflow=build-iso.yml -L1 --json databaseId -q '.[0].databaseId')
 #   gh run download --name debian-dotfiles-iso
 
 on:
@@ -32,13 +28,8 @@ jobs:
           DOTFILES_DEBIAN_VERSION: ${{ inputs.debian_version }}
         run: ./iso/build.sh
 
-      - name: Checksum
-        run: sha256sum vm/iso/*.iso | tee vm/iso/SHA256SUMS
-
       - uses: actions/upload-artifact@v4
         with:
           name: debian-dotfiles-iso
-          path: |
-            vm/iso/*.iso
-            vm/iso/SHA256SUMS
+          path: vm/iso/*.iso
           retention-days: 14
