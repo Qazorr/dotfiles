@@ -50,9 +50,8 @@ fi
 
 id -nG | grep -qw adm || { log "Adding $USER to adm (journalctl without sudo)"; sudo usermod -aG adm "$USER"; }
 
-# Hyprland logs to $XDG_RUNTIME_DIR/hypr/<sig>/hyprland.log, and that whole
-# tree is removed when your last session ends — which is exactly when a
-# compositor crash is worth reading. Lingering keeps it.
+# Hyprland logs to $XDG_RUNTIME_DIR/hypr/<sig>/hyprland.log — wiped when your
+# last session ends, exactly when a crash is worth reading. Lingering keeps it.
 loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q 'Linger=yes' \
     || { log "Enabling lingering (keeps /run/user/$UID, and Hyprland's log, after logout)"; sudo loginctl enable-linger "$USER"; }
 

@@ -34,10 +34,9 @@ step_timeshift() {
     fi
 
     log "Creating a timeshift snapshot on $root_dev (first one takes a while)"
-    # --rsync explicitly, so behaviour doesn't change on a btrfs root.
-    # No --tags: on-demand (O) is already the default, and timeshift 24.06.6
-    # rejects `--tags O` with "Unknown value specified for option --tags (O)"
-    # while listing O as valid — passing it only buys a failed snapshot.
+    # --rsync explicitly so behaviour doesn't change on a btrfs root. No
+    # --tags: timeshift 24.06.6 rejects "--tags O" even though it lists O as
+    # valid — omitting it already defaults to on-demand.
     sudo timeshift --create --rsync \
         --snapshot-device "$root_dev" \
         --comments "before dotfiles bootstrap $(date +%F-%H%M)" \

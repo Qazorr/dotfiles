@@ -1,11 +1,9 @@
-# Prompts for step options (register_option, lib/steps.sh) up front, once,
-# for whatever's actually in the plan — so picking what to install/how is all
-# done before anything runs, and the run itself never stops to ask again.
+# Prompts for step options (register_option, lib/steps.sh) once, up front,
+# for whatever's in the plan — so the run itself never stops to ask again.
 # Plain bash, same reasoning as lib/picker.sh: no whiptail/dialog/fzf.
 
 # resolve_step_options <yes: 0|1> <plan step>...
-# yes=1 (--yes/-y, "never prompt") is handled the same as no terminal: fall
-# through to each option's default.
+# yes=1 (--yes, "never prompt") is treated like no terminal: use the default.
 resolve_step_options() {
     local yes="$1"; shift
     local plan=("$@") var step default tok

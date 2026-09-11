@@ -462,8 +462,7 @@ main() {
         exit 0
     fi
 
-    # Every prompt happens here: step options, then sudo. Nothing after this
-    # point should ever stop to ask.
+    # Every prompt happens here: step options, then sudo — nothing after this should ask again.
     resolve_step_options "$yes" "${plan[@]}"
 
     # Once, up front, before any long build — and only if this run needs it.

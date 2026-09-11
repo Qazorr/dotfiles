@@ -16,9 +16,8 @@ NVIDIA_CUDA_SUITE=debian13
 NVIDIA_CUDA_KEYRING_VERSION=1.1-1
 NVIDIA_MODE_DEFAULT=debian
 
-# Asked once, up front, alongside every other step's options — not mid-run.
-# DOTFILES_NVIDIA_MODE set in the environment beforehand (CI, --yes) skips
-# the prompt and is used as-is; see resolve_step_options in lib/options.sh.
+# Asked once, up front, alongside every step's options — see register_option
+# in lib/steps.sh. DOTFILES_NVIDIA_MODE set beforehand (CI, --yes) skips it.
 register_option nvidia DOTFILES_NVIDIA_MODE \
     --prompt "Which NVIDIA driver?" \
     --choices \
@@ -34,12 +33,8 @@ _nvidia_present() {
         | grep -q '\[10de:'
 }
 
-# debian:  nvidia-driver, from Debian's own (non-free) repo — what this
-#          machine's GTX 1660 Ti uses. Trails upstream on testing/unstable.
-# open:    nvidia-open, NVIDIA's own CUDA repo, open-source kernel modules.
-#          Required on RTX 5000-series and newer.
-# nvidia:  cuda-drivers, NVIDIA's own CUDA repo, proprietary.
-# nouveau: uninstall whatever's installed and revert to the in-kernel driver.
+# debian: nvidia-driver (Debian repo). open: nvidia-open, nvidia: cuda-drivers
+# (both NVIDIA's own CUDA repo — see register_option above). nouveau: revert.
 _nvidia_mode() {
     local m="${DOTFILES_NVIDIA_MODE:-$NVIDIA_MODE_DEFAULT}"
     case "$m" in
@@ -67,10 +62,9 @@ _nvidia_purge_variant() {
 }
 
 # 0 = Secure Boot on, 1 = off, 2 = mokutil couldn't tell (not installed yet).
-# Borrowed from LinuxBeginnings/Debian-Hyprland's nvidia.sh, which warns about
-# this before installing — worth doing here too: an unsigned kernel module
-# under Secure Boot leaves nouveau blacklisted AND nvidia not loaded, which is
-# a black screen with no KMS driver at all, not just a slow one.
+# An unsigned kernel module under Secure Boot leaves nouveau blacklisted AND
+# nvidia not loaded — no KMS driver at all, not just a slow one. Borrowed
+# from LinuxBeginnings/Debian-Hyprland's nvidia.sh, which warns about this.
 _nvidia_secureboot_enabled() {
     command -v mokutil >/dev/null 2>&1 || return 2
     mokutil --sb-state 2>/dev/null | grep -qi enabled
@@ -200,10 +194,9 @@ _nvidia_remove_hypr_env() {
     mv "$tmp" "$conf"
 }
 
-# DOTFILES_NVIDIA_MODE=nouveau: undo everything above and go back to the
-# in-kernel driver. Doesn't touch the CUDA repo/keyring if one was added —
-# harmless to leave configured, and removing it risks a half-broken apt state
-# for no benefit.
+# DOTFILES_NVIDIA_MODE=nouveau: undo the above, back to the in-kernel driver.
+# Doesn't touch the CUDA repo/keyring if one was added — harmless to leave,
+# and removing it risks a half-broken apt state for no benefit.
 _nvidia_revert_to_nouveau() {
     local current="$1"
     if [ "$current" = "nouveau" ]; then

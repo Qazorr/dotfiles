@@ -49,9 +49,8 @@ pick_steps() {
     for i in "${!STEPS[@]}"; do
         sel[$i]=0
         for s in "$@"; do [ "$s" = "${STEPS[$i]}" ] && sel[$i]=1; done
-        # Optional steps (nvidia) start unticked even when swept in by a
-        # default "everything" selection — NAMED is bootstrap.sh's record of
-        # what was actually typed on the command line.
+        # Optional steps (nvidia) start unticked even in a default
+        # "everything" selection — NAMED tracks what was actually typed.
         if step_is_optional "${STEPS[$i]}" && [ -z "${NAMED[${STEPS[$i]}]+x}" ]; then
             sel[$i]=0
         fi

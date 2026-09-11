@@ -40,10 +40,9 @@ args=(
   -drive file=disk/debian13.qcow2,if=virtio,cache=writeback
   -cdrom "$ISO"
   -boot once=d
-  # Pinned, and must match run.sh, which has an extra -virtfs device ahead of
-  # this one. Without a fixed address the installed system sees a different
-  # interface name under each script, and /etc/network/interfaces then names
-  # one that does not exist.
+  # Pinned, matching run.sh (which has an extra -virtfs device ahead of this
+  # one) — a fixed address keeps the interface name stable across scripts;
+  # otherwise /etc/network/interfaces names one that doesn't exist.
   -device virtio-net-pci,netdev=net0,addr=0x5
   -netdev user,id=net0
   -vga none
