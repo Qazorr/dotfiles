@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Run one program on the NVIDIA card on a hybrid-graphics laptop, leaving the
+# rest of the session on the integrated GPU.
+#
+#   prime-run blender
+set -euo pipefail
+
+[ $# -gt 0 ] || { echo "usage: prime-run <command> [args...]" >&2; exit 1; }
+
+command -v nvidia-smi >/dev/null 2>&1 \
+    || echo "prime-run: no NVIDIA driver here (./bootstrap.sh nvidia); running on the default GPU" >&2
+
+exec env __NV_PRIME_RENDER_OFFLOAD=1 \
+         __GLX_VENDOR_LIBRARY_NAME=nvidia \
+         __VK_LAYER_NV_optimus=NVIDIA_only \
+         "$@"

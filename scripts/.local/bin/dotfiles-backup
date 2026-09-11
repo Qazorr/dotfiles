@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# Snapshot everything this repo is about to touch. The file list comes from
+# the stow packages themselves, so it can't drift; system state (packages, apt
+# sources, groups) is recorded too.
+#
+#   dotfiles-backup                    create a snapshot
+#   dotfiles-backup --list             list them
+#   dotfiles-backup --restore <name>   restore one (prompts first)
+#
+# Snapshots live in ~/.local/share/dotfiles-backups, newest KEEP retained —
+# not in the repo, where a bad `git checkout` could delete them.
+set -euo pipefail
+
+BACKUP_ROOT="${DOTFILES_BACKUP_DIR:-$HOME/.local/share/dotfiles-backups}"
+KEEP="${DOTFILES_BACKUP_KEEP:-10}"
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../.." && pwd)"
+# shellcheck source=../../../lib/common.sh
+source "$REPO/lib/common.sh"
+
+[ -f "$REPO/bootstrap.sh" ] || die "can't locate the dotfiles repo (looked in $REPO)"
+
+# True if $1 resolves into this repo, so it's already version-controlled.
+resolves_into_repo() {
+    [[ "$(readlink -f "$1" 2>/dev/null || echo "$1")" == "$REPO"/* ]]
+}
+
+# Top-level dirs that are stow packages (they have a .config/.local inside).
+stow_packages() {
+    for d in "$REPO"/*/; do
+        d="${d%/}"
+        [ -d "$d/.config" ] || [ -d "$d/.local" ] || continue
+        basename "$d"
+    done
+}
+
+# --- listing ---------------------------------------------------------------
+if [ "${1:-}" = "--list" ]; then
+    [ -d "$BACKUP_ROOT" ] || { echo "No snapshots yet."; exit 0; }
+    for d in "$BACKUP_ROOT"/*/; do
+        [ -d "$d" ] || continue
+        n=$(basename "$d")
+        size=$(du -sh "$d" 2>/dev/null | cut -f1)
+        files=$(grep -c . "$d/manifest.txt" 2>/dev/null || echo 0)
+        printf '  %-22s %6s  %s files\n' "$n" "$size" "$files"
+    done
+    exit 0
+fi
+
+# --- restore ---------------------------------------------------------------
+if [ "${1:-}" = "--restore" ]; then
+    NAME="${2:-}"
+    [ -n "$NAME" ] || die "usage: dotfiles-backup --restore <name>  (see --list)"
+    SRC="$BACKUP_ROOT/$NAME"
+    [ -d "$SRC/home" ] || die "no such snapshot: $NAME"
+
+    echo "This will overwrite the following paths in \$HOME:"
+    sed 's/^/  /' "$SRC/manifest.txt"
+    printf '\nRestoring replaces stow symlinks with the original files.\n'
+    read -r -p "Type 'restore' to continue: " reply
+    [ "$reply" = "restore" ] || die "aborted"
+
+    # Without this, restoring ~/.config/hypr/x.conf writes THROUGH the symlink
+    # and overwrites the repo copy you're restoring from.
+    materialise_path() {
+        local rel="$1" cur="$HOME" part
+        local dir; dir="$(dirname "$rel")"
+        [ "$dir" = "." ] && return 0
+        local IFS=/
+        for part in $dir; do
+            [ -n "$part" ] || continue
+            cur="$cur/$part"
+            if [ -L "$cur" ] && resolves_into_repo "$cur"; then
+                rm -f "$cur"
+                mkdir -p "$cur"
+            elif [ ! -d "$cur" ]; then
+                mkdir -p "$cur"
+            fi
+        done
+    }
+
+    while IFS= read -r rel; do
+        [ -n "$rel" ] || continue
+        target="$HOME/$rel"
+        materialise_path "$rel"
+        # The leaf may be a stow symlink too (e.g. ~/.zshrc).
+        [ -L "$target" ] && rm -f "$target"
+        # Never write to anything that still resolves into the repo.
+        if resolves_into_repo "$target"; then
+            warn "refusing to restore $rel: still resolves into $REPO"
+            continue
+        fi
+        rm -rf "$target"
+        cp -a "$SRC/home/$rel" "$target"
+    done < "$SRC/manifest.txt"
+
+    log "Restored $(grep -c . "$SRC/manifest.txt") files from $NAME"
+    warn "Packages are NOT reinstalled. See $SRC/system/ for what was installed."
+    exit 0
+fi
+
+# --- create ----------------------------------------------------------------
+STAMP="$(date +%Y%m%d-%H%M%S)"
+DEST="$BACKUP_ROOT/$STAMP"
+mkdir -p "$DEST/home" "$DEST/system"
+
+log "Backing up to $DEST"
+
+: > "$DEST/manifest.txt"
+saved=0
+skipped=0
+for pkg in $(stow_packages); do
+    while IFS= read -r rel; do
+        rel="${rel#./}"
+        target="$HOME/$rel"
+        [ -e "$target" ] || { skipped=$((skipped + 1)); continue; }
+        # Ours, already version-controlled. Resolved path, not the leaf: stow
+        # links whole dirs, so hyprland.conf under it isn't itself a link.
+        if resolves_into_repo "$target"; then
+            skipped=$((skipped + 1)); continue
+        fi
+        mkdir -p "$DEST/home/$(dirname "$rel")"
+        cp -aL "$target" "$DEST/home/$rel" 2>/dev/null || continue
+        printf '%s\n' "$rel" >> "$DEST/manifest.txt"
+        saved=$((saved + 1))
+    done < <(cd "$REPO/$pkg" && find . -type f -o -type l | sed 's|^\./||')
+done
+
+# Paths bootstrap.sh writes that no stow package owns. ~/.config/quickshell/dms
+# is deliberately absent: ~570 upstream QML files a pinned download replaces
+# exactly, and ten copies is a gigabyte.
+capture_file() {
+    local rel="$1" target="$HOME/$1"
+    [ -e "$target" ] || return 0
+    resolves_into_repo "$target" && return 0
+    mkdir -p "$DEST/home/$(dirname "$rel")"
+    cp -aL "$target" "$DEST/home/$rel" 2>/dev/null || return 0
+    grep -qxF "$rel" "$DEST/manifest.txt" || printf '%s\n' "$rel" >> "$DEST/manifest.txt"
+    saved=$((saved + 1))
+}
+
+# One file at a time, plugin subdirs excluded by name: a DMS plugin is either
+# already stowed or upstream and pinned, and a recursive copy sweeps up both.
+if [ -d "$HOME/.config/DankMaterialShell" ]; then
+    while IFS= read -r -d '' f; do
+        capture_file "${f#"$HOME"/}"
+    done < <(find "$HOME/.config/DankMaterialShell" \
+        -path "$HOME/.config/DankMaterialShell/plugins" -prune -o \
+        -type f -print0)
+fi
+
+for extra in \
+    ".zshrc" ".zprofile" ".bashrc" ".profile" \
+    ".config/gtk-3.0/settings.ini" \
+    ".config/user-dirs.dirs"
+do
+    capture_file "$extra"
+done
+
+# --- system state ----------------------------------------------------------
+# Not restorable automatically; it's the record of what changed.
+dpkg --get-selections            > "$DEST/system/dpkg-selections.txt" 2>/dev/null || true
+apt-mark showmanual              > "$DEST/system/apt-manual.txt"      2>/dev/null || true
+cp -a /etc/apt/sources.list        "$DEST/system/" 2>/dev/null || true
+cp -a /etc/apt/sources.list.d      "$DEST/system/" 2>/dev/null || true
+id -nG                           > "$DEST/system/groups.txt"          2>/dev/null || true
+
+{
+    echo "created:   $(date -Is)"
+    echo "host:      $(hostname)"
+    echo "repo:      $REPO"
+    echo "repo-head: $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo 'not a git repo')"
+    echo "repo-dirty:$(git -C "$REPO" status --porcelain 2>/dev/null | wc -l) changed paths"
+    echo "kernel:    $(uname -r)"
+    echo "hyprland:  $(Hyprland --version 2>/dev/null | head -1 | cut -d' ' -f1-2 || echo absent)"
+    echo "dms:       $($HOME/.local/share/dms/bin/dms version 2>/dev/null | head -1 || echo absent)"
+    echo "files:     $saved saved, $skipped skipped (missing or already our symlink)"
+} > "$DEST/info.txt"
+
+# --- prune -----------------------------------------------------------------
+mapfile -t old < <(ls -1d "$BACKUP_ROOT"/*/ 2>/dev/null | sort -r | tail -n +$((KEEP + 1)))
+for d in "${old[@]:-}"; do
+    [ -n "$d" ] || continue
+    rm -rf "$d"
+    warn "pruned old snapshot $(basename "$d")"
+done
+
+log "Saved $saved files ($(du -sh "$DEST" | cut -f1)). Restore with:"
+echo "    dotfiles-backup --restore $STAMP"

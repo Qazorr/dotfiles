@@ -1,0 +1,20 @@
+# Kacper's Hyprland config — entry point.
+# Actual config lives in conf.d/, split by concern so it's easy to iterate
+# on one piece (e.g. keybinds) without wading through everything else.
+
+source = ~/.config/hypr/conf.d/monitors/solo.conf
+
+source = ~/.config/hypr/conf.d/environment.conf
+source = ~/.config/hypr/conf.d/autostart.conf
+source = ~/.config/hypr/conf.d/input.conf
+source = ~/.config/hypr/conf.d/general.conf
+source = ~/.config/hypr/conf.d/decoration.conf
+source = ~/.config/hypr/conf.d/animations.conf
+source = ~/.config/hypr/conf.d/workspaces.conf
+source = ~/.config/hypr/conf.d/windowrules.conf
+# Note: DMS's own keybind viewer only parses Hyprland's *Lua* config format
+# (it reports configFormat "hyprlang" / readOnly for this file and lists no
+# binds). The cheat sheet is `keybind-help` instead — it reads
+# `hyprctl binds -j`, which is the live source of truth and already carries
+# the descriptions from the `bindd` lines below.
+source = ~/.config/hypr/conf.d/keybindings.conf

@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""Keyboard shortcut cheat sheet, read live from `hyprctl binds -j` — never
+parses keybindings.conf, so it can't drift from what Hyprland is actually
+doing. Descriptions come from `bindd`/`binded`/`bindeld` lines; anything
+bound with plain `bind` shows its dispatcher instead.
+
+    keybind-help            interactive fuzzy search (needs fzf)
+    keybind-help --list     plain grouped list, no interaction
+    keybind-help <query>    jump straight in with a filter applied
+
+In interactive mode, Enter runs the selected binding. JaKooLit's rofi version
+deliberately disables that ("pressing ENTER will have NO function"); running
+it is more useful, so destructive dispatchers ask first instead.
+
+DMS ships its own keybind viewer, but it only parses Hyprland's Lua config
+format; on a hyprlang config it reports readOnly and lists nothing.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+# Hyprland modmask bits.
+MODS = [(64, "SUPER"), (4, "CTRL"), (8, "ALT"), (1, "SHIFT")]
+
+# Keys whose names read badly in a cheat sheet.
+PRETTY = {
+    "Return": "Enter", "Escape": "Esc", "Slash": "/", "Print": "PrtSc",
+    "mouse_down": "Wheel↓", "mouse_up": "Wheel↑",
+    "mouse:272": "LMB", "mouse:273": "RMB",
+    # Media/laptop function keys, which report as raw XF86 symbols.
+    "XF86AudioRaiseVolume": "Vol ↑", "XF86AudioLowerVolume": "Vol ↓",
+    "XF86AudioMute": "Mute", "XF86AudioMicMute": "Mic mute",
+    "XF86MonBrightnessUp": "Bright ↑", "XF86MonBrightnessDown": "Bright ↓",
+    "XF86AudioPlay": "Play", "XF86AudioNext": "Next", "XF86AudioPrev": "Prev",
+}
+
+# Grouped by leading word of the description, in this order.
+CATEGORIES = [
+    ("Launch",     ("Open", "App", "Terminal", "Settings", "Network", "Bluetooth",
+                    "Audio", "File", "Browser")),
+    ("Shell",      ("Control", "Notification", "Clipboard", "Wallpaper", "Night",
+                    "Process", "Power", "Lock", "Keybind", "Help", "Theme",
+                    "Dashboard", "Select", "Toggle bar", "Toggle idle")),
+    ("Window",     ("Close", "Fullscreen", "Maximize", "Float", "Toggle", "Focus",
+                    "Move", "Resize", "Swap", "Exit", "Zoom")),
+    ("Workspace",  ("Workspace", "Cycle", "Special")),
+    ("Screenshot", ("Screenshot",)),
+    ("Media",      ("Volume", "Brightness", "Play", "Next", "Previous", "Mute")),
+]
+
+RESET, DIM, BOLD = "\033[0m", "\033[2m", "\033[1m"
+KEYC, DESCC, HEADC = "\033[38;5;183m", "\033[38;5;252m", "\033[1;38;5;141m"
+
+
+def combo(bind):
+    parts = [name for bit, name in MODS if bind["modmask"] & bit]
+    key = bind.get("key") or ""
+    if not key and bind.get("keycode"):
+        # code:NN binds (layout-independent workspace keys) report a keycode.
+        kc = bind["keycode"]
+        key = str(kc - 9) if 10 <= kc <= 19 else f"code:{kc}"
+    if key.startswith("code:"):
+        try:
+            n = int(key.split(":")[1])
+            key = str(n - 9) if 10 <= n <= 19 else key
+        except ValueError:
+            pass
+    parts.append(PRETTY.get(key, key))
+    return " + ".join(p for p in parts if p)
+
+
+def label(bind):
+    if bind.get("description"):
+        return bind["description"]
+    d, a = bind.get("dispatcher", ""), bind.get("arg", "")
+    return f"{d} {a}".strip() or "(no description)"
+
+
+# (head, category), longest head first: "Toggle bar" must be checked before
+# "Toggle", or the generic head always wins.
+_HEAD_TABLE = sorted(
+    ((head, name) for name, heads in CATEGORIES for head in heads),
+    key=lambda pair: len(pair[0]), reverse=True,
+)
+
+def categorise(desc):
+    low = desc.lower()
+    # Check the subject before the verb: "Move to workspace 3" is a workspace
+    # binding, not a window one, even though it starts with "Move".
+    if "workspace" in low:
+        return "Workspace"
+    if "screenshot" in low:
+        return "Screenshot"
+    for head, name in _HEAD_TABLE:
+        if low.startswith(head.lower()):
+            return name
+    return "Other"
+
+
+# Dispatchers that end or disrupt the session badly enough to confirm first.
+DESTRUCTIVE = {"exit"}
+DESTRUCTIVE_ARGS = ("poweroff", "reboot", "suspend", "hyprlock")
+
+
+def run_bind(bind):
+    """Execute a binding through hyprctl, confirming the dangerous ones."""
+    disp, arg = bind.get("dispatcher", ""), bind.get("arg", "")
+    risky = disp in DESTRUCTIVE or any(t in arg for t in DESTRUCTIVE_ARGS)
+    if risky:
+        try:
+            reply = input(f"\n  '{label(bind)}' ({disp} {arg})\n  Really run this? [y/N] ")
+        except (EOFError, KeyboardInterrupt):
+            return
+        if reply.strip().lower() not in ("y", "yes"):
+            print("  cancelled")
+            return
+    subprocess.run(["hyprctl", "dispatch", disp] + ([arg] if arg else []),
+                   capture_output=True)
+
+
+def interactive(binds, query=""):
+    """Fuzzy-search the binds with fzf. Returns True if it ran."""
+    if not shutil.which("fzf") or not sys.stdout.isatty():
+        return False
+
+    keyw = max((len(combo(b)) for b in binds), default=20) + 2
+    lines = []
+    for i, b in enumerate(binds):
+        d, a = b.get("dispatcher", ""), b.get("arg", "")
+        cmd = f"{d} {a}".strip()
+        # Index first, hidden, so the selection maps back exactly when two
+        # bindings share a description.
+        lines.append(
+            f"{i}\t{KEYC}{combo(b):<{keyw}}{RESET}{DESCC}{label(b):<34}{RESET}{DIM}{cmd}{RESET}"
+        )
+
+    try:
+        proc = subprocess.run(
+            ["fzf", "--ansi", "--delimiter=\t", "--with-nth=2",
+             "--height=100%", "--layout=reverse", "--info=inline",
+             "--border=rounded",
+             "--prompt=  shortcut  ",
+             "--header=Enter runs it  ·  Esc cancels",
+             "--query", query],
+            input="\n".join(lines), text=True, capture_output=True)
+    except FileNotFoundError:
+        return False
+
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return True   # cancelled; still handled interactively
+    try:
+        idx = int(proc.stdout.split("\t", 1)[0])
+    except ValueError:
+        return True
+    run_bind(binds[idx])
+    return True
+
+
+def main():
+    try:
+        raw = subprocess.run(["hyprctl", "binds", "-j"],
+                             capture_output=True, text=True, check=True).stdout
+        binds = json.loads(raw)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        sys.exit("hyprctl unavailable — is Hyprland running?")
+    except json.JSONDecodeError:
+        sys.exit("could not parse `hyprctl binds -j`")
+
+    # The same combo+description appears twice when a bind has flag variants.
+    seen = set()
+    uniq = []
+    for b in binds:
+        key, desc = combo(b), label(b)
+        if not key or (key, desc) in seen:
+            continue
+        seen.add((key, desc))
+        uniq.append(b)
+
+    args = [a for a in sys.argv[1:] if a not in ("--list", "-l")]
+    static = "--list" in sys.argv or "-l" in sys.argv
+
+    if not static and interactive(uniq, " ".join(args)):
+        return
+
+    groups = {}
+    for b in uniq:
+        groups.setdefault(categorise(label(b)), []).append((combo(b), label(b)))
+
+    order = [n for n, _ in CATEGORIES if n in groups] + (["Other"] if "Other" in groups else [])
+    width = shutil.get_terminal_size((100, 40)).columns
+    keyw = max((len(k) for g in groups.values() for k, _ in g), default=20) + 2
+
+    print(f"\n {BOLD}Keyboard shortcuts{RESET}  {DIM}({len(seen)} bindings, live from hyprctl){RESET}\n")
+    for name in order:
+        print(f" {HEADC}{name}{RESET}")
+        for k, d in sorted(groups[name], key=lambda x: x[1]):
+            line = f"   {KEYC}{k:<{keyw}}{RESET}{DESCC}{d}{RESET}"
+            print(line if len(k) + len(d) + 5 < width else f"   {KEYC}{k}{RESET}\n     {DESCC}{d}{RESET}")
+        print()
+
+    # Only pause when run interactively in its own window; piping stays clean.
+    if sys.stdout.isatty() and os.environ.get("KEYBIND_HELP_HOLD") != "0":
+        try:
+            input(f" {DIM}Press Enter to close…{RESET}")
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+
+if __name__ == "__main__":
+    main()

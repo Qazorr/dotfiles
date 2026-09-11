@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Scaffold a .desktop launcher entry. New entries appear in DMS's launcher
+# within seconds; editing an existing one may need a DMS restart.
+#
+#   new-app <name> <exec> [icon]
+#       --terminal            run in a terminal window
+#       --comment "text"      subtitle shown in the launcher
+#       --categories "Cat;"   defaults to "Utility;" — see the desktop-entry
+#                             spec's registered category list
+#
+# <exec> goes to Exec= verbatim, field codes and all. Give <icon> as a path:
+# a bare theme name silently falls back to a letter avatar when missing.
+set -euo pipefail
+
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../.." && pwd)"
+# shellcheck source=../../../lib/common.sh
+source "$REPO/lib/common.sh"
+
+usage() {
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+    exit "${1:-0}"
+}
+
+[ $# -ge 1 ] || usage 1
+[ "$1" = "-h" ] || [ "$1" = "--help" ] && usage 0
+
+NAME="$1"; shift
+EXEC="${1:-}"; [ -n "$EXEC" ] || die "need an exec command — new-app \"$NAME\" <exec> [icon]"
+shift
+
+ICON="" TERMINAL=false COMMENT="" CATEGORIES="Utility;"
+[ $# -gt 0 ] && [[ "$1" != --* ]] && { ICON="$1"; shift; }
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --terminal)     TERMINAL=true; shift ;;
+        --comment)      COMMENT="$2"; shift 2 ;;
+        --categories)   CATEGORIES="$2"; shift 2 ;;
+        *) die "unknown option: $1" ;;
+    esac
+done
+
+# First word of Exec, so flags don't break the PATH check.
+first_word="${EXEC%% *}"
+if [[ "$first_word" != /* ]] && ! command -v "$first_word" >/dev/null 2>&1; then
+    warn "'$first_word' isn't on PATH right now — the entry will still be created, but won't launch until it is"
+fi
+
+if [ -n "$ICON" ]; then
+    if [ -f "$ICON" ]; then
+        ICON="$(readlink -f "$ICON")"
+    elif [[ "$ICON" == /* ]]; then
+        warn "icon path $ICON doesn't exist — using it anyway, but it won't render until it does"
+    elif ! find /usr/share/icons ~/.local/share/icons -iname "${ICON}.*" 2>/dev/null | grep -q .; then
+        warn "'$ICON' isn't a file and wasn't found in any installed icon theme — it may render as a plain letter avatar (verified: DMS falls back silently, not an error)"
+    fi
+fi
+
+SLUG="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/-\+/-/g; s/^-//; s/-$//')"
+[ -n "$SLUG" ] || die "couldn't derive a filename from '$NAME'"
+
+DIR="$HOME/.local/share/applications"
+DEST="$DIR/$SLUG.desktop"
+mkdir -p "$DIR"
+[ -e "$DEST" ] && warn "overwriting existing $DEST — edits to an existing entry may not appear live; a fresh name always does"
+
+{
+    echo "[Desktop Entry]"
+    echo "Type=Application"
+    echo "Name=$NAME"
+    [ -n "$COMMENT" ] && echo "Comment=$COMMENT"
+    echo "Exec=$EXEC"
+    [ -n "$ICON" ] && echo "Icon=$ICON"
+    echo "Terminal=$TERMINAL"
+    echo "Categories=$CATEGORIES"
+} > "$DEST"
+
+if command -v desktop-file-validate >/dev/null 2>&1; then
+    desktop-file-validate "$DEST" || warn "desktop-file-validate flagged the file above — it may still work"
+fi
+
+log "Wrote $DEST"
+echo "  Name:  $NAME"
+echo "  Exec:  $EXEC"
+[ -n "$ICON" ] && echo "  Icon:  $ICON"
+echo "Should appear in the launcher (SUPER+D) within a second or two."
