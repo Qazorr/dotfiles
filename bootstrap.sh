@@ -120,13 +120,15 @@ check_environment() {
     command -v sudo >/dev/null || die "sudo is not installed. Install it and add yourself to the sudo group first."
     command -v apt  >/dev/null || die "apt not found — is this really Debian?"
 
-    if ! curl -fsS --max-time 10 -o /dev/null http://deb.debian.org/debian/ 2>/dev/null; then
-        # Missing curl is normal on a minimal install; only a real network
-        # failure is fatal.
-        if command -v curl >/dev/null 2>&1; then
-            die "can't reach deb.debian.org — check your network connection."
-        fi
-        warn "curl not installed yet; skipping the network check (the prereqs step installs it)."
+    # getent, not curl: a fresh ISO install has no curl yet, which is exactly
+    # where this check earns its keep. Otherwise a machine with no DNS gets
+    # twenty lines of apt fetch errors instead of one line saying why.
+    if ! getent hosts deb.debian.org >/dev/null 2>&1; then
+        die "can't resolve deb.debian.org — this machine has no working DNS. Check 'ip -br addr' and /etc/resolv.conf."
+    fi
+    if command -v curl >/dev/null 2>&1 \
+        && ! curl -fsS --max-time 10 -o /dev/null http://deb.debian.org/debian/ 2>/dev/null; then
+        die "can't reach deb.debian.org — DNS resolves, but the mirror is unreachable."
     fi
 }
 

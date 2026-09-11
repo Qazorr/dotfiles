@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One-time: create the disk image if it's missing, then boot the Debian 13
-# installer against it. After the install finishes, use run.sh from then on.
+# installer against it. `once=d` so the post-install reboot goes to the disk
+# rather than back into the installer. Use run.sh from then on.
 # Start over with: rm -f vm/disk/debian13.qcow2
 #
 # DOTFILES_TEST_ISO points this at a different image — that's how iso/build.sh's
@@ -33,8 +34,13 @@ exec qemu-system-x86_64 \
   -m 6G \
   -drive file=disk/debian13.qcow2,if=virtio,cache=writeback \
   -cdrom "$ISO" \
-  -boot d \
-  -device virtio-net-pci,netdev=net0 \
+  -boot once=d \
+  # Pinned: qemu assigns PCI slots in command-line order, and run.sh has an
+  # extra -virtfs device before this one. Without a fixed address the installed
+  # system sees a different interface name under each script, /etc/network/
+  # interfaces then names one that doesn't exist, and the VM boots with no
+  # network at all.
+  -device virtio-net-pci,netdev=net0,addr=0x5 \
   -netdev user,id=net0 \
   -vga virtio \
   -display gtk,gl=on \
