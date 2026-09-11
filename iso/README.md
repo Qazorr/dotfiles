@@ -24,8 +24,11 @@ uncommitted changes for that reason.
 ## Boot entry
 
 One entry, `Install Debian + dotfiles`, set as the menu default (isolinux and
-GRUB). Preseeds locale, keymap, network, mirror, timezone, tasksel and
-packages, and clones the repo into `~/dotfiles`.
+GRUB). Boots the **graphical (GTK) installer**, not the text/ncurses one —
+`install.amd/gtk/{vmlinuz,initrd.gz}` — for an actual wizard flow (mouse,
+proper network/WiFi picker) instead of the main-menu-driven text frontend.
+Preseeds locale, keymap, network, mirror, timezone, tasksel and packages, and
+clones the repo into `~/dotfiles`.
 
 **Partitioning, the target disk and your username stay interactive** — no
 unattended variant, on purpose. **So does WiFi**, if `netcfg/choose_interface`

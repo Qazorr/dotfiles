@@ -68,8 +68,10 @@ chmod -R u+w "$tree"
 dd if="$SRC_ISO" bs=1 count=432 of="$work/isohdpfx.bin" status=none
 
 # Debian's layout has drifted before. Fail here rather than emit an ISO that
-# doesn't boot.
-for f in isolinux/isolinux.bin boot/grub/efi.img isolinux/isolinux.cfg boot/grub/grub.cfg; do
+# doesn't boot. install.amd/gtk/* is the graphical (GTK) frontend's own
+# kernel+initrd, separate from the text frontend's install.amd/*.
+for f in isolinux/isolinux.bin boot/grub/efi.img isolinux/isolinux.cfg \
+    boot/grub/grub.cfg install.amd/gtk/vmlinuz install.amd/gtk/initrd.gz; do
     [ -f "$tree/$f" ] || die "$f missing from the source ISO — Debian's layout changed, this script needs updating."
 done
 
@@ -91,19 +93,24 @@ log "Adding boot entries"
 # regardless of priority — see iso/README.md.
 common_args="auto=true priority=medium"
 
+# Graphical (GTK) frontend, not the text/newt one: a proper wizard — mouse
+# and keyboard, a real network/WiFi picker — instead of the ncurses main-menu
+# screen, which drops back to itself after every step once anything (like
+# loading preseed.cfg) doesn't go perfectly. Same preseed support either way.
+#
 # gtk.cfg claims the default before txt.cfg is even included, so an appended
 # `menu default` below would lose and Enter would boot stock, un-preseeded
 # Debian. Drop its claim so ours is the only one.
 sed -i -e '/^default installgui$/d' -e '/^[[:space:]]*menu default$/d' \
     "$tree/isolinux/gtk.cfg"
 
-cat >> "$tree/isolinux/txt.cfg" <<EOF
+cat >> "$tree/isolinux/gtk.cfg" <<EOF
 
 label dotfiles
     menu label ^Install Debian + dotfiles
     menu default
-    kernel /install.amd/vmlinuz
-    append vga=788 initrd=/install.amd/initrd.gz preseed/file=/cdrom/preseed.cfg $common_args ---
+    kernel /install.amd/gtk/vmlinuz
+    append vga=788 initrd=/install.amd/gtk/initrd.gz preseed/file=/cdrom/preseed.cfg $common_args ---
 
 default dotfiles
 EOF
@@ -112,8 +119,8 @@ cat >> "$tree/boot/grub/grub.cfg" <<EOF
 
 menuentry 'Install Debian + dotfiles' {
     set background_color=black
-    linux /install.amd/vmlinuz preseed/file=/cdrom/preseed.cfg $common_args ---
-    initrd /install.amd/initrd.gz
+    linux /install.amd/gtk/vmlinuz preseed/file=/cdrom/preseed.cfg $common_args ---
+    initrd /install.amd/gtk/initrd.gz
 }
 # grub.cfg is sourced whole before the menu draws, so this overrides the
 # implicit entry 0 ('Graphical install'). Same reasoning as isolinux above.
