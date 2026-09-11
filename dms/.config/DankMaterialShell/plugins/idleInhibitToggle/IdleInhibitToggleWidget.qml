@@ -3,21 +3,17 @@ import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
 
-// Bar pill + Control Center toggle for scripts/.local/bin/idle-inhibit.
-// Same script SUPER+I runs (hypr/conf.d/keybindings.conf) — this widget is
-// just another way to reach it, not a second inhibitor mechanism.
+// Bar pill + Control Center toggle for scripts/.local/bin/idle-inhibit — the
+// same script SUPER+I runs; just another way to reach it, not a second
+// inhibitor.
 //
-// DMS ships its own native idle-inhibitor widget/toggle
-// (Modules/DankBar/Widgets/IdleInhibitor.qml, SessionService.idleInhibited).
-// It's left disabled on purpose: that flag has no D-Bus, systemd, or
-// Wayland-protocol registration at all, so it does not affect hypridle —
-// which is what's actually locking this session. See idle-inhibit's own
-// header comment and the dotfiles README for how that was verified.
+// DMS's own idle-inhibitor toggle (IdleInhibitor.qml, SessionService.idle
+// Inhibited) is left disabled: that flag has no D-Bus/systemd/Wayland
+// registration, so it doesn't affect hypridle, which is what actually locks
+// this session — see the README's "Idle inhibitor" section.
 //
-// Polls `idle-inhibit status` rather than tracking its own local boolean, so
-// it stays correct if toggled elsewhere (the keybind, another monitor's bar,
-// a terminal) — it can never show a state the real inhibitor lock disagrees
-// with.
+// Polls `idle-inhibit status` rather than tracking a local boolean, so it
+// can't disagree with the real lock state (keybind, another bar, a terminal).
 PluginComponent {
     id: root
 
@@ -88,9 +84,7 @@ PluginComponent {
 
     pillClickAction: () => root.toggle()
 
-    // Control Center integration (ccWidgetIcon/ccWidgetPrimaryText/etc) was
-    // tried and dropped: it rendered as a bare "Unknown" tile with a
-    // question-mark icon rather than picking up these properties, and
-    // debugging DMS's Control Center widget internals further was out of
-    // scope for what was asked (a bar toggle). Bar-only for now.
+    // Control Center integration (ccWidgetIcon etc.) was tried and dropped —
+    // it rendered as a bare "Unknown" tile instead of picking those up, and
+    // debugging DMS's Control Center internals was out of scope. Bar-only.
 }

@@ -207,11 +207,9 @@ _doc_check_session() {
     return 0
 }
 
-# Only meaningful once ./bootstrap.sh nvidia has run, in any of its modes
-# (debian: nvidia-driver; open: nvidia-open; nvidia: cuda-drivers — see
-# setup/steps/nvidia.sh). The module not being loaded is expected before the
-# first reboot; the point is telling apart "just reboot" from "Secure Boot
-# blocked the unsigned kernel module", which is a black screen with no KMS
+# Only meaningful once ./bootstrap.sh nvidia has run (any mode). Module not
+# loaded is expected before the first reboot — the point is telling that
+# apart from Secure Boot blocking it, which is a black screen with no KMS
 # driver at all, not a slow one.
 _doc_check_nvidia() {
     dpkg -s nvidia-driver >/dev/null 2>&1 || dpkg -s nvidia-open >/dev/null 2>&1 \

@@ -12,13 +12,12 @@ hypr/.config/hypr/dms/colors.lua
 # matugen (via DMS) regenerates these on every theme change, and
 # ~/.config/kitty is a stow symlink into this repo — so the writes land here.
 kitty/.config/kitty/dank-*.conf
-# ~/.config/DankMaterialShell/plugins is a whole-directory stow symlink (its
-# parent isn't stowed, only this one folder is), so anything a bootstrap step
-# installs under it lands physically inside the repo. idleInhibitToggle is
-# ours and stays tracked; these two aren't ours — quickCapture is a ~8MB
-# third-party download refetched wholesale on every version bump (see
-# setup/steps/quickcapture.sh), and krkCommute is a symlink to an external,
-# separately-cloned repo (setup/steps/krkcommute.sh) — nothing here to commit.
+# ~/.config/DankMaterialShell/plugins is a whole-directory stow symlink, so
+# anything a step installs under it lands physically in the repo.
+# idleInhibitToggle is ours and stays tracked. quickCapture is a ~8MB
+# third-party download refetched on every version bump (quickcapture.sh);
+# krkCommute symlinks to a separately-cloned repo (krkcommute.sh) — neither
+# has anything here to commit.
 dms/.config/DankMaterialShell/plugins/quickCapture/
 dms/.config/DankMaterialShell/plugins/krkCommute
 # Claude Code's self-updater rewrites ~/.local/bin/claude to point at the

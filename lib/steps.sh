@@ -52,10 +52,9 @@ step_is_always() { [ "${STEP_ALWAYS[$1]:-0}" = "1" ]; }
 step_is_optional() { [ "${STEP_OPTIONAL[$1]:-0}" = "1" ]; }
 
 # A step's own choices (which NVIDIA driver, say), keyed by the env var it
-# reads — not by step name, so two steps sharing a var would collide loudly
-# instead of silently. resolve_step_options() (lib/options.sh) asks for these
-# once, up front, for whatever ends up in the plan; the env var stays the
-# escape hatch for a non-interactive run (CI, --yes) that sets it itself.
+# reads — not by step name, so two steps sharing a var collide loudly instead
+# of silently. resolve_step_options() (lib/options.sh) asks for these once,
+# up front, for whatever ends up in the plan.
 declare -A OPTION_STEP=() OPTION_PROMPT=() OPTION_CHOICES=() OPTION_DEFAULT=()
 OPTION_VARS=()   # registration order, so prompts come out in a stable order
 

@@ -7,15 +7,14 @@ cd "$(dirname "$0")"
 [ -f disk/debian13.qcow2 ] \
     || { echo "no VM disk yet — run vm/install.sh first" >&2; exit 1; }
 
-# An array, not a backslash-continued command: a `#` comment after a trailing
-# `\` silently comments out the REST of the command, which once dropped the
-# network and -vga virtio here without any syntax error.
-# virtio-vga-gl, not `-vga virtio`: the latter is a 2D device, so pairing it
-# with gl=on gives the guest no 3D at all — Mesa falls back to llvmpipe and
-# the host window can come up black. These two belong together.
+# An array, not a backslash-continued command: a `#` after a trailing `\`
+# silently comments out the rest of the command — this once dropped the
+# network and -vga virtio with no syntax error.
+# virtio-vga-gl, not `-vga virtio`: the latter is 2D-only, so gl=on gives no
+# 3D — Mesa falls back to llvmpipe and the window can come up black.
 #
-# If the VM shows nothing, fall back to software rendering; the guest still
-# boots either way, and vm/run.sh forwards ssh on 2222 so you are not blind:
+# If the VM shows nothing, fall back to software rendering (still boots,
+# ssh still forwards on 2222):
 #   DOTFILES_VM_GPU=VGA DOTFILES_VM_DISPLAY=gtk vm/run.sh
 VM_GPU="${DOTFILES_VM_GPU:-virtio-vga-gl}"
 VM_DISPLAY="${DOTFILES_VM_DISPLAY:-gtk,gl=on}"
