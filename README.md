@@ -24,9 +24,9 @@ repo already on it — see [iso/README.md](iso/README.md).
 `./bootstrap.sh` with no arguments runs every non-optional step in order, and
 stays the command you use afterwards.
 
-Afterwards reboot. `greetd` takes over tty1 with `tuigreet`; pick
-**Hyprland** and it remembers the choice. The reboot also picks up your new
-group membership and login shell.
+Afterwards reboot. `greetd` takes over with `dms-greeter`; pick **Hyprland**
+and it remembers the choice. The reboot also picks up your new group
+membership and login shell.
 
 ### It remembers what it has already done
 
@@ -258,13 +258,21 @@ If Hyprland picks the wrong GPU to render on, `AQ_DRM_DEVICES` in
 
 ## Login
 
-`greetd` + `tuigreet` — two packages, no Qt or GTK. Runs on tty1 and lists
-whatever is in `/usr/share/wayland-sessions`. Going through the session entry
-(rather than launching `Hyprland` directly) avoids Debian's *"started
-without start-hyprland"* warning.
+`greetd` + `dms-greeter`, so the login screen matches the shell. It lists
+whatever is in `/usr/share/wayland-sessions`; pick **Hyprland**, not
+"Hyprland (uwsm-managed)" — the plain entry runs `start-hyprland`, which is
+what this config's `exec-once` autostarts assume.
 
-`sddm` is the usual alternative if you want a graphical greeter — same
-session entries, only `setup/steps/login.sh` changes.
+`dms-greeter enable` puts it on **VT 7** and disables `getty@tty1`. Worth
+knowing, because it means a greeter that fails to start leaves a black
+screen with no visible console: `Ctrl+Alt+F2` is the way back in. It also
+runs a whole Quickshell compositor as the `greeter` user, so it needs the
+same `qml6-module-*` runtime the shell does — a missing one takes down the
+greeter and the bar together (see `setup/steps/desktop.sh`).
+
+`tuigreet` is the lightweight alternative — a terminal greeter with no Qt,
+no GPU requirement, essentially nothing to crash. Only
+`setup/steps/login.sh` changes.
 
 ## Layout
 
