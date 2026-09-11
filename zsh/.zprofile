@@ -1,6 +1,5 @@
-# Runs once on login shells. No display manager is installed on purpose
-# (see bootstrap.sh) — autostart Hyprland when logging into tty1 with no
-# graphical session already running.
-if [ -z "$WAYLAND_DISPLAY" ] && [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
-fi
+# Login shells only. Hyprland is started by greetd (setup/steps/login.sh), not
+# from here — this file only sets up the environment a login inherits.
+#
+# Keep in sync with lib/paths.sh — ./bootstrap.sh --doctor checks.
+export PATH="$HOME/.local/share/dms/bin:$HOME/.local/share/uv/bin:$HOME/.local/share/krk-commute/bin:$HOME/.local/bin:$PATH"

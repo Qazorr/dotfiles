@@ -1,0 +1,11 @@
+{
+    "id": "idleInhibitToggle",
+    "name": "Idle Inhibit",
+    "description": "Toggle scripts/.local/bin/idle-inhibit (systemd-inhibit --what=idle) from the bar or Control Center. Same toggle as SUPER+I.",
+    "version": "1.0.0",
+    "author": "kacper",
+    "icon": "motion_sensor_idle",
+    "type": "widget",
+    "component": "./IdleInhibitToggleWidget.qml",
+    "permissions": ["process"]
+}

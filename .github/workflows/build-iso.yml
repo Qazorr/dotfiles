@@ -1,0 +1,44 @@
+name: Build ISO
+
+# Runs iso/build.sh (see iso/README.md) on a Linux runner and uploads the
+# result — for building the install ISO with no Linux box handy (xorriso has
+# no good Windows/macOS build). Manual only: it's a slow, bandwidth-heavy job
+# (downloads Debian's netinst, repacks it) nothing should trigger by itself.
+#
+# Trigger from the Actions tab ("Run workflow"), or:
+#   gh workflow run build-iso.yml --ref <branch>
+#   gh run watch --exit-status $(gh run list --workflow=build-iso.yml -L1 --json databaseId -q '.[0].databaseId')
+#   gh run download --name debian-dotfiles-iso
+
+on:
+  workflow_dispatch:
+    inputs:
+      debian_version:
+        description: "Debian point release (blank = iso/build.sh's own default)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xorriso
+        run: sudo apt-get update && sudo apt-get install -y xorriso
+
+      - name: Build the ISO
+        env:
+          DOTFILES_DEBIAN_VERSION: ${{ inputs.debian_version }}
+        run: ./iso/build.sh
+
+      - name: Checksum
+        run: sha256sum vm/iso/*.iso | tee vm/iso/SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-dotfiles-iso
+          path: |
+            vm/iso/*.iso
+            vm/iso/SHA256SUMS
+          retention-days: 14

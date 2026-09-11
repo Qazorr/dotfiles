@@ -1,0 +1,11 @@
+{
+  "idleInhibitToggle": {
+    "enabled": true
+  },
+  "quickCapture": {
+    "enabled": true
+  },
+  "krkCommute": {
+    "enabled": true
+  }
+}

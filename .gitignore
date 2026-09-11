@@ -5,3 +5,31 @@ vm/disk/
 vm/host-access/
 # cava writes its default GL shader assets here on first run — not something we author
 cava/.config/cava/shaders/
+# DMS's matugen hook regenerates this on every theme change, and
+# ~/.config/hypr is a stow symlink into this repo — so the write lands here.
+# Scoped to the generated file only: dms/binds.conf next to it IS ours.
+hypr/.config/hypr/dms/colors.lua
+# matugen (via DMS) regenerates these on every theme change, and
+# ~/.config/kitty is a stow symlink into this repo — so the writes land here.
+kitty/.config/kitty/dank-*.conf
+# ~/.config/DankMaterialShell/plugins is a whole-directory stow symlink, so
+# anything a step installs under it lands physically in the repo.
+# idleInhibitToggle is ours and stays tracked. quickCapture is a ~8MB
+# third-party download refetched on every version bump (quickcapture.sh);
+# krkCommute symlinks to a separately-cloned repo (krkcommute.sh) — neither
+# has anything here to commit.
+dms/.config/DankMaterialShell/plugins/quickCapture/
+dms/.config/DankMaterialShell/plugins/krkCommute
+# Claude Code's self-updater rewrites ~/.local/bin/claude to point at the
+# version it just installed — and ~/.local/bin is a stow symlink into this
+# repo, so that symlink lands here. It's a pointer at a machine-local install
+# under ~/.local/share/claude, not repo content.
+scripts/.local/bin/claude
+# Machine-local Hyprland config (NVIDIA env block and anything else specific
+# to one box's hardware). Created by step_stow, written by step_nvidia, and
+# ~/.config/hypr is a stow symlink so it lands here.
+hypr/.config/hypr/conf.d/local.conf
+# keybind-help is Python, and running it writes __pycache__ next to itself —
+# which is inside a stow package, so the bytecode lands in the repo. Caught
+# only after it had been committed once.
+scripts/.local/bin/__pycache__/
