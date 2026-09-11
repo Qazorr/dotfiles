@@ -3,13 +3,15 @@
 # startup error rather than a silent bug.
 
 declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=() \
-           STEP_ALWAYS=()
+           STEP_ALWAYS=() STEP_OPTIONAL=()
 
 # register_step <name> --desc "..." [--group <group>] [--root] [--always]
-#                      [--needs <step>...] [--provides <cmd-or-path>...]
+#                      [--optional] [--needs <step>...] [--provides <cmd-or-path>...]
 #
 #   --root      calls sudo, so a run containing it asks for a password
 #   --always    never recorded, so it runs every time (stow, summary)
+#   --optional  never auto-selected (not by a plain run, --profile, --group
+#               or --missing) — only by naming it, or ticking it in --pick
 #   --needs     must already be done for this step's INSTALL to succeed;
 #               pulled in automatically. Install-time only — `bootstrap.sh
 #               dms` must not trigger an NVIDIA driver install.
@@ -17,13 +19,14 @@ declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=(
 #               --list, --missing and --doctor.
 register_step() {
     local name="$1"; shift
-    local desc="" group=core root=0 always=0 needs="" provides=""
+    local desc="" group=core root=0 always=0 optional=0 needs="" provides=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --desc)  desc="$2"; shift 2 ;;
             --group) group="$2"; shift 2 ;;
             --root)  root=1; shift ;;
             --always) always=1; shift ;;
+            --optional) optional=1; shift ;;
             --needs)
                 shift
                 while [ $# -gt 0 ] && [[ "$1" != --* ]]; do needs+="$1 "; shift; done ;;
@@ -38,6 +41,7 @@ register_step() {
     STEP_GROUP[$name]="$group"
     STEP_ROOT[$name]="$root"
     STEP_ALWAYS[$name]="$always"
+    STEP_OPTIONAL[$name]="$optional"
     STEP_NEEDS[$name]="$needs"
     STEP_PROVIDES[$name]="$provides"
 }
@@ -45,6 +49,45 @@ register_step() {
 step_known()     { [ -n "${STEP_DESC[$1]+x}" ]; }
 step_is_root()   { [ "${STEP_ROOT[$1]:-0}" = "1" ]; }
 step_is_always() { [ "${STEP_ALWAYS[$1]:-0}" = "1" ]; }
+step_is_optional() { [ "${STEP_OPTIONAL[$1]:-0}" = "1" ]; }
+
+# A step's own choices (which NVIDIA driver, say), keyed by the env var it
+# reads — not by step name, so two steps sharing a var would collide loudly
+# instead of silently. resolve_step_options() (lib/options.sh) asks for these
+# once, up front, for whatever ends up in the plan; the env var stays the
+# escape hatch for a non-interactive run (CI, --yes) that sets it itself.
+declare -A OPTION_STEP=() OPTION_PROMPT=() OPTION_CHOICES=() OPTION_DEFAULT=()
+OPTION_VARS=()   # registration order, so prompts come out in a stable order
+
+# register_option <step> <ENV_VAR> --prompt "..." \
+#     --choices "value:label" [...] --default <value>
+#
+# <step> reads $<ENV_VAR> to decide what to do. If that env var is already
+# set when its step is about to run, resolve_step_options leaves it alone —
+# that's what keeps `DOTFILES_NVIDIA_MODE=open ./bootstrap.sh nvidia` working
+# unattended. Otherwise it prompts for it, with --default on a bare Enter.
+register_option() {
+    local step="$1" var="$2"; shift 2
+    local prompt="" default="" choices=()
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --prompt)  prompt="$2"; shift 2 ;;
+            --default) default="$2"; shift 2 ;;
+            --choices)
+                shift
+                while [ $# -gt 0 ] && [[ "$1" != --* ]]; do choices+=("$1"); shift; done ;;
+            *) die "register_option $step $var: unknown option '$1'" ;;
+        esac
+    done
+    [ -n "$prompt" ]        || die "register_option $step $var: --prompt is required"
+    [ ${#choices[@]} -gt 0 ] || die "register_option $step $var: --choices is required"
+    [ -n "$default" ]       || die "register_option $step $var: --default is required"
+    OPTION_STEP[$var]="$step"
+    OPTION_PROMPT[$var]="$prompt"
+    OPTION_CHOICES[$var]="${choices[*]}"
+    OPTION_DEFAULT[$var]="$default"
+    OPTION_VARS+=("$var")
+}
 
 # 0 = all present, 1 = something missing, 2 = no probe declared.
 step_installed() {
@@ -89,7 +132,7 @@ steps_added() {
 }
 
 steps_validate() {
-    local s n idx=0
+    local s n v idx=0
     local -A pos=()
     for s in "${STEPS[@]}"; do
         step_known "$s" \
@@ -107,5 +150,9 @@ steps_validate() {
             [ "${pos[$n]}" -lt "${pos[$s]}" ] \
                 || die "'$s' needs '$n', but '$n' runs later in STEPS — reorder it."
         done
+    done
+    for v in "${OPTION_VARS[@]}"; do
+        step_known "${OPTION_STEP[$v]}" \
+            || die "register_option $v: '${OPTION_STEP[$v]}' isn't a step."
     done
 }

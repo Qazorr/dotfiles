@@ -6,9 +6,9 @@ step_stow() {
     log "Stowing dotfiles"
     cd "$REPO"
 
-    # stow aborts on a target that already exists as a real file, killing the
-    # run under `set -e` — oh-my-zsh's own .zshrc does this on a fresh machine.
-    # Move conflicts aside first. Not `stow --adopt`, which would pull the
+    # stow aborts on a target that's already a real file (oh-my-zsh's own
+    # .zshrc, on a fresh machine), killing the run under `set -e`. Move
+    # conflicts aside first — not `stow --adopt`, which would pull the
     # foreign contents INTO this repo.
     local pkg rel target moved=0
     for pkg in "${STOW_PACKAGES[@]}"; do
@@ -17,12 +17,11 @@ step_stow() {
             rel="${rel#./}"
             target="$HOME/$rel"
             [ -e "$target" ] || [ -L "$target" ] || continue
-            # Already ours: a symlink resolving back into this repo.
+            # Already ours: resolves back into this repo.
             [[ "$(readlink -f "$target" 2>/dev/null)" == "$REPO"/* ]] && continue
-            # Also ours: a link inside a package pointing outside the repo,
-            # so it resolves outside — the gitignored claude and krkCommute
-            # links. Same file as the repo's, reached through the package
-            # symlink; without this, restow renames our own file aside.
+            # Also ours: a link inside a package pointing outside the repo
+            # (gitignored claude/krkCommute links) — without this, restow
+            # renames our own file aside.
             [ "$target" -ef "$pkg/$rel" ] && continue
             warn "Moving aside $rel -> $rel.pre-dotfiles"
             mv "$target" "$target.pre-dotfiles"
