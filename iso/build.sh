@@ -82,7 +82,14 @@ cp "$HERE/preseed.cfg" "$tree/"
 # Written to isolinux (BIOS) and grub (UEFI) — which one runs depends on how
 # the machine boots.
 log "Adding boot entries"
-common_args="auto=true priority=high"
+# priority=medium, not high: wireless ESSID/passphrase questions are medium
+# priority, and high silently skips them — DHCP then never gets to associate,
+# which shows up as "network autoconfiguration failed" with no way to enter
+# WiFi credentials. Priority only gates unanswered questions; everything this
+# preseed.cfg actually answers (locale, mirror, packages, …) stays silent
+# either way, and critical ones (partitioning, username) already prompt
+# regardless of priority — see iso/README.md.
+common_args="auto=true priority=medium"
 
 # gtk.cfg claims the default before txt.cfg is even included, so an appended
 # `menu default` below would lose and Enter would boot stock, un-preseeded

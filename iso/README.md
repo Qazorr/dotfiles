@@ -28,7 +28,10 @@ GRUB). Preseeds locale, keymap, network, mirror, timezone, tasksel and
 packages, and clones the repo into `~/dotfiles`.
 
 **Partitioning, the target disk and your username stay interactive** — no
-unattended variant, on purpose.
+unattended variant, on purpose. **So does WiFi**, if `netcfg/choose_interface`
+picks a wireless interface: `priority=medium` (not `high`) means the
+installer stops to ask for an ESSID and passphrase instead of failing DHCP
+silently and showing "network autoconfiguration failed".
 
 The menu's speech-synthesis countdown boots a plain un-preseeded installer if
 you let it lapse — press a key when the menu appears.
