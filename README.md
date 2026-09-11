@@ -29,7 +29,7 @@ command you use afterwards — after adding a step, or changing one.
 ### It remembers what it has already done
 
 Each finished step gets a file under `~/.local/state/dotfiles/steps`, and the
-next run skips it. First run: 25-40 minutes. Second: a couple of seconds.
+next run skips it. First run: 15-20 minutes. Second: a couple of seconds.
 
 The record is a hash of the step's own file, not just a done flag. Add a
 package to `setup/steps/cli.sh` or bump `LAZYDOCKER_VERSION` in `devtools.sh`,
@@ -85,8 +85,8 @@ shell desktop apps dev personal`.
 
 **Sudo is asked for once, at the start**, and only if the chosen steps need
 root — `./bootstrap.sh stow` never prompts. A keepalive refreshes the
-timestamp, since the Quickshell build outlasts sudo's 15-minute timeout with
-no sudo call in between. apt runs with `DEBIAN_FRONTEND=noninteractive` and
+timestamp, since the hyprmon build and a full apt upgrade can outlast sudo's
+15-minute timeout with no sudo call in between. apt runs with `DEBIAN_FRONTEND=noninteractive` and
 `--force-confold`, so no conffile dialog can stall it.
 
 Every step also checks its own work independently of the records, so it still
@@ -147,7 +147,7 @@ step_docker() {
 | `--group` | which group/profile it belongs to |
 | `--root` | it calls `sudo`; decides whether a run asks for a password at all |
 | `--always` | never recorded, so it runs every time. Only where repeating is the point: the snapshots, `stow`, `summary` |
-| `--needs` | must *already be done* for this step's install to succeed; pulled in automatically. Install-time only — otherwise `./bootstrap.sh dms` would trigger a 20-minute Quickshell build |
+| `--needs` | must *already be done* for this step's install to succeed; pulled in automatically. Install-time only, not "would be nice at runtime" — otherwise `./bootstrap.sh dms` would drag in an NVIDIA driver install |
 | `--provides` | a command or path that exists once the step has run. Drives `--list`, `--missing` and `--doctor`. Steps that only change system state declare none |
 
 A step returning 0 without having done its work should call `stamp_skip`, so

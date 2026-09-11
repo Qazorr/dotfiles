@@ -52,8 +52,8 @@ unset _step_file
 # Run order — the one fact that can't live in a step's own file. A step's
 # --needs must appear before it; steps_validate enforces that.
 STEPS=(
-    backup timeshift prereqs backports nvidia hyprland desktop services login ohmyzsh
-    quickshell hyprmon cli vscode claudedesktop brave dms quickcapture
+    backup timeshift prereqs backports nvidia hyprland desktop services
+    danklinux quickshell login ohmyzsh hyprmon cli vscode claudedesktop brave dms quickcapture
     uv krkcommute docker devtools fonts groups stow summary
 )
 
@@ -89,9 +89,41 @@ scratch_dir() {
     SCRATCH_DIRS+=("$_dir")
 }
 
+# Every run is written to a file as well as the terminal. A 40-minute install
+# scrolls the interesting part away long before it finishes, and "what went
+# wrong" is otherwise unanswerable once the window is gone.
+LOG_DIR="$DOTFILES_STATE_DIR/logs"
+LOG_FILE=""
+LOG_TEE_PID=""
+start_logging() {
+    [ "${DOTFILES_NO_LOG:-0}" = "1" ] && return 0
+    mkdir -p "$LOG_DIR" 2>/dev/null \
+        || { warn "can't write to $LOG_DIR — this run won't be logged"; return 0; }
+    # $$ as well as the time: two runs in the same second would otherwise
+    # share a file and read as one confusing interleaved run.
+    LOG_FILE="$LOG_DIR/bootstrap-$(date +%Y%m%d-%H%M%S)-$$.log"
+    # stdout and stderr both, so apt's complaints land in the same file in the
+    # same order you saw them. cleanup() waits for this tee: without that, an
+    # early `exit` (--dry-run, a die()) kills the script before tee has
+    # written, and the log loses exactly the last line you wanted.
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    LOG_TEE_PID=$!
+    log "Logging this run to $LOG_FILE"
+    # Keep ten. They are small, but re-running a step at a time adds up.
+    # `|| true`: ls exits non-zero when the glob matches nothing, and pipefail
+    # would turn housekeeping into a failed run.
+    ls -1t "$LOG_DIR"/bootstrap-*.log 2>/dev/null | tail -n +10 | xargs -r rm -f || true
+    return 0
+}
+
 cleanup() {
     [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
     [ ${#SCRATCH_DIRS[@]} -gt 0 ] && rm -rf "${SCRATCH_DIRS[@]}"
+    # Last: closing these is what gives tee EOF, and nothing can print after.
+    if [ -n "$LOG_TEE_PID" ]; then
+        exec 1>&- 2>&-
+        wait "$LOG_TEE_PID" 2>/dev/null
+    fi
     return 0
 }
 trap cleanup EXIT
@@ -115,8 +147,9 @@ ensure_sudo() {
     log "Installing system packages needs sudo — asking once, now, so the rest runs unattended."
     sudo -v || die "sudo authentication failed"
 
-    # The Quickshell build outlasts sudo's 15-minute timeout with no sudo call
-    # in between, so without this the next one blocks on an unattended prompt.
+    # The hyprmon build and a full apt upgrade can outlast sudo's 15-minute
+    # timeout with no sudo call in between, and the next one would then block
+    # on a password prompt you have walked away from.
     ( while true; do
           sleep 50
           kill -0 "$$" 2>/dev/null || exit 0
@@ -221,7 +254,8 @@ Environment overrides:
   DOTFILES_SKIP_BACKUP=1      skip the config snapshot
   DOTFILES_SKIP_TIMESHIFT=1   skip the full-system snapshot
   DOTFILES_KRKCOMMUTE_DIR=…   clone krk-commute somewhere other than ~/Projects
-  DOTFILES_STATE_DIR=…        keep the run records somewhere else
+  DOTFILES_STATE_DIR=…        keep the run records and logs somewhere else
+  DOTFILES_NO_LOG=1           don't write a log file for this run
 EOF
 }
 
@@ -250,11 +284,13 @@ run_steps() {
         fi
         # So a 40-minute install isn't restarted from the top over one 404.
         warn "step '$s' failed."
+        [ -n "$LOG_FILE" ] && warn "Full output: $LOG_FILE"
         warn "Resume with: ./bootstrap.sh ${plan[*]:$((i - 1))}"
         return 1
     done
     if [ ${#failed[@]} -gt 0 ]; then
         warn "${#failed[@]} step(s) failed: ${failed[*]}"
+        [ -n "$LOG_FILE" ] && warn "Full output: $LOG_FILE"
         warn "Retry them with: ./bootstrap.sh ${failed[*]}"
         return 1
     fi
@@ -357,6 +393,7 @@ main() {
         esac
     done
 
+    start_logging
     check_environment
 
     case "$mode" in
