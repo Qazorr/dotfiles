@@ -22,8 +22,7 @@ step_dms() {
     require_disk_space 2
     log "Installing DankMaterialShell $DMS_VERSION"
     mkdir -p "$DMS_BIN"
-    local tmp; tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' RETURN
+    local tmp; scratch_dir tmp
 
     # A binary plus a QML tree, so not install_github_release_binary's shape.
     curl -fsSL -o "$tmp/dms.tar.gz" \

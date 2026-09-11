@@ -11,8 +11,7 @@ register_step devtools \
 
 step_devtools() {
     require_disk_space 1
-    local tmp; tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' RETURN
+    local tmp; scratch_dir tmp
 
     if command -v lazydocker >/dev/null 2>&1 \
         && lazydocker --version 2>/dev/null | grep -q "${LAZYDOCKER_VERSION#v}"; then
