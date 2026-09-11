@@ -15,7 +15,8 @@ exec qemu-system-x86_64 \
   -m 6G \
   -drive file=disk/debian13.qcow2,if=virtio,cache=writeback \
   -virtfs local,path=..,mount_tag=dotfiles,security_model=mapped-xattr,readonly=off \
-  -device virtio-net-pci,netdev=net0 \
+  # Must match install.sh's pinned address — see the comment there.
+  -device virtio-net-pci,netdev=net0,addr=0x5 \
   -netdev user,id=net0,hostfwd=tcp::2222-:22 \
   -vga virtio \
   -display gtk,gl=on \
