@@ -35,10 +35,11 @@ step_timeshift() {
 
     log "Creating a timeshift snapshot on $root_dev (first one takes a while)"
     # --rsync explicitly, so behaviour doesn't change on a btrfs root.
-    # --tags O marks it on-demand, so retention won't rotate it away.
+    # No --tags: on-demand (O) is already the default, and timeshift 24.06.6
+    # rejects `--tags O` with "Unknown value specified for option --tags (O)"
+    # while listing O as valid — passing it only buys a failed snapshot.
     sudo timeshift --create --rsync \
         --snapshot-device "$root_dev" \
         --comments "before dotfiles bootstrap $(date +%F-%H%M)" \
-        --tags O \
         || warn "timeshift snapshot failed — continuing without a system rollback point"
 }

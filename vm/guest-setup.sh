@@ -72,4 +72,7 @@ fi
 printf '\n'
 log "Done. From the host:"
 printf '    ssh -p 2222 -i vm/host-access/id_ed25519 %s@localhost\n\n' "$USER"
+log "To test uncommitted host edits, run bootstrap from the share, not ~/dotfiles:"
+printf '    cd /mnt/host && ./bootstrap.sh\n'
+printf '  ~/dotfiles is the clone the ISO made, and only has committed work.\n\n' 
 ip -br addr | grep -v '^lo '
