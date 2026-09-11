@@ -1,6 +1,5 @@
 # `./bootstrap.sh --pick`. Sets PICKED; returns 1 if the user backed out.
-# Plain bash — no whiptail, dialog or fzf: it runs on tty1 on a machine too
-# fresh to have curl.
+# Plain bash, no whiptail/dialog/fzf — runs on tty1 before curl exists.
 
 # Every other step assumes core ran, so it's locked rather than offered.
 _pick_locked() { [ "${STEP_GROUP[$1]}" = "core" ]; }
@@ -50,6 +49,12 @@ pick_steps() {
     for i in "${!STEPS[@]}"; do
         sel[$i]=0
         for s in "$@"; do [ "$s" = "${STEPS[$i]}" ] && sel[$i]=1; done
+        # Optional steps (nvidia) start unticked even when swept in by a
+        # default "everything" selection — NAMED is bootstrap.sh's record of
+        # what was actually typed on the command line.
+        if step_is_optional "${STEPS[$i]}" && [ -z "${NAMED[${STEPS[$i]}]+x}" ]; then
+            sel[$i]=0
+        fi
         _pick_locked "${STEPS[$i]}" && sel[$i]=1
     done
 

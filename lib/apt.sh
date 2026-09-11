@@ -3,6 +3,13 @@
 apt_install() { sudo apt install "${APT_OPTS[@]}" "$@"; }
 apt_install_backports() { sudo apt install "${APT_OPTS[@]}" -t trixie-backports "$@"; }
 
+# Purge + autoremove, tolerating packages that were never installed (e.g.
+# switching NVIDIA driver variants only ever has one of them present).
+apt_purge() {
+    sudo apt purge "${APT_OPTS[@]}" "$@" || true
+    sudo apt autoremove -y || true
+}
+
 # Fetch a signing key to $2 if missing. $3 = "dearmor" for vendors serving
 # ASCII-armored keys (Microsoft); omit for keys signed-by= takes as-is.
 ensure_apt_key() {

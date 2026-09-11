@@ -9,9 +9,8 @@ _doc_note() { printf '  \033[1;33mnote\033[0m  %s\n' "$*"; DOCTOR_NOTES=$((DOCTO
 _doc_bad()  { printf '  \033[1;31mbad\033[0m   %s\n' "$*"; DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1)); }
 _doc_head() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 
-# ~/.local/bin, ~/.config/hypr, ~/.config/kitty and the DMS plugins dir are
-# stow symlinks INTO this repo, so writing there writes into git. Seven times
-# so far.
+# The stowed dirs are symlinks INTO this repo, so writing there writes into
+# git — has happened seven times.
 _doc_check_writethrough() {
     _doc_head "Stow writethrough (files that landed in the repo)"
     local untracked tracked pkg found=0 f
@@ -34,9 +33,8 @@ _doc_check_writethrough() {
         [ "$found" = "0" ] && _doc_ok "no untracked files inside a stow package"
     fi
 
-    # That scan only sees UNTRACKED files, so a writethrough someone committed
-    # is invisible to it — which is how a __pycache__ .pyc from keybind-help
-    # ended up in the repo. Build artifacts are never ours, tracked or not.
+    # Untracked-only misses a writethrough someone already committed — how a
+    # __pycache__ .pyc from keybind-help ended up in the repo.
     tracked="$(git -C "$REPO" ls-files \
         | grep -E '(^|/)(__pycache__|\.venv|node_modules)/|\.(pyc|pyo|o|so)$' || true)"
     if [ -n "$tracked" ]; then
@@ -132,7 +130,8 @@ _doc_check_state() {
                rc2=0; step_installed "$s" || rc2=$?
                [ "$rc2" = "1" ] && gone+=("$s") ;;
             2) changed+=("$s") ;;
-            *) never+=("$s") ;;
+            # Opt-in steps (nvidia) are meant to sit unrun until named.
+            *) step_is_optional "$s" || never+=("$s") ;;
         esac
     done
     _doc_ok "$done_ step(s) recorded as done"
@@ -142,10 +141,9 @@ _doc_check_state() {
     return 0
 }
 
-# Whether a graphical session can actually start, as opposed to whether the
-# packages are installed. Every check here is a way this has already failed:
-# a greeter with no DRM access restart-looped until systemd gave up on greetd,
-# and a 2D-only GPU device left Hyprland on llvmpipe.
+# Whether a graphical session can actually start, not just whether the
+# packages are installed — a greeter with no DRM access restart-loops until
+# systemd gives up on greetd, a 2D-only device leaves Hyprland on llvmpipe.
 _doc_check_session() {
     _doc_head "Graphical session"
     local n missing drv
@@ -158,8 +156,7 @@ _doc_check_session() {
         fi
     fi
 
-    # card0 is root:video, renderD128 is root:render, both 0660. No render
-    # node means EGL falls back to software and Hyprland limps or dies.
+    # No render node means EGL falls back to software.
     for n in /dev/dri/card0 /dev/dri/renderD128; do
         if [ ! -e "$n" ]; then
             _doc_note "$n missing — no DRM device (expected on a headless machine)"
@@ -170,8 +167,7 @@ _doc_check_session() {
         fi
     done
 
-    # The greeter runs its own compositor and needs the same access. Nothing
-    # in the dms-greeter package grants it.
+    # The greeter runs its own compositor and needs the same access.
     if getent passwd greeter >/dev/null 2>&1; then
         missing=""
         for n in video render; do
@@ -207,6 +203,30 @@ _doc_check_session() {
             active) _doc_ok "greetd is running" ;;
             *)      _doc_note "greetd is enabled but not running (normal until the next reboot)" ;;
         esac
+    fi
+    return 0
+}
+
+# Only meaningful once ./bootstrap.sh nvidia has run, in any of its modes
+# (debian: nvidia-driver; open: nvidia-open; nvidia: cuda-drivers — see
+# setup/steps/nvidia.sh). The module not being loaded is expected before the
+# first reboot; the point is telling apart "just reboot" from "Secure Boot
+# blocked the unsigned kernel module", which is a black screen with no KMS
+# driver at all, not a slow one.
+_doc_check_nvidia() {
+    dpkg -s nvidia-driver >/dev/null 2>&1 || dpkg -s nvidia-open >/dev/null 2>&1 \
+        || dpkg -s cuda-drivers >/dev/null 2>&1 || return 0
+    _doc_head "NVIDIA"
+    local sb=0
+    if command -v mokutil >/dev/null 2>&1; then
+        mokutil --sb-state 2>/dev/null | grep -qi enabled && sb=1
+    fi
+    if lsmod | grep -q '^nvidia '; then
+        _doc_ok "nvidia kernel module is loaded"
+    elif [ "$sb" = "1" ]; then
+        _doc_bad "nvidia module not loaded and Secure Boot is ON — almost certainly blocking the unsigned DKMS module. Disable Secure Boot in firmware, or enrol a MOK (sudo mokutil --disable-validation, reboot, enrol), then reboot again."
+    else
+        _doc_note "nvidia module not loaded — reboot if you haven't since installing it, or check: dmesg | grep -i nvidia"
     fi
     return 0
 }
@@ -272,6 +292,7 @@ run_doctor() {
     _doc_check_path
     _doc_check_groups
     _doc_check_session
+    _doc_check_nvidia
     _doc_check_leftovers
     _doc_check_lint
     printf '\n'

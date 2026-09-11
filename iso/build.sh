@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-# Build a Debian 13 netinst ISO with this repo already on it.
+# Build a Debian 13 netinst ISO with this repo already on it. See iso/README.md.
 #
 #   ./iso/build.sh
 #
-# The repo is private, so the ISO carries it as a git bundle — no credentials
-# needed at install time. preseed/late_command clones it into ~/dotfiles and
-# repoints origin at the SSH URL. The installer does not run bootstrap.sh;
-# it leaves a motd saying to.
-#
-# Adds one boot entry, "Install Debian + dotfiles". Partitioning, the target
-# disk and your username stay interactive by design — there is deliberately no
-# unattended variant that could erase the wrong disk.
+# Ships the private repo as a git bundle (no install-time credentials needed);
+# preseed/late_command clones it into ~/dotfiles. Doesn't run bootstrap.sh —
+# leaves a motd saying to. Adds one boot entry, "Install Debian + dotfiles";
+# partitioning/disk/username stay interactive on purpose.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,8 +23,8 @@ command -v xorriso >/dev/null 2>&1 \
     || die "xorriso is not installed. sudo apt install xorriso"
 command -v git >/dev/null 2>&1 || die "git is not installed."
 
-# A bundle carries commits, not the working tree — a dirty build would ship an
-# ISO quietly missing your latest work.
+# A bundle carries commits, not the working tree — a dirty build ships an ISO
+# quietly missing your latest work.
 if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
     if [ "${DOTFILES_ISO_ALLOW_DIRTY:-0}" = "1" ]; then
         warn "working tree is dirty — the ISO will ship the last COMMIT, not what's on disk"
@@ -88,10 +84,9 @@ cp "$HERE/preseed.cfg" "$tree/"
 log "Adding boot entries"
 common_args="auto=true priority=high"
 
-# Debian's gtk.cfg claims the default before txt.cfg is even included, and
-# menu.cfg includes it first — so an appended `menu default` loses and Enter
-# boots stock Debian, which asks everything interactively and never reads the
-# preseed. Drop its claim so ours below is the only one.
+# gtk.cfg claims the default before txt.cfg is even included, so an appended
+# `menu default` below would lose and Enter would boot stock, un-preseeded
+# Debian. Drop its claim so ours is the only one.
 sed -i -e '/^default installgui$/d' -e '/^[[:space:]]*menu default$/d' \
     "$tree/isolinux/gtk.cfg"
 

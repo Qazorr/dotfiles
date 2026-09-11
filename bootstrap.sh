@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # Provisions a Hyprland desktop on Debian 13 (trixie). See README.md.
 #
-#   ./bootstrap.sh              run everything not done yet
+#   ./bootstrap.sh              run everything not done yet (nvidia is opt-in)
 #   ./bootstrap.sh --list       the steps, and what has already run
 #   ./bootstrap.sh --doctor     check this machine, change nothing
 #
-# Completed steps are recorded in ~/.local/state/dotfiles/steps (lib/state.sh)
-# and skipped next time; editing a step's file un-records it.
-#
-# This file owns the run order and the command line. Steps live in
-# setup/steps/, helpers in lib/. Test changes in the VM first (vm/README.md).
+# Completed steps are recorded in ~/.local/state/dotfiles/steps and skipped
+# next time; editing a step's file un-records it. This file owns the run
+# order and command line; steps live in setup/steps/, helpers in lib/.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,6 +25,8 @@ source "$REPO/lib/steps.sh"
 source "$REPO/lib/state.sh"
 # shellcheck source=lib/picker.sh
 source "$REPO/lib/picker.sh"
+# shellcheck source=lib/options.sh
+source "$REPO/lib/options.sh"
 # shellcheck source=lib/doctor.sh
 source "$REPO/lib/doctor.sh"
 
@@ -79,12 +79,10 @@ steps_validate
 SUDO_KEEPALIVE_PID=""
 
 # Scratch dirs steps ask for, removed once on exit. Not a `trap ... RETURN`
-# inside the step: that trap stays registered after the step returns and fires
-# again on the next function return, when its `local tmp` no longer exists —
-# `set -u` then killed a fully successful run with "tmp: unbound variable".
-# Takes the variable to fill, rather than printing the path: command
-# substitution would run this in a subshell, where the append below reaches
-# nothing. Same nameref trick as lib/picker.sh's _pick_render.
+# inside the step: that trap stays registered after the step returns, fires
+# again on the caller's return, and `set -u` kills the run on the now-gone
+# local. Takes the variable to fill rather than printing the path — printing
+# would run this in a subshell, where the append below reaches nothing.
 SCRATCH_DIRS=()
 scratch_dir() {
     local -n _dir="$1"
@@ -92,9 +90,8 @@ scratch_dir() {
     SCRATCH_DIRS+=("$_dir")
 }
 
-# Every run is written to a file as well as the terminal. A 40-minute install
-# scrolls the interesting part away long before it finishes, and "what went
-# wrong" is otherwise unanswerable once the window is gone.
+# Every run is also logged to a file — a 40-minute install scrolls the
+# interesting part off-screen long before it finishes.
 LOG_DIR="$DOTFILES_STATE_DIR/logs"
 LOG_FILE=""
 LOG_TEE_PID=""
@@ -102,19 +99,14 @@ start_logging() {
     [ "${DOTFILES_NO_LOG:-0}" = "1" ] && return 0
     mkdir -p "$LOG_DIR" 2>/dev/null \
         || { warn "can't write to $LOG_DIR — this run won't be logged"; return 0; }
-    # $$ as well as the time: two runs in the same second would otherwise
-    # share a file and read as one confusing interleaved run.
+    # $$ too, so two runs in the same second don't share one interleaved file.
     LOG_FILE="$LOG_DIR/bootstrap-$(date +%Y%m%d-%H%M%S)-$$.log"
-    # stdout and stderr both, so apt's complaints land in the same file in the
-    # same order you saw them. cleanup() waits for this tee: without that, an
-    # early `exit` (--dry-run, a die()) kills the script before tee has
-    # written, and the log loses exactly the last line you wanted.
+    # stdout and stderr both, same order as the terminal. cleanup() waits for
+    # this tee, or an early exit (--dry-run, die()) drops the last line.
     exec > >(tee -a "$LOG_FILE") 2>&1
     LOG_TEE_PID=$!
     log "Logging this run to $LOG_FILE"
-    # Keep ten. They are small, but re-running a step at a time adds up.
-    # `|| true`: ls exits non-zero when the glob matches nothing, and pipefail
-    # would turn housekeeping into a failed run.
+    # Keep ten; `|| true` since ls on an empty glob would fail the run under pipefail.
     ls -1t "$LOG_DIR"/bootstrap-*.log 2>/dev/null | tail -n +10 | xargs -r rm -f || true
     return 0
 }
@@ -150,9 +142,8 @@ ensure_sudo() {
     log "Installing system packages needs sudo — asking once, now, so the rest runs unattended."
     sudo -v || die "sudo authentication failed"
 
-    # The hyprmon build and a full apt upgrade can outlast sudo's 15-minute
-    # timeout with no sudo call in between, and the next one would then block
-    # on a password prompt you have walked away from.
+    # A full apt upgrade or the hyprmon build can outlast sudo's 15-minute
+    # timeout with no sudo call in between; refresh it in the background.
     ( while true; do
           sleep 50
           kill -0 "$$" 2>/dev/null || exit 0
@@ -171,9 +162,8 @@ check_environment() {
     command -v sudo >/dev/null || die "sudo is not installed. Install it and add yourself to the sudo group first."
     command -v apt  >/dev/null || die "apt not found — is this really Debian?"
 
-    # getent, not curl: a fresh ISO install has no curl yet, which is exactly
-    # where this check earns its keep. Otherwise a machine with no DNS gets
-    # twenty lines of apt fetch errors instead of one line saying why.
+    # getent, not curl: a fresh install has no curl yet, and this is where a
+    # DNS-less machine should fail with one clear line, not 20 apt errors.
     if ! getent hosts deb.debian.org >/dev/null 2>&1; then
         die "can't resolve deb.debian.org — this machine has no working DNS. Check 'ip -br addr' and /etc/resolv.conf."
     fi
@@ -187,7 +177,7 @@ check_environment() {
 # Command line
 # ---------------------------------------------------------------------------
 list_steps() {
-    local g s rc status root needs done_
+    local g s rc status root opt needs done_
     printf 'Steps, in run order. sudo = needs root.\n'
     for g in "${GROUP_ORDER[@]}"; do
         printf '\n\033[1m%s\033[0m\n' "$g"
@@ -200,10 +190,11 @@ list_steps() {
                 *) status=' ' ;;
             esac
             root=""; step_is_root "$s" && root=" [sudo]"
+            opt=""; step_is_optional "$s" && opt=" [opt-in]"
             needs=""; [ -n "${STEP_NEEDS[$s]}" ] && needs=" (needs: ${STEP_NEEDS[$s]% })"
             done_="$(_list_ran "$s")"
-            printf '  %s %-13s %s%s%s%s\n' \
-                "$status" "$s" "${STEP_DESC[$s]}" "$root" "$needs" "$done_"
+            printf '  %s %-13s %s%s%s%s%s\n' \
+                "$status" "$s" "${STEP_DESC[$s]}" "$root" "$opt" "$needs" "$done_"
         done
     done
     printf '\n  \033[32m✓\033[0m installed   \033[33m·\033[0m not installed   (blank: nothing to probe)\n'
@@ -257,6 +248,7 @@ Environment overrides:
   DOTFILES_SKIP_BACKUP=1      skip the config snapshot
   DOTFILES_SKIP_TIMESHIFT=1   skip the full-system snapshot
   DOTFILES_KRKCOMMUTE_DIR=…   clone krk-commute somewhere other than ~/Projects
+  DOTFILES_NVIDIA_MODE=…      debian (default) | open | nvidia | nouveau
   DOTFILES_STATE_DIR=…        keep the run records and logs somewhere else
   DOTFILES_NO_LOG=1           don't write a log file for this run
 EOF
@@ -412,6 +404,20 @@ main() {
         *)       requested=("${STEPS[@]}") ;;
     esac
 
+    # Optional steps (nvidia) only run when named on the command line — never
+    # picked up by a plain run, --profile, --group or --missing. --pick is
+    # exempt: it shows them too, just unticked by default (see pick_steps).
+    if [ "$pick" != "1" ]; then
+        local optkept=() s2
+        for s2 in "${requested[@]}"; do
+            if step_is_optional "$s2" && [ -z "${NAMED[$s2]+x}" ]; then
+                continue
+            fi
+            optkept+=("$s2")
+        done
+        requested=("${optkept[@]}")
+    fi
+
     if [ "$pick" = "1" ] && [ "$yes" != "1" ]; then
         [ -t 0 ] || die "--pick needs a terminal to ask on."
         pick_steps "${requested[@]}" || { log "Nothing to do."; exit 0; }
@@ -455,6 +461,10 @@ main() {
         log "Plan (${#plan[@]} steps): ${plan[*]}"
         exit 0
     fi
+
+    # Every prompt happens here: step options, then sudo. Nothing after this
+    # point should ever stop to ask.
+    resolve_step_options "$yes" "${plan[@]}"
 
     # Once, up front, before any long build — and only if this run needs it.
     for s in "${plan[@]}"; do

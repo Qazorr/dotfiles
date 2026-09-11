@@ -1,15 +1,32 @@
-# Follows JaKooLit's Debian-Hyprland install-scripts/nvidia.sh; no-ops with no
-# NVIDIA card. trixie 2026-09-01: nvidia-driver 550.163.01, in non-free, which
-# a stock install doesn't enable.
+# Follows JaKooLit's Debian-Hyprland install-scripts/nvidia.sh, plus the
+# driver-variant selection from its successor, LinuxBeginnings/Debian-Hyprland.
+# --optional so a fresh install can't black-screen on it unattended; run by
+# name when ready.
 register_step nvidia \
-    --desc "NVIDIA driver + nouveau blacklist + DRM modeset (skipped if no card)" \
-    --group desktop --root --needs prereqs
-# Deliberately no --provides: this step completes successfully on a machine
-# with no NVIDIA card, where nvidia-smi will never exist. Declaring it made
-# --doctor report "recorded as done but not installed any more" forever.
+    --desc "NVIDIA driver — asks which one (opt-in: ./bootstrap.sh nvidia)" \
+    --group desktop --root --optional --needs prereqs
+# No --provides: succeeds on a card-less machine, and --provides nvidia-smi
+# would then have --doctor call it "recorded as done but not installed".
 
 NVIDIA_MODPROBE_CONF=/etc/modprobe.d/zz-dotfiles-nvidia.conf
 NVIDIA_APT_LIST=/etc/apt/sources.list.d/debian-nonfree.list
+# NVIDIA's own CUDA apt repo, for the open/nvidia modes — Debian has no
+# packaged nvidia-open, and its nvidia-driver trails upstream.
+NVIDIA_CUDA_SUITE=debian13
+NVIDIA_CUDA_KEYRING_VERSION=1.1-1
+NVIDIA_MODE_DEFAULT=debian
+
+# Asked once, up front, alongside every other step's options — not mid-run.
+# DOTFILES_NVIDIA_MODE set in the environment beforehand (CI, --yes) skips
+# the prompt and is used as-is; see resolve_step_options in lib/options.sh.
+register_option nvidia DOTFILES_NVIDIA_MODE \
+    --prompt "Which NVIDIA driver?" \
+    --choices \
+        "debian:Debian repo (nvidia-driver) — trails upstream, but what this machine already uses" \
+        "open:NVIDIA's own repo, open kernel modules — required on RTX 5000-series+" \
+        "nvidia:NVIDIA's own repo, proprietary (cuda-drivers)" \
+        "nouveau:Uninstall and revert to the in-kernel driver" \
+    --default "$NVIDIA_MODE_DEFAULT"
 
 # 10de is NVIDIA's PCI vendor ID.
 _nvidia_present() {
@@ -17,8 +34,49 @@ _nvidia_present() {
         | grep -q '\[10de:'
 }
 
-# A hybrid laptop renders on the iGPU and offloads per-app, so it needs a
-# different Hyprland env — see _nvidia_write_hypr_env.
+# debian:  nvidia-driver, from Debian's own (non-free) repo — what this
+#          machine's GTX 1660 Ti uses. Trails upstream on testing/unstable.
+# open:    nvidia-open, NVIDIA's own CUDA repo, open-source kernel modules.
+#          Required on RTX 5000-series and newer.
+# nvidia:  cuda-drivers, NVIDIA's own CUDA repo, proprietary.
+# nouveau: uninstall whatever's installed and revert to the in-kernel driver.
+_nvidia_mode() {
+    local m="${DOTFILES_NVIDIA_MODE:-$NVIDIA_MODE_DEFAULT}"
+    case "$m" in
+        debian|open|nvidia|nouveau) printf '%s' "$m" ;;
+        *) die "DOTFILES_NVIDIA_MODE must be debian, open, nvidia or nouveau (got '$m')" ;;
+    esac
+}
+
+# Which variant, if any, is currently installed — so switching modes removes
+# the right packages first, and re-running the same mode is a no-op.
+_nvidia_installed_variant() {
+    dpkg -s nvidia-open   >/dev/null 2>&1 && { echo open; return; }
+    dpkg -s cuda-drivers  >/dev/null 2>&1 && { echo nvidia; return; }
+    dpkg -s nvidia-driver >/dev/null 2>&1 && { echo debian; return; }
+    echo nouveau
+}
+
+_nvidia_purge_variant() {
+    case "$1" in
+        debian) apt_purge nvidia-driver nvidia-kernel-dkms \
+                    libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver ;;
+        open)   apt_purge nvidia-open ;;
+        nvidia) apt_purge cuda-drivers ;;
+    esac
+}
+
+# 0 = Secure Boot on, 1 = off, 2 = mokutil couldn't tell (not installed yet).
+# Borrowed from LinuxBeginnings/Debian-Hyprland's nvidia.sh, which warns about
+# this before installing — worth doing here too: an unsigned kernel module
+# under Secure Boot leaves nouveau blacklisted AND nvidia not loaded, which is
+# a black screen with no KMS driver at all, not just a slow one.
+_nvidia_secureboot_enabled() {
+    command -v mokutil >/dev/null 2>&1 || return 2
+    mokutil --sb-state 2>/dev/null | grep -qi enabled
+}
+
+# A hybrid laptop needs a different Hyprland env — see _nvidia_write_hypr_env.
 _nvidia_discrete_only() {
     local others
     others="$(lspci -nn 2>/dev/null | grep -Ei 'vga compatible controller|3d controller' \
@@ -26,8 +84,9 @@ _nvidia_discrete_only() {
     [ "${others:-0}" -eq 0 ]
 }
 
-# A separate file, not a rewrite of the installer's sources.list, and without
-# non-free-firmware — apt warns loudly about a component configured twice.
+# Separate file, not a rewrite of sources.list; no non-free-firmware, or apt
+# warns about a component configured twice. debian mode only — the CUDA repo
+# ships its own packages, no Debian component needed.
 _nvidia_enable_nonfree() {
     [ -f "$NVIDIA_APT_LIST" ] && return 0
     log "Enabling contrib + non-free (nvidia-driver lives in non-free)"
@@ -40,14 +99,26 @@ EOF
     sudo apt update
 }
 
+# open/nvidia modes only. Same method NVIDIA's own install instructions use:
+# the keyring .deb also drops the repo's sources.list.d entry.
+_nvidia_enable_cuda_repo() {
+    dpkg -s cuda-keyring >/dev/null 2>&1 && return 0
+    log "Adding NVIDIA's CUDA apt repo ($NVIDIA_CUDA_SUITE)"
+    local tmp; tmp="$(mktemp)"
+    curl -fsSL -o "$tmp" \
+        "https://developer.download.nvidia.com/compute/cuda/repos/$NVIDIA_CUDA_SUITE/x86_64/cuda-keyring_${NVIDIA_CUDA_KEYRING_VERSION}_all.deb"
+    sudo dpkg -i "$tmp"
+    rm -f "$tmp"
+    sudo apt update
+}
+
 _nvidia_write_modprobe() {
     local want
     want="$(cat <<'EOF'
 # Written by dotfiles bootstrap.sh (step_nvidia).
-# modeset=1 is what makes the driver usable under Wayland at all.
+# modeset=1: required for the driver to work under Wayland at all.
 options nvidia-drm modeset=1 fbdev=1
-# Keeps VRAM across suspend. Needs the nvidia-suspend/resume/hibernate units,
-# enabled below.
+# Keeps VRAM across suspend; needs the suspend/resume/hibernate units below.
 options nvidia NVreg_PreserveVideoMemoryAllocations=1
 EOF
 )"
@@ -115,6 +186,51 @@ EOF
     log "Wrote the NVIDIA env block to $conf"
 }
 
+# Drop the env block entirely rather than leave the hybrid-graphics comment
+# behind — once nothing's installed, there's no GPU choice to explain.
+_nvidia_remove_hypr_env() {
+    local conf="$HOME/.config/hypr/conf.d/local.conf"
+    [ -f "$conf" ] || return 0
+    local tmp; tmp="$(mktemp)"
+    awk '
+        /^# >>> nvidia \(bootstrap\.sh\) >>>$/ { skip = 1 }
+        !skip { print }
+        /^# <<< nvidia \(bootstrap\.sh\) <<<$/ { skip = 0 }
+    ' "$conf" > "$tmp"
+    mv "$tmp" "$conf"
+}
+
+# DOTFILES_NVIDIA_MODE=nouveau: undo everything above and go back to the
+# in-kernel driver. Doesn't touch the CUDA repo/keyring if one was added —
+# harmless to leave configured, and removing it risks a half-broken apt state
+# for no benefit.
+_nvidia_revert_to_nouveau() {
+    local current="$1"
+    if [ "$current" = "nouveau" ]; then
+        log "Already on nouveau (no NVIDIA driver installed) — nothing to revert"
+        return 0
+    fi
+    log "Reverting to nouveau: removing the $current driver"
+    _nvidia_purge_variant "$current"
+
+    [ -f "$NVIDIA_MODPROBE_CONF" ] && { log "Removing $NVIDIA_MODPROBE_CONF"; sudo rm -f "$NVIDIA_MODPROBE_CONF"; }
+
+    if [ -f /etc/default/grub ] && grep -q 'modprobe.blacklist=nouveau' /etc/default/grub; then
+        log "Un-blacklisting nouveau on the kernel command line"
+        sudo sed -i -E 's/ ?modprobe\.blacklist=nouveau nvidia-drm\.modeset=1//' /etc/default/grub
+        command -v update-grub >/dev/null 2>&1 && sudo update-grub
+    fi
+
+    if [ -f /etc/initramfs-tools/modules ] && grep -qx nvidia /etc/initramfs-tools/modules; then
+        log "Removing NVIDIA modules from the initramfs"
+        sudo sed -i -E '/^(nvidia|nvidia_modeset|nvidia_uvm|nvidia_drm)$/d' /etc/initramfs-tools/modules
+        sudo update-initramfs -u
+    fi
+
+    _nvidia_remove_hypr_env
+    warn "Reboot to actually switch back to nouveau."
+}
+
 step_nvidia() {
     if ! _nvidia_present; then
         log "No NVIDIA GPU found, skipping"
@@ -122,15 +238,49 @@ step_nvidia() {
     fi
     log "NVIDIA GPU found: $(lspci -nn | grep -Ei 'vga compatible controller|3d controller' | grep '\[10de:' | sed 's/.*: //')"
 
-    _nvidia_enable_nonfree
+    local mode; mode="$(_nvidia_mode)"
+    local current; current="$(_nvidia_installed_variant)"
 
-    log "Installing the NVIDIA driver"
+    if [ "$mode" = "nouveau" ]; then
+        _nvidia_revert_to_nouveau "$current"
+        return 0
+    fi
+
+    if [ "$current" != "nouveau" ] && [ "$current" != "$mode" ]; then
+        log "Switching NVIDIA driver: $current -> $mode"
+        _nvidia_purge_variant "$current"
+    fi
+
+    apt_install mokutil    # needed for the Secure Boot check, and by --doctor later
+    local sb_rc=0
+    _nvidia_secureboot_enabled || sb_rc=$?
+    if [ "$sb_rc" = "0" ]; then
+        warn "Secure Boot is ON. An unsigned NVIDIA kernel module can fail to load after reboot — with nouveau blacklisted too, that's no KMS driver at all (black screen, not just software rendering). Either disable Secure Boot in firmware setup, or enrol a MOK first: sudo mokutil --disable-validation, reboot, enrol at the blue MOK Manager prompt, reboot again — then re-run this step."
+    fi
+
     # linux-headers-amd64, not $(uname -r): tracks kernel upgrades, so dkms
-    # still has headers after the next one.
-    apt_install \
-        nvidia-driver nvidia-kernel-dkms firmware-misc-nonfree \
-        linux-headers-amd64 \
-        libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver
+    # still has headers after the next one. Needed for all three variants —
+    # nvidia-open is DKMS-built too.
+    apt_install linux-headers-amd64
+
+    case "$mode" in
+        debian)
+            _nvidia_enable_nonfree
+            log "Installing the NVIDIA driver (Debian repo)"
+            apt_install nvidia-driver nvidia-kernel-dkms firmware-misc-nonfree \
+                libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver
+            ;;
+        open)
+            _nvidia_enable_cuda_repo
+            log "Installing the NVIDIA driver (open kernel modules, NVIDIA's CUDA repo)"
+            apt_install nvidia-open
+            ;;
+        nvidia)
+            _nvidia_enable_cuda_repo
+            log "Installing the NVIDIA driver (proprietary, NVIDIA's CUDA repo)"
+            apt_install cuda-drivers
+            ;;
+    esac
 
     local need_initramfs=1
     _nvidia_write_modprobe && need_initramfs=0
@@ -152,5 +302,5 @@ step_nvidia() {
 
     _nvidia_write_hypr_env
 
-    warn "Reboot to switch from nouveau to the NVIDIA driver."
+    warn "Reboot to switch from nouveau to the NVIDIA driver ($mode). If you land on a black screen: switch to a text console (Ctrl+Alt+F3), log in, and run ./bootstrap.sh --doctor — it checks whether the module actually loaded and, if not, whether Secure Boot is why."
 }
