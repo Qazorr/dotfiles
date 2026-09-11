@@ -163,6 +163,68 @@ anything that can legitimately fail — `step_groups` wraps `usermod -aG docker`
 in a `getent group docker` test, because `usermod` against a nonexistent group
 is a hard abort.
 
+### Adding something you just installed
+
+The loop this repo is built for: try a thing by hand, and if you keep it, fold
+it in so the next machine gets it too. Which file you touch depends only on
+where the thing comes from.
+
+**An apt package from Debian** — add it to the list in `setup/steps/cli.sh`
+(shell tools) or `desktop.sh` (anything graphical). Nothing else. If it is
+worth `--doctor` checking, add the command name to that step's `--provides`.
+
+**A tool with its own apt repo** (vendor-published) — a new step, using the
+two helpers:
+
+```bash
+ensure_apt_key  https://vendor.example/gpg /etc/apt/keyrings/vendor.asc
+ensure_apt_list /etc/apt/sources.list.d/vendor.list \
+    "deb [signed-by=/etc/apt/keyrings/vendor.asc] https://vendor.example/deb stable main" \
+    "vendor.example"
+apt_install thetool
+```
+
+`docker.sh`, `vscode.sh`, `brave.sh` and `danklinux.sh` are four worked
+examples; copy whichever is closest.
+
+**A single binary from a GitHub release** — a new step using
+`install_github_release_binary` (see `devtools.sh`), pinned to a tag rather
+than "latest", so a machine built today and one built next month match.
+
+**A dotfile change** — just edit the file. `~/.config/hypr`, `~/.config/kitty`
+and the rest are stow symlinks *into this repo*, so editing them in place is
+editing the repo. `git diff` shows what moved; no bootstrap run needed.
+
+#### The one rule that matters
+
+**Never install anything into `~/.local/bin`.** It is a stow symlink into this
+repo, so a binary written there is a binary committed to git. It has happened
+eight times. Install to `/usr/local/bin` (system-wide, like `devtools.sh`) or
+`~/.local/share/<tool>/bin` (per-user, like `uv.sh`) — and if you choose the
+latter, add it to `DOTFILES_PATH_DIRS` in `lib/paths.sh` and to the three
+files that repeat that list. `--doctor` checks they agree.
+
+#### Then
+
+```bash
+./bootstrap.sh
+```
+
+Editing a step file changes its hash, so that step un-records itself and the
+next run redoes just it, skipping everything else. You do not need to name it
+or pass `--force`.
+
+```bash
+./bootstrap.sh --doctor
+```
+
+Which is also how you find out whether the thing you installed by hand wrote
+into the repo behind your back — that check exists because it keeps happening.
+
+Anything that could cost you the machine — a driver, the bootloader, the login
+manager — belongs in the VM first (`vm/README.md`). Everything else is safe to
+try live, because `backup` and `timeshift` run before any of it.
+
 ## Screenshots (Quick Capture)
 
 Screenshots go through [Quick Capture](https://github.com/hthienloc/dms-quick-capture),
