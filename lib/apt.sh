@@ -28,7 +28,15 @@ ensure_apt_key() {
 # so a repo added by hand is found too.
 ensure_apt_list() {
     local list_path="$1" deb_line="$2" needle="$3"
-    grep -Rqs "$needle" /etc/apt/sources.list.d/ 2>/dev/null && return 0
+    if [ -f "$list_path" ]; then
+        # Our own file: rewrite when the line changed. Matching only on the
+        # needle meant a repo moving host never reached a machine that already
+        # had the old URL — which stranded danklinux on a desynced mirror.
+        [ "$(cat "$list_path")" = "$deb_line" ] && return 0
+        log "apt source changed, rewriting $list_path"
+    elif grep -Rqs "$needle" /etc/apt/sources.list.d/ 2>/dev/null; then
+        return 0    # added by hand under another filename; leave it alone
+    fi
     echo "$deb_line" | sudo tee "$list_path" >/dev/null
     sudo apt update
 }
