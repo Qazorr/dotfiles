@@ -139,7 +139,14 @@ _login_secure_vt() {
 
 _login_dms() {
     log "Installing greetd + dms-greeter"
-    apt_install dms-greeter || return 1
+    # OBS rebuilds the .deb under the same version; an index older than the
+    # rebuild makes apt reject the download on size ("File has unexpected
+    # size"). A refresh is the whole fix, so don't fail the run over it.
+    if ! apt_install dms-greeter; then
+        warn "dms-greeter wouldn't download — refreshing the package index and retrying once"
+        sudo apt update
+        apt_install dms-greeter || return 1
+    fi
     _login_ensure_greeter_user
 
     # The package's own command: it also disables conflicting display

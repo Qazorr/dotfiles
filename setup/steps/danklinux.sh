@@ -2,9 +2,14 @@
 # DankLinux's own Debian 13 repo (the DankMaterialShell author's). It packages
 # Quickshell and the DMS greeter, neither of which is in Debian proper — see
 # setup/steps/quickshell.sh for what that replaced.
+# --always, because the step is two idempotent file checks and recording it
+# is what broke it: stamped done, it was skipped on every later run, so a
+# danklinux.list rewritten behind our back — by hand, or by upstream's own
+# install snippet, both of which use the MirrorBrain URL — survived forever
+# and every dms-greeter install kept failing on a desynced mirror.
 register_step danklinux \
     --desc "DankLinux apt repo (Quickshell, dms-greeter)" \
-    --group desktop --root --needs prereqs
+    --group desktop --root --always --needs prereqs
 
 # downloadcontent, not download: the latter is MirrorBrain and redirects to
 # a nearby mirror, which can serve a .deb that doesn't match the index yet
