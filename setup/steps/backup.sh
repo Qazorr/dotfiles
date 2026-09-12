@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 register_step backup \
     --desc "Snapshot current dotfiles before changing anything" \
     --group safety --always

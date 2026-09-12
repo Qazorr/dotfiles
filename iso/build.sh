@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build a Debian 13 netinst ISO with this repo already on it. See iso/README.md.
+# Build a Debian 13 netinst ISO that sets this repo up. See iso/README.md.
 #
 #   ./iso/build.sh
 #
-# Ships the private repo as a git bundle (no install-time credentials needed);
-# preseed/late_command clones it into ~/dotfiles. Doesn't run bootstrap.sh —
-# leaves a motd saying to. Adds one boot entry, "Install Debian + dotfiles";
-# partitioning/disk/username stay interactive on purpose.
+# preseed/late_command clones the repo into ~/dotfiles (iso/late.sh); it
+# doesn't run bootstrap.sh, just leaves an motd saying to. Adds one boot
+# entry, "Install Debian + dotfiles"; partitioning, the target disk, the
+# username and the network step all stay interactive on purpose.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,18 +21,6 @@ MIRROR="https://cdimage.debian.org/debian-cd/$DEBIAN_VERSION/amd64/iso-cd"
 
 command -v xorriso >/dev/null 2>&1 \
     || die "xorriso is not installed. sudo apt install xorriso"
-command -v git >/dev/null 2>&1 || die "git is not installed."
-
-# A bundle carries commits, not the working tree — a dirty build ships an ISO
-# quietly missing your latest work.
-if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
-    if [ "${DOTFILES_ISO_ALLOW_DIRTY:-0}" = "1" ]; then
-        warn "working tree is dirty — the ISO will ship the last COMMIT, not what's on disk"
-    else
-        git -C "$REPO" status --short >&2
-        die "uncommitted changes: the ISO would ship the last commit instead. Commit them, or set DOTFILES_ISO_ALLOW_DIRTY=1 if that's what you want."
-    fi
-fi
 
 # --- source ISO ------------------------------------------------------------
 if [ ! -f "$SRC_ISO" ]; then
@@ -76,27 +64,21 @@ for f in isolinux/isolinux.bin boot/grub/efi.img isolinux/isolinux.cfg \
 done
 
 # --- payload ---------------------------------------------------------------
-log "Bundling the repo ($(git -C "$REPO" rev-parse --abbrev-ref HEAD) @ $(git -C "$REPO" log --oneline -1))"
-git -C "$REPO" bundle create "$tree/dotfiles.bundle" --all >/dev/null
-cp "$HERE/preseed.cfg" "$tree/"
+# No repo content on the ISO: late.sh clones it from GitHub at install time,
+# so an image built months ago still lands the current dotfiles.
+cp "$HERE/preseed.cfg" "$HERE/late.sh" "$tree/"
 
 # --- boot menus ------------------------------------------------------------
 # Written to isolinux (BIOS) and grub (UEFI) — which one runs depends on how
 # the machine boots.
 log "Adding boot entries"
-# No auto=true: it's the Automated-install mechanism, and its documented
-# effect is delaying the locale/keyboard questions until a network-fetched
-# preseed has had a chance to answer them (installation guide B.2.3). Ours
-# comes off the CD and we want an interactive install, so it buys nothing.
-#
-# priority=medium asks strictly more than the installer's default of high —
-# it can only add prompts, never skip one.
+# No auto=true: that's the Automated-install mechanism for network-fetched
+# preseeds (guide B.2.3), and this one is on the CD. priority=medium only
+# ever adds prompts relative to the default of high, never skips one.
 common_args="priority=medium"
 
-# Graphical (GTK) frontend, not the text/newt one: a proper wizard — mouse
-# and keyboard, a real network/WiFi picker — instead of the ncurses main-menu
-# screen, which drops back to itself after every step once anything (like
-# loading preseed.cfg) doesn't go perfectly. Same preseed support either way.
+# Graphical (GTK) frontend, not the text/newt one — a real wizard with a
+# working network/WiFi picker. Same preseed support either way.
 #
 # gtk.cfg claims the default before txt.cfg is even included, so an appended
 # `menu default` below would lose and Enter would boot stock, un-preseeded

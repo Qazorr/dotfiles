@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Prompts for step options (register_option, lib/steps.sh) once, up front,
 # for whatever's in the plan — so the run itself never stops to ask again.
 # Plain bash, same reasoning as lib/picker.sh: no whiptail/dialog/fzf.
@@ -17,7 +18,7 @@ resolve_step_options() {
         fi
 
         default="${OPTION_DEFAULT[$var]}"
-        local -a choices=(${OPTION_CHOICES[$var]})
+        local -a choices=(); mapfile -t choices <<<"${OPTION_CHOICES[$var]}"
         if [ ! -t 0 ] || [ "$yes" = "1" ]; then
             log "$var not set — using the default: $default"
             export "$var=$default"

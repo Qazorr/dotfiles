@@ -1,7 +1,7 @@
+# shellcheck shell=bash
 # `./bootstrap.sh --pick`. Sets PICKED; returns 1 if the user backed out.
 # Plain bash, no whiptail/dialog/fzf — runs on tty1 before curl exists.
 
-# Every other step assumes core ran, so it's locked rather than offered.
 _pick_locked() { [ "${STEP_GROUP[$1]}" = "core" ]; }
 
 _pick_render() {
@@ -35,6 +35,7 @@ TXT
     printf '  \033[1mEnter\033[0m   run the ticked steps          q  quit\n\n'
 }
 
+# shellcheck disable=SC2034  # s2 is a nameref, assigned through
 _pick_set_group() {
     local -n s2=$1; local group="$2" value="$3" i
     for i in "${!STEPS[@]}"; do
@@ -66,7 +67,6 @@ pick_steps() {
             "")  break ;;
             q|Q) return 1 ;;
         esac
-        # A line can carry several commands ("1 4 g dev").
         local -a toks; read -r -a toks <<<"$line"
         i=0
         while [ $i -lt ${#toks[@]} ]; do
@@ -87,7 +87,6 @@ pick_steps() {
                     if [[ " ${GROUP_ORDER[*]} " != *" $grp "* ]]; then
                         warn "no such group: ${grp:-<none>} (have: ${GROUP_ORDER[*]})"
                     else
-                        # Anything off -> turn the group on, else all off.
                         local any_off=0
                         for s in "${!STEPS[@]}"; do
                             [ "${STEP_GROUP[${STEPS[$s]}]}" = "$grp" ] \

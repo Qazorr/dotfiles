@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # `./bootstrap.sh --doctor` — check this machine against what the repo expects,
 # changing nothing. Every check here is a mistake that actually happened.
 
@@ -15,7 +16,6 @@ _doc_check_writethrough() {
     _doc_head "Stow writethrough (files that landed in the repo)"
     local untracked tracked pkg found=0 f
 
-    # Untracked files inside a stow package: something wrote through a symlink.
     untracked="$(git -C "$REPO" ls-files --others --exclude-standard || true)"
     if [ -z "$untracked" ]; then
         _doc_ok "no untracked files anywhere in the repo"
@@ -269,9 +269,10 @@ _doc_check_lint() {
         _doc_ok "shellcheck not installed (./bootstrap.sh cli) — skipped"
         return 0
     fi
-    local out n
-    out="$(cd "$REPO" && shellcheck --severity=warning --external-sources \
-        bootstrap.sh lib/*.sh setup/steps/*.sh scripts/.local/bin/* 2>&1 || true)"
+    # scripts/.local/bin holds a Python file too; shellcheck errors on it.
+    local out n sh_scripts=()
+    mapfile -t sh_scripts < <(grep -lE '^#!.*(bash|sh)' "$REPO"/scripts/.local/bin/* 2>/dev/null)
+    out="$(cd "$REPO" && shellcheck --severity=warning --external-sources bootstrap.sh lib/*.sh setup/steps/*.sh iso/*.sh vm/*.sh "${sh_scripts[@]}" 2>&1 || true)"
     n="$(printf '%s' "$out" | grep -c '^In .* line ' || true)"
     if [ "${n:-0}" -eq 0 ]; then
         _doc_ok "shellcheck is clean"

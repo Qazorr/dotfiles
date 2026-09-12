@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 register_step docker \
     --desc "Docker Engine + Compose/Buildx plugins, from Docker's own apt repo" \
     --group dev --root --needs prereqs \

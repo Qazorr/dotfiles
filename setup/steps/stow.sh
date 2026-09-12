@@ -1,15 +1,14 @@
+# shellcheck shell=bash
 register_step stow \
     --desc "Symlink the dotfiles into \$HOME" \
     --group core --always
 
 step_stow() {
     log "Stowing dotfiles"
-    cd "$REPO"
+    cd "$REPO" || die "can't cd to $REPO"
 
-    # stow aborts on a target that's already a real file (oh-my-zsh's own
-    # .zshrc, on a fresh machine), killing the run under `set -e`. Move
-    # conflicts aside first — not `stow --adopt`, which would pull the
-    # foreign contents INTO this repo.
+    # stow aborts on a target that's already a real file (oh-my-zsh's .zshrc).
+    # Move those aside — not `stow --adopt`, which pulls them INTO the repo.
     local pkg rel target moved=0
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || continue

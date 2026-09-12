@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Follows JaKooLit's Debian-Hyprland install-scripts/nvidia.sh, plus the
 # driver-variant selection from its successor, LinuxBeginnings/Debian-Hyprland.
 # --optional so a fresh install can't black-screen on it unattended; run by
@@ -33,8 +34,6 @@ _nvidia_present() {
         | grep -q '\[10de:'
 }
 
-# debian: nvidia-driver (Debian repo). open: nvidia-open, nvidia: cuda-drivers
-# (both NVIDIA's own CUDA repo — see register_option above). nouveau: revert.
 _nvidia_mode() {
     local m="${DOTFILES_NVIDIA_MODE:-$NVIDIA_MODE_DEFAULT}"
     case "$m" in

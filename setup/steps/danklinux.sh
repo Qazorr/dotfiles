@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # DankLinux's own Debian 13 repo (the DankMaterialShell author's). It packages
 # Quickshell and the DMS greeter, neither of which is in Debian proper — see
 # setup/steps/quickshell.sh for what that replaced.

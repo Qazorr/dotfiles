@@ -1,7 +1,9 @@
+# shellcheck shell=bash
 # The step registry: each setup/steps/<name>.sh declares its own metadata, so
 # bootstrap.sh only owns the run order. steps_validate() turns drift into a
 # startup error rather than a silent bug.
 
+# shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
 declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=() \
            STEP_ALWAYS=() STEP_OPTIONAL=()
 
@@ -55,6 +57,7 @@ step_is_optional() { [ "${STEP_OPTIONAL[$1]:-0}" = "1" ]; }
 # reads — not by step name, so two steps sharing a var collide loudly instead
 # of silently. resolve_step_options() (lib/options.sh) asks for these once,
 # up front, for whatever ends up in the plan.
+# shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
 declare -A OPTION_STEP=() OPTION_PROMPT=() OPTION_CHOICES=() OPTION_DEFAULT=()
 OPTION_VARS=()   # registration order, so prompts come out in a stable order
 
@@ -83,12 +86,13 @@ register_option() {
     [ -n "$default" ]       || die "register_option $step $var: --default is required"
     OPTION_STEP[$var]="$step"
     OPTION_PROMPT[$var]="$prompt"
-    OPTION_CHOICES[$var]="${choices[*]}"
+    # One choice per line, not space-joined: labels contain spaces, and
+    # splitting those back on IFS turned 4 choices into 13 one-word entries.
+    OPTION_CHOICES[$var]="$(printf '%s\n' "${choices[@]}")"
     OPTION_DEFAULT[$var]="$default"
     OPTION_VARS+=("$var")
 }
 
-# 0 = all present, 1 = something missing, 2 = no probe declared.
 step_installed() {
     local list="${STEP_PROVIDES[$1]:-}" p
     [ -n "$list" ] || return 2
@@ -120,7 +124,6 @@ steps_resolve() {
     return 0
 }
 
-# Which of $@ came from --needs rather than being asked for.
 steps_added() {
     local requested="$1"; shift
     local s

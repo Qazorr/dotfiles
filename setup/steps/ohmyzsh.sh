@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 register_step ohmyzsh \
     --desc "oh-my-zsh, keeping this repo's .zshrc, + autosuggestions/highlighting" \
     --group shell --needs prereqs \
