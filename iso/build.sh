@@ -84,14 +84,14 @@ cp "$HERE/preseed.cfg" "$tree/"
 # Written to isolinux (BIOS) and grub (UEFI) — which one runs depends on how
 # the machine boots.
 log "Adding boot entries"
-# priority=medium, not high: wireless ESSID/passphrase questions are medium
-# priority, and high silently skips them — DHCP then never gets to associate,
-# which shows up as "network autoconfiguration failed" with no way to enter
-# WiFi credentials. Priority only gates unanswered questions; everything this
-# preseed.cfg actually answers (locale, mirror, packages, …) stays silent
-# either way, and critical ones (partitioning, username) already prompt
-# regardless of priority — see iso/README.md.
-common_args="auto=true priority=medium"
+# No auto=true: it's the Automated-install mechanism, and its documented
+# effect is delaying the locale/keyboard questions until a network-fetched
+# preseed has had a chance to answer them (installation guide B.2.3). Ours
+# comes off the CD and we want an interactive install, so it buys nothing.
+#
+# priority=medium asks strictly more than the installer's default of high —
+# it can only add prompts, never skip one.
+common_args="priority=medium"
 
 # Graphical (GTK) frontend, not the text/newt one: a proper wizard — mouse
 # and keyboard, a real network/WiFi picker — instead of the ncurses main-menu

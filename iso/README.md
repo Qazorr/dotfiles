@@ -27,14 +27,12 @@ One entry, `Install Debian + dotfiles`, set as the menu default (isolinux and
 GRUB). Boots the **graphical (GTK) installer**, not the text/ncurses one —
 `install.amd/gtk/{vmlinuz,initrd.gz}` — for an actual wizard flow (mouse,
 proper network/WiFi picker) instead of the main-menu-driven text frontend.
-Preseeds locale, keymap, network, mirror, timezone, tasksel and packages, and
-clones the repo into `~/dotfiles`.
+Preseeds locale, keymap, mirror, timezone, tasksel and packages, and clones
+the repo into `~/dotfiles`.
 
-**Partitioning, the target disk and your username stay interactive** — no
-unattended variant, on purpose. **So does WiFi**, if `netcfg/choose_interface`
-picks a wireless interface: `priority=medium` (not `high`) means the
-installer stops to ask for an ESSID and passphrase instead of failing DHCP
-silently and showing "network autoconfiguration failed".
+**Partitioning, the target disk, your username, the hostname and the network
+step all stay interactive** — no unattended variant, on purpose. The network
+one matters for WiFi; see below.
 
 The menu's speech-synthesis countdown boots a plain un-preseeded installer if
 you let it lapse — press a key when the menu appears.
@@ -49,6 +47,28 @@ cd ~/dotfiles && ./bootstrap.sh
 `bootstrap.sh` skips the `nvidia` step by default now — see the README's
 [NVIDIA](../README.md#nvidia--opt-in) section before running it on real
 hardware.
+
+## WiFi during the install
+
+`preseed.cfg` deliberately leaves `netcfg/choose_interface` unset. Debian's
+own example sets it to `auto`, documented as: *"netcfg will choose an
+interface that has link if possible. This makes it skip displaying a list if
+there is more than one interface."* On a laptop with an empty ethernet port
+that picks the wired NIC, DHCP fails, and the wireless card is never offered
+— "network autoconfiguration failed" with no ESSID prompt, while the stock
+"Graphical install" entry on the same ISO works fine because it asks. Note a
+preseeded answer is used whatever `priority` is set to, so raising priority
+does not bring the question back; the line has to go.
+
+The boot entry also doesn't pass `auto=true` — that's the Automated-install
+mechanism, for network-fetched preseeds, and we want an interactive install.
+
+If a machine genuinely has no wireless interface (its chip isn't covered by
+the media's firmware), **USB-tether a phone**, or use a dongle or a cable:
+tethering enumerates as a normal CDC/RNDIS ethernet device with an in-tree
+driver, so DHCP just works. Afterwards `apt install firmware-realtek` (or
+whatever `lspci -k` and `dmesg | grep -i firmware` name) gets WiFi going on
+the installed system.
 
 ## No Linux box handy? Build it on CI
 
@@ -96,16 +116,6 @@ sudo dd if=vm/iso/debian-13.6.0-amd64-dotfiles.iso of=/dev/sdX bs=4M status=prog
 | `DOTFILES_NETINST_ISO` | use a netinst you already have |
 | `DOTFILES_ISO_OUT` | where to write the result |
 | `DOTFILES_ISO_ALLOW_DIRTY=1` | build anyway with a dirty tree, shipping the last commit |
-
-### WiFi during the install
-
-The netinst media's bundled firmware doesn't cover every WiFi chip — an
-RTL8822CE shows up as no wireless interface at all, so the network step
-dead-ends with "autoconfiguration failed" and no ESSID prompt. **USB-tether
-a phone** (or use a dongle or a cable): tethering enumerates as a normal
-CDC/RNDIS ethernet device with an in-tree driver, so DHCP just works.
-Afterwards, `apt install firmware-realtek` (or whatever `lspci -k` and
-`dmesg | grep -i firmware` name) gets WiFi going on the installed system.
 
 `preseed.cfg` keeps its keymap in step with `hypr/.config/hypr/conf.d/input.conf`
 (`us`), and the timezone matches this machine (`Europe/Warsaw`). Both are
