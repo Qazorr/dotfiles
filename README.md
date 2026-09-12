@@ -42,8 +42,8 @@ Takes 15-20 minutes. Reboot afterwards — `greetd` comes up, pick **Hyprland**
 (not "Hyprland (uwsm-managed)"), and the reboot picks up your new groups and
 login shell.
 
-**From bare metal**, `./iso/build.sh` builds a Debian netinst image that does
-the install and the clone for you — see [iso/README.md](iso/README.md).
+On a fresh machine, install Debian 13 with the stock installer first (the
+graphical one; pick your WiFi network when it asks), then run the above.
 
 Re-run `./bootstrap.sh` any time; it records what it has already done and
 skips it. Editing a step re-runs just that step.
@@ -106,7 +106,6 @@ read live from `hyprctl binds -j`, so it can't drift from this table.
 - [docs/bootstrap.md](docs/bootstrap.md) — how the installer works, and how to add a step
 - [docs/nvidia.md](docs/nvidia.md) — driver choices, Secure Boot, hybrid graphics
 - [docs/reference.md](docs/reference.md) — layout, login, backups, screenshots, theming, window rules
-- [iso/README.md](iso/README.md) — building the install image
 - [vm/README.md](vm/README.md) — the throwaway test VM
 
 ## License

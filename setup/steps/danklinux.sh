@@ -6,7 +6,10 @@ register_step danklinux \
     --desc "DankLinux apt repo (Quickshell, dms-greeter)" \
     --group desktop --root --needs prereqs
 
-DANKLINUX_REPO=https://download.opensuse.org/repositories/home:/AvengeMedia:/danklinux/Debian_13
+# downloadcontent, not download: the latter is MirrorBrain and redirects to
+# a nearby mirror, which can serve a .deb that doesn't match the index yet
+# ("File has unexpected size", apt refuses it). This host serves directly.
+DANKLINUX_REPO=https://downloadcontent.opensuse.org/repositories/home:/AvengeMedia:/danklinux/Debian_13
 
 step_danklinux() {
     log "Adding the DankLinux apt repo"

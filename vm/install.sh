@@ -4,13 +4,11 @@
 # rather than back into the installer. Use run.sh from then on.
 # Start over with: rm -f vm/disk/debian13.qcow2
 #
-# DOTFILES_TEST_ISO points this at a different image — that's how iso/build.sh's
-# output gets tested before it goes anywhere near real hardware.
+# DOTFILES_TEST_ISO points this at a different image.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-# Resolved before the cd below, so a path relative to the repo root works —
-# that's how iso/build.sh and both READMEs spell it.
+# Resolved before the cd below, so a path relative to the repo root works.
 ISO="${DOTFILES_TEST_ISO:-$HERE/iso/debian-13.6.0-amd64-netinst.iso}"
 [ -f "$ISO" ] || [ ! -f "$HERE/$ISO" ] || ISO="$HERE/$ISO"
 [ -f "$ISO" ] || { echo "no such ISO: $ISO" >&2; exit 1; }
