@@ -21,7 +21,7 @@ NVIDIA step follows
 | [Hyprland](https://hypr.land) | The compositor, plus [hypridle](https://github.com/hyprwm/hypridle) and [hyprlock](https://github.com/hyprwm/hyprlock) for idle/lock |
 | [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) | Bar, launcher, control centre, notifications — running on [Quickshell](https://quickshell.org) |
 | [matugen](https://github.com/InioX/matugen) | Wallpaper → Material palette, driving the theming |
-| [greetd](https://sr.ht/~kennylevinsen/greetd/) + dms-greeter | Login screen, themed to match the shell |
+| [greetd](https://sr.ht/~kennylevinsen/greetd/) | Login screen — the step asks whether you want dms-greeter (themed) or [tuigreet](https://github.com/apognu/tuigreet) (plain, from Debian) |
 | [hyprmon](https://github.com/erans/hyprmon) | Monitor layout and profiles |
 | [Quick Capture](https://github.com/hthienloc/dms-quick-capture) | Screenshots with an annotation editor |
 | [kitty](https://sw.kovidgoyal.net/kitty/) · [fastfetch](https://github.com/fastfetch-cli/fastfetch) · [cava](https://github.com/karlstav/cava) | Terminal, banner, audio visualizer |
