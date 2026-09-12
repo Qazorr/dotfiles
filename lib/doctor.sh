@@ -146,7 +146,7 @@ _doc_check_state() {
 # systemd gives up on greetd, a 2D-only device leaves Hyprland on llvmpipe.
 _doc_check_session() {
     _doc_head "Graphical session"
-    local n missing drv
+    local n missing drv vt
 
     if command -v Hyprland >/dev/null 2>&1; then
         if Hyprland --verify-config 2>&1 | grep -q 'config ok'; then
@@ -177,6 +177,20 @@ _doc_check_session() {
             _doc_bad "greeter user is not in: ${missing% } — greetd will restart-loop (./bootstrap.sh login)"
         else
             _doc_ok "greeter user can reach the DRM devices"
+        fi
+    fi
+
+    # greetd's VT has to be one its unit blocks a getty on, or the getty takes
+    # the console back mid-session. Debian's unit names tty7; dms-greeter
+    # writes vt = 1. Costs a whole boot to notice, so check it here.
+    if [ -f /etc/greetd/config.toml ]; then
+        vt="$(sed -n 's/^[[:space:]]*vt[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' /etc/greetd/config.toml | head -1)"
+        if [ -z "$vt" ]; then
+            _doc_note "greetd has no fixed vt — can't tell whether a getty shares it"
+        elif systemctl show greetd.service -p Conflicts 2>/dev/null | grep -q "getty@tty$vt\.service"; then
+            _doc_ok "greetd has VT $vt to itself"
+        else
+            _doc_bad "greetd wants VT $vt but its unit doesn't conflict with getty@tty$vt — the getty steals the console after login (./bootstrap.sh login)"
         fi
     fi
 
