@@ -39,10 +39,8 @@ export NEEDRESTART_MODE=a
 export DMS_PRIVESC=sudo
 APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-confdef")
 
-# So this run sees a binary an earlier step just installed.
 export PATH="$DOTFILES_PATH_PREFIX:$PATH"
 
-# Used by step_stow and by --doctor's writethrough check.
 STOW_PACKAGES=(hypr kitty zsh scripts fastfetch cava wallpaper dms)
 
 # register_step runs at source time, so this must follow lib/steps.sh.
@@ -60,10 +58,8 @@ STEPS=(
     uv krkcommute docker devtools fonts groups stow summary
 )
 
-# `core` is never optional: locked in the picker, implicit in every profile.
 GROUP_ORDER=(core safety shell desktop apps dev personal)
 
-# Named sets of groups, on top of core.
 declare -A PROFILES=(
     [full]="safety shell desktop apps dev personal"
     [desktop]="safety shell desktop"
@@ -78,11 +74,8 @@ steps_validate
 # ---------------------------------------------------------------------------
 SUDO_KEEPALIVE_PID=""
 
-# Scratch dirs steps ask for, removed once on exit. Not a `trap ... RETURN`
-# inside the step: that trap stays registered after the step returns, fires
-# again on the caller's return, and `set -u` kills the run on the now-gone
-# local. Takes the variable to fill rather than printing the path — printing
-# would run this in a subshell, where the append below reaches nothing.
+# Not a `trap ... RETURN` in the step: it stays registered and fires on the
+# caller's return, where `set -u` kills the run on the now-gone local.
 SCRATCH_DIRS=()
 scratch_dir() {
     local -n _dir="$1"
@@ -90,8 +83,7 @@ scratch_dir() {
     SCRATCH_DIRS+=("$_dir")
 }
 
-# Every run is also logged to a file — a 40-minute install scrolls the
-# interesting part off-screen long before it finishes.
+# A 40-minute install scrolls the interesting part off-screen.
 LOG_DIR="$DOTFILES_STATE_DIR/logs"
 LOG_FILE=""
 LOG_TEE_PID=""
@@ -101,8 +93,7 @@ start_logging() {
         || { warn "can't write to $LOG_DIR — this run won't be logged"; return 0; }
     # $$ too, so two runs in the same second don't share one interleaved file.
     LOG_FILE="$LOG_DIR/bootstrap-$(date +%Y%m%d-%H%M%S)-$$.log"
-    # stdout and stderr both, same order as the terminal. cleanup() waits for
-    # this tee, or an early exit (--dry-run, die()) drops the last line.
+    # cleanup() waits for this tee, or an early exit drops the last line.
     exec > >(tee -a "$LOG_FILE") 2>&1
     LOG_TEE_PID=$!
     log "Logging this run to $LOG_FILE"
@@ -142,8 +133,7 @@ ensure_sudo() {
     log "Installing system packages needs sudo — asking once, now, so the rest runs unattended."
     sudo -v || die "sudo authentication failed"
 
-    # A full apt upgrade or the hyprmon build can outlast sudo's 15-minute
-    # timeout with no sudo call in between; refresh it in the background.
+    # A long apt upgrade can outlast sudo's 15-minute timeout.
     ( while true; do
           sleep 50
           kill -0 "$$" 2>/dev/null || exit 0
@@ -162,8 +152,7 @@ check_environment() {
     command -v sudo >/dev/null || die "sudo is not installed. Install it and add yourself to the sudo group first."
     command -v apt  >/dev/null || die "apt not found — is this really Debian?"
 
-    # getent, not curl: a fresh install has no curl yet, and this is where a
-    # DNS-less machine should fail with one clear line, not 20 apt errors.
+    # getent, not curl: a fresh install has no curl yet.
     if ! getent hosts deb.debian.org >/dev/null 2>&1; then
         die "can't resolve deb.debian.org — this machine has no working DNS. Check 'ip -br addr' and /etc/resolv.conf."
     fi
@@ -201,7 +190,6 @@ list_steps() {
     printf '  The trailing note is what a previous run recorded, in %s\n' "$STAMP_DIR"
 }
 
-# The run-record note at the end of a --list line.
 _list_ran() {
     local rc=0
     step_is_always "$1" && { printf '\033[2m  (always runs)\033[0m'; return 0; }
@@ -265,8 +253,7 @@ run_steps() {
         printf '\033[1;35m[%d/%d]\033[0m %s\n' "$i" "$total" "$s"
         STAMP_SKIP=0
         if "step_$s"; then
-            # --always steps are never recorded; nor is one that called
-            # stamp_skip, meaning it returned 0 without finishing.
+            # --always steps aren't recorded; nor is one that called stamp_skip.
             if ! step_is_always "$s" && [ "$STAMP_SKIP" != "1" ]; then
                 step_stamp_write "$s" || warn "ran $s but couldn't record it in $STAMP_DIR"
             fi
@@ -297,12 +284,10 @@ FORCE=0
 # NAMED holds the steps named literally on the command line.
 declare -A NAMED=()
 
-# Split a plan into PENDING and SKIPPED, by run record.
 plan_pending() {
     PENDING=(); SKIPPED=()
     local s rc
     for s in "$@"; do
-        # Naming a step means run it now, record or no record.
         if [ "$FORCE" = "1" ] || [ -n "${NAMED[$s]+x}" ] || step_is_always "$s"; then
             PENDING+=("$s"); continue
         fi
@@ -366,7 +351,7 @@ main() {
             --profile)
                 [ -n "${2:-}" ] || die "--profile needs a name (${!PROFILES[*]})"
                 [ -n "${PROFILES[$2]:-}" ] || die "unknown profile: $2 (have: ${!PROFILES[*]})"
-                mode=set
+                mode="set"
                 for grp in core ${PROFILES[$2]}; do
                     for s in "${STEPS[@]}"; do
                         [ "${STEP_GROUP[$s]}" = "$grp" ] && requested+=("$s")
@@ -376,7 +361,7 @@ main() {
             --group)
                 [ -n "${2:-}" ] || die "--group needs a name (${GROUP_ORDER[*]})"
                 [[ " ${GROUP_ORDER[*]} " == *" $2 "* ]] || die "unknown group: $2 (have: ${GROUP_ORDER[*]})"
-                mode=set
+                mode="set"
                 for s in "${STEPS[@]}"; do
                     [ "${STEP_GROUP[$s]}" = "$2" ] && requested+=("$s")
                 done
@@ -384,7 +369,7 @@ main() {
             -*)            die "unknown option: $1 (see ./bootstrap.sh --help)" ;;
             *)
                 step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
-                mode=set; requested+=("$1"); NAMED[$1]=1; shift ;;
+                mode="set"; requested+=("$1"); NAMED[$1]=1; shift ;;
         esac
     done
 
@@ -400,13 +385,11 @@ main() {
                  done
                  [ ${#requested[@]} -gt 0 ] || { log "Nothing missing."; exit 0; } ;;
         set)     ;;
-        # Nothing chosen: everything. The records below cut it back.
         *)       requested=("${STEPS[@]}") ;;
     esac
 
-    # Optional steps (nvidia) only run when named on the command line — never
-    # picked up by a plain run, --profile, --group or --missing. --pick is
-    # exempt: it shows them too, just unticked by default (see pick_steps).
+    # Optional steps run only when named. --pick is exempt: it shows them
+    # unticked instead.
     if [ "$pick" != "1" ]; then
         local optkept=() s2
         for s2 in "${requested[@]}"; do
@@ -432,9 +415,7 @@ main() {
     plan_pending "${plan[@]}"
     [ ${#SKIPPED[@]} -gt 0 ] && log "Already done, skipping: ${SKIPPED[*]}"
 
-    # Nothing left to install means nothing to roll back from — don't spend
-    # ten minutes and several GB snapshotting it. (The safety steps are
-    # --always so that a run which DOES install always gets its snapshot.)
+    # Nothing to install means nothing to roll back from — skip the snapshots.
     for s in "${PENDING[@]}"; do
         [ "${STEP_GROUP[$s]}" = "safety" ] && continue
         step_is_always "$s" || real=1
@@ -450,7 +431,6 @@ main() {
     [ ${#plan[@]} -gt 0 ] || { log "Everything is already done. Redo it all with --force."; exit 0; }
     [ "$real" = "0" ] && log "Nothing new to install — just re-stowing."
 
-    # Only worth saying for prerequisites that survived the skip filter.
     still=()
     for s in "${added[@]}"; do
         [[ " ${plan[*]} " == *" $s "* ]] && still+=("$s")

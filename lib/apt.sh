@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # apt helpers. bootstrap.sh defines APT_OPTS.
 
 apt_install() { sudo apt install "${APT_OPTS[@]}" "$@"; }

@@ -19,6 +19,7 @@ cd "$(dirname "$0")"
 VM_GPU="${DOTFILES_VM_GPU:-virtio-vga-gl}"
 VM_DISPLAY="${DOTFILES_VM_DISPLAY:-gtk,gl=on}"
 
+# shellcheck disable=SC2054  # commas belong to qemu's argument syntax
 args=(
   -enable-kvm
   -machine q35

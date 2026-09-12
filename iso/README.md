@@ -1,6 +1,6 @@
 # Install ISO
 
-A Debian 13 netinst image with this repo already on it.
+A Debian 13 netinst image that installs Debian and sets this repo up.
 
 ```
 sudo apt install xorriso
@@ -8,18 +8,20 @@ sudo apt install xorriso
 ```
 
 Downloads Debian's netinst (verifying its published SHA256), unpacks it, adds
-a preseed and a git bundle of this repo, and repacks it bootable on both BIOS
-and UEFI. Output lands in `vm/iso/` (gitignored).
+a preseed and a post-install script, and repacks it bootable on both BIOS and
+UEFI. Output lands in `vm/iso/` (gitignored).
 
-## Why a bundle instead of a download
+## What it actually does
 
-The repo is private, so the installer can't fetch it — nothing to
-authenticate with on a machine that doesn't exist yet. `preseed/late_command`
-clones the bundle into `~/dotfiles` and repoints `origin` at the SSH URL, so
-once you add a key, `git pull` works normally.
+Preseeds the boring installer questions, then `preseed/late_command` runs
+[`late.sh`](late.sh), which clones the repo into `~/dotfiles` and repoints
+`origin` at the SSH URL so pushing works once a key is on the machine. If the
+clone fails it says so in the motd rather than pointing at a directory that
+isn't there.
 
-A bundle holds commits, not your working tree. `build.sh` refuses to run with
-uncommitted changes for that reason.
+No repo content is baked into the image, so an ISO built months ago still
+installs the current dotfiles — and a dirty working tree doesn't matter when
+building one.
 
 ## Boot entry
 
@@ -27,8 +29,7 @@ One entry, `Install Debian + dotfiles`, set as the menu default (isolinux and
 GRUB). Boots the **graphical (GTK) installer**, not the text/ncurses one —
 `install.amd/gtk/{vmlinuz,initrd.gz}` — for an actual wizard flow (mouse,
 proper network/WiFi picker) instead of the main-menu-driven text frontend.
-Preseeds locale, keymap, mirror, timezone, tasksel and packages, and clones
-the repo into `~/dotfiles`.
+Preseeds locale, keymap, mirror, timezone, tasksel and packages.
 
 **Partitioning, the target disk, your username, the hostname and the network
 step all stay interactive** — no unattended variant, on purpose. The network
@@ -88,10 +89,6 @@ gh run watch --exit-status $(gh run list --workflow=build-iso.yml -L1 --json dat
 gh run download --name debian-dotfiles-iso
 ```
 
-It builds from whatever is committed and pushed on `--ref` — same
-uncommitted-changes rule as running `build.sh` locally, just enforced by
-pushing rather than `git status`.
-
 ## Test it before real hardware
 
 ```
@@ -115,7 +112,6 @@ sudo dd if=vm/iso/debian-13.6.0-amd64-dotfiles.iso of=/dev/sdX bs=4M status=prog
 | `DOTFILES_DEBIAN_VERSION` | point at a different point release (default `13.6.0`) |
 | `DOTFILES_NETINST_ISO` | use a netinst you already have |
 | `DOTFILES_ISO_OUT` | where to write the result |
-| `DOTFILES_ISO_ALLOW_DIRTY=1` | build anyway with a dirty tree, shipping the last commit |
 
 `preseed.cfg` keeps its keymap in step with `hypr/.config/hypr/conf.d/input.conf`
 (`us`), and the timezone matches this machine (`Europe/Warsaw`). Both are

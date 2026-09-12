@@ -71,9 +71,8 @@ DOTFILES_SKIP_BACKUP=1 DOTFILES_SKIP_TIMESHIFT=1 ./bootstrap.sh
 ```
 
 For a genuinely independent clone in the guest instead (e.g. to commit
-VM-only test changes): `git bundle create /tmp/dotfiles.bundle --all` on the
-host, copy it in via the 9p mount, `git clone /mnt/.../dotfiles.bundle
-~/dotfiles` in the guest. Not needed for the normal workflow.
+VM-only test changes), just `git clone https://github.com/Qazorr/dotfiles.git
+~/dotfiles` there. Not needed for the normal workflow.
 
 ## Snapshots
 

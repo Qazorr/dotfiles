@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 register_step summary \
     --desc "Print what to do next" \
     --group core --always

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # What every other step assumes exists; Debian's minimal install has none of
 # it. These used to arrive incidentally with the `desktop` step, so
 # `bootstrap.sh devtools` on a fresh machine failed on a missing curl.

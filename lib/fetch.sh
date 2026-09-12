@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Install a single binary from a GitHub release tarball. Only that shape —
 # DMS's tarball (binary plus QML tree) and the build-from-source steps are
 # hand-written.

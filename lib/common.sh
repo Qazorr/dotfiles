@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced by bootstrap.sh and scripts/.local/bin/*. Not a stow package.
 
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }

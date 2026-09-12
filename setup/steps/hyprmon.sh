@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 HYPRMON_VERSION=v0.0.17
 
 register_step hyprmon \

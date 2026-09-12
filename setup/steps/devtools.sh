@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Not packaged for Debian, so fetched as GitHub release tarballs.
 # /usr/local/bin rather than ~/.local/bin, which is a stow symlink into this
 # repo — same as hyprmon.

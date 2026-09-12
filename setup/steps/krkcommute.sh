@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # A private repo with no version tags, so this pulls rather than pinning.
 register_step krkcommute \
     --desc "krk-commute: transit-departure bar widget (private repo)" \
@@ -5,7 +6,6 @@ register_step krkcommute \
     --provides "$HOME/.local/share/krk-commute/bin/krk-commute"
 
 step_krkcommute() {
-    # ~/Projects is this machine's convention, not a krk-commute requirement.
     local dir="${DOTFILES_KRKCOMMUTE_DIR:-$HOME/Projects/krk-commute}"
 
     if [ -d "$dir/.git" ]; then
@@ -14,7 +14,6 @@ step_krkcommute() {
     else
         log "Cloning krk-commute"
         mkdir -p "$(dirname "$dir")"
-        # Not fatal to the rest of the run if auth isn't set up yet.
         if command -v gh >/dev/null 2>&1; then
             gh repo clone Qazorr/krk-commute "$dir" || { warn "couldn't clone krk-commute (private repo — need gh or SSH auth), skipping"; stamp_skip; return 0; }
         else
