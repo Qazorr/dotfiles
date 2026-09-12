@@ -52,9 +52,7 @@ pick_steps() {
         for s in "$@"; do [ "$s" = "${STEPS[$i]}" ] && sel[$i]=1; done
         # Optional steps (nvidia) start unticked even in a default
         # "everything" selection — NAMED tracks what was actually typed.
-        if step_is_optional "${STEPS[$i]}" && [ -z "${NAMED[${STEPS[$i]}]+x}" ]; then
-            sel[$i]=0
-        fi
+        step_auto_excluded "${STEPS[$i]}" && sel[$i]=0
         _pick_locked "${STEPS[$i]}" && sel[$i]=1
     done
 

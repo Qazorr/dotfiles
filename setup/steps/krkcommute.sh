@@ -15,11 +15,10 @@ step_krkcommute() {
         log "Cloning krk-commute"
         mkdir -p "$(dirname "$dir")"
         if command -v gh >/dev/null 2>&1; then
-            gh repo clone Qazorr/krk-commute "$dir" || { warn "couldn't clone krk-commute (private repo — need gh or SSH auth), skipping"; stamp_skip; return 0; }
+            gh repo clone Qazorr/krk-commute "$dir"
         else
-            git clone git@github.com:Qazorr/krk-commute.git "$dir" \
-                || { warn "couldn't clone krk-commute (private repo — need gh or SSH auth), skipping"; stamp_skip; return 0; }
-        fi
+            git clone git@github.com:Qazorr/krk-commute.git "$dir"
+        fi || { warn "couldn't clone krk-commute (private repo — need gh or SSH auth), skipping"; stamp_skip; return 0; }
     fi
 
     command -v uv >/dev/null 2>&1 || { warn "uv not on PATH — run the uv step first, skipping krk-commute"; stamp_skip; return 0; }
@@ -45,10 +44,7 @@ step_krkcommute() {
     # symlinked so it tracks that repo.
     mkdir -p "$HOME/.config/DankMaterialShell/plugins"
     ln -sfn "$dir/plugin-dms" "$HOME/.config/DankMaterialShell/plugins/krkCommute"
-    if pgrep -x qs >/dev/null 2>&1 && command -v dms >/dev/null 2>&1; then
-        dms ipc call plugin-scan scan >/dev/null 2>&1 || true
-        dms ipc call plugins enable krkCommute >/dev/null 2>&1 || true
-    fi
+    dms_enable_plugin krkCommute
 
     if [ ! -f "$HOME/.config/krk-commute/config.toml" ]; then
         warn "krk-commute has no saved routes yet — run 'krk-commute configure' to add some (the widget shows a warning icon until then, which is correct, not broken)."

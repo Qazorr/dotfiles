@@ -16,21 +16,14 @@ KEEP="${DOTFILES_BACKUP_KEEP:-10}"
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../.." && pwd)"
 # shellcheck source=../../../lib/common.sh
 source "$REPO/lib/common.sh"
+# shellcheck source=../../../lib/paths.sh
+source "$REPO/lib/paths.sh"
 
 [ -f "$REPO/bootstrap.sh" ] || die "can't locate the dotfiles repo (looked in $REPO)"
 
 # True if $1 resolves into this repo, so it's already version-controlled.
 resolves_into_repo() {
     [[ "$(readlink -f "$1" 2>/dev/null || echo "$1")" == "$REPO"/* ]]
-}
-
-# Top-level dirs that are stow packages (they have a .config/.local inside).
-stow_packages() {
-    for d in "$REPO"/*/; do
-        d="${d%/}"
-        [ -d "$d/.config" ] || [ -d "$d/.local" ] || continue
-        basename "$d"
-    done
 }
 
 # --- listing ---------------------------------------------------------------
@@ -108,7 +101,7 @@ log "Backing up to $DEST"
 : > "$DEST/manifest.txt"
 saved=0
 skipped=0
-for pkg in $(stow_packages); do
+for pkg in "${STOW_PACKAGES[@]}"; do
     while IFS= read -r rel; do
         rel="${rel#./}"
         target="$HOME/$rel"
@@ -149,7 +142,7 @@ if [ -d "$HOME/.config/DankMaterialShell" ]; then
 fi
 
 for extra in \
-    ".zshrc" ".zprofile" ".bashrc" ".profile" \
+    ".bashrc" ".profile" \
     ".config/gtk-3.0/settings.ini" \
     ".config/user-dirs.dirs"
 do

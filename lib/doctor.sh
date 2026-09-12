@@ -212,13 +212,12 @@ _doc_check_session() {
 # apart from Secure Boot blocking it, which is a black screen with no KMS
 # driver at all, not a slow one.
 _doc_check_nvidia() {
-    dpkg -s nvidia-driver >/dev/null 2>&1 || dpkg -s nvidia-open >/dev/null 2>&1 \
-        || dpkg -s cuda-drivers >/dev/null 2>&1 || return 0
+    # Both predicates live in setup/steps/nvidia.sh, which bootstrap.sh has
+    # already sourced — re-implementing them here just lets them drift.
+    [ "$(_nvidia_installed_variant)" != nouveau ] || return 0
     _doc_head "NVIDIA"
     local sb=0
-    if command -v mokutil >/dev/null 2>&1; then
-        mokutil --sb-state 2>/dev/null | grep -qi enabled && sb=1
-    fi
+    _nvidia_secureboot_enabled && sb=1
     if lsmod | grep -q '^nvidia '; then
         _doc_ok "nvidia kernel module is loaded"
     elif [ "$sb" = "1" ]; then
@@ -251,7 +250,8 @@ _doc_check_groups() {
 _doc_check_leftovers() {
     _doc_head "Leftovers"
     local found f
-    found="$(find "$HOME" -maxdepth 4 -name '*.pre-dotfiles' -not -path '*/.cache/*' 2>/dev/null | head -20)"
+    # -prune, not -not -path: the latter still descends into ~/.cache.
+    found="$(find "$HOME" -maxdepth 4         \( -name .cache -o -name .venv -o -name node_modules -o -name .git \) -prune -o         -name '*.pre-dotfiles' -print 2>/dev/null | head -20)"
     if [ -n "$found" ]; then
         _doc_note "pre-existing configs moved aside by the stow step (review, then delete):"
         while IFS= read -r f; do printf '        %s\n' "$f"; done <<<"$found"
@@ -270,14 +270,16 @@ _doc_check_lint() {
         return 0
     fi
     # scripts/.local/bin holds a Python file too; shellcheck errors on it.
-    local out n sh_scripts=()
-    mapfile -t sh_scripts < <(grep -lE '^#!.*(bash|sh)' "$REPO"/scripts/.local/bin/* 2>/dev/null)
-    out="$(cd "$REPO" && shellcheck --severity=warning --external-sources bootstrap.sh lib/*.sh setup/steps/*.sh iso/*.sh vm/*.sh "${sh_scripts[@]}" 2>&1 || true)"
+    local out n
+    local files
+    mapfile -t files < <(cd "$REPO" && git ls-files '*.sh' bootstrap.sh)
+    mapfile -t -O "${#files[@]}" files < <(grep -lE '^#!.*sh' "$REPO"/scripts/.local/bin/* 2>/dev/null)
+    out="$(cd "$REPO" && shellcheck --severity=warning --external-sources "${files[@]}" 2>&1 || true)"
     n="$(printf '%s' "$out" | grep -c '^In .* line ' || true)"
     if [ "${n:-0}" -eq 0 ]; then
         _doc_ok "shellcheck is clean"
     else
-        _doc_note "shellcheck has $n finding(s) — see: shellcheck --severity=warning bootstrap.sh lib/*.sh setup/steps/*.sh"
+        _doc_note "shellcheck has $n finding(s) — see: shellcheck --severity=warning ${files[*]}"
     fi
     return 0
 }

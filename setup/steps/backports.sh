@@ -1,8 +1,7 @@
 # shellcheck shell=bash
 register_step backports \
     --desc "Enable trixie-backports and refresh apt" \
-    --group core --root \
-    --provides /etc/apt/sources.list.d/trixie-backports.list
+    --group core --root
 
 step_backports() {
     log "Ensuring trixie-backports is enabled"

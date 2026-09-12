@@ -11,7 +11,7 @@ DMS_QML="$HOME/.config/quickshell/dms"
 
 register_step dms \
     --desc "DankMaterialShell + dgop, dsearch, matugen" \
-    --group desktop --needs prereqs \
+    --group desktop --needs prereqs quickshell \
     --provides "$HOME/.local/share/dms/bin/dms" "$HOME/.config/quickshell/dms"
 
 step_dms() {
