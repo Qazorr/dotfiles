@@ -43,22 +43,24 @@ vm/                              Throwaway QEMU test VM
 ## Login
 
 
-`greetd` + `dms-greeter`, so the login screen matches the shell. It lists
-whatever is in `/usr/share/wayland-sessions`; pick **Hyprland**, not
-"Hyprland (uwsm-managed)" — the plain entry runs `start-hyprland`, which is
-what this config's `exec-once` autostarts assume.
+The `login` step asks which greeter you want:
 
-`dms-greeter enable` puts it on **VT 7** and disables `getty@tty1`. Worth
-knowing, because it means a greeter that fails to start leaves a black
-screen with no visible console: `Ctrl+Alt+F2` is the way back in. It also
-runs a whole Quickshell compositor as the `greeter` user, so it needs the
-same `qml6-module-*` runtime the shell does — a missing one takes down the
-greeter and the bar together (see `setup/steps/desktop.sh`).
+- **dms-greeter** — themed to match the shell. It runs a whole Quickshell
+  compositor as the `greeter` user, so it needs the same `qml6-module-*`
+  runtime the bar does, and it comes from DankLinux's OBS repo, whose mirrors
+  desync (`File has unexpected size`). Prettier, more to go wrong.
+- **tuigreet** — a plain terminal greeter from Debian proper. No Qt, no GPU
+  requirement, essentially nothing to crash.
 
-`tuigreet` is the lightweight alternative — a terminal greeter with no Qt,
-no GPU requirement, essentially nothing to crash. Only
-`setup/steps/login.sh` changes.
+Either lists whatever is in `/usr/share/wayland-sessions`; pick **Hyprland**,
+not "Hyprland (uwsm-managed)" — the plain entry runs `start-hyprland`, which
+is what this config's `exec-once` autostarts assume.
 
+Set it non-interactively with `DOTFILES_GREETER=tuigreet ./bootstrap.sh login`.
+
+`dms-greeter enable` puts greetd on **VT 7** and disables `getty@tty1`; the
+tuigreet path uses VT 1. Either way a greeter that fails to start leaves a
+black screen with no visible console — `Ctrl+Alt+F2` is the way back in.
 
 ## Backups
 
