@@ -26,7 +26,6 @@ lib/steps.sh                    The step registry
 lib/state.sh                    What has already run
 lib/picker.sh                   --pick's interactive picker
 lib/doctor.sh                   --doctor's checks
-iso/                             Netinst image with this repo baked in
 vm/                              Throwaway QEMU test VM
 ```
 
