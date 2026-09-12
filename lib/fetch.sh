@@ -17,3 +17,11 @@ install_github_release_binary() {
         sudo install -m755 "$tmp/$bin_in_tarball" "$dest"
     fi
 }
+
+# Make DMS pick up a plugin dropped into ~/.config/DankMaterialShell/plugins.
+# No-op unless the shell is running; dms must scan before enable finds it.
+dms_enable_plugin() {
+    pgrep -x qs >/dev/null 2>&1 && command -v dms >/dev/null 2>&1 || return 0
+    dms ipc call plugin-scan scan >/dev/null 2>&1 || true
+    dms ipc call plugins enable "$1" >/dev/null 2>&1 || true
+}

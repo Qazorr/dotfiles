@@ -41,7 +41,6 @@ APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-co
 
 export PATH="$DOTFILES_PATH_PREFIX:$PATH"
 
-STOW_PACKAGES=(hypr kitty zsh scripts fastfetch cava wallpaper dms)
 
 # register_step runs at source time, so this must follow lib/steps.sh.
 for _step_file in "$REPO"/setup/steps/*.sh; do
@@ -311,7 +310,7 @@ main() {
             --list|-l)     list_steps; exit 0 ;;
             --help|-h)     usage; exit 0 ;;
             --doctor)      run_doctor; exit $? ;;
-            --all|-a)      mode=all; shift ;;
+            --all|-a)      shift ;;   # same as no arguments
             --missing)     mode=missing; shift ;;
             --pick)        pick=1; shift ;;
             --dry-run|-n)  dry=1; shift ;;
@@ -377,7 +376,6 @@ main() {
     check_environment
 
     case "$mode" in
-        all)     requested=("${STEPS[@]}") ;;
         missing) for s in "${STEPS[@]}"; do
                      # rc 2 is "no probe, can't tell" — include it anyway.
                      rc=0; step_installed "$s" || rc=$?
@@ -393,10 +391,7 @@ main() {
     if [ "$pick" != "1" ]; then
         local optkept=() s2
         for s2 in "${requested[@]}"; do
-            if step_is_optional "$s2" && [ -z "${NAMED[$s2]+x}" ]; then
-                continue
-            fi
-            optkept+=("$s2")
+            step_auto_excluded "$s2" || optkept+=("$s2")
         done
         requested=("${optkept[@]}")
     fi
@@ -418,20 +413,15 @@ main() {
     # Nothing to install means nothing to roll back from — skip the snapshots.
     for s in "${PENDING[@]}"; do
         [ "${STEP_GROUP[$s]}" = "safety" ] && continue
+        keep+=("$s")
         step_is_always "$s" || real=1
     done
-    if [ "$real" = "0" ]; then
-        for s in "${PENDING[@]}"; do
-            [ "${STEP_GROUP[$s]}" = "safety" ] || keep+=("$s")
-        done
-        PENDING=("${keep[@]}")
-    fi
+    [ "$real" = "1" ] || PENDING=("${keep[@]}")
 
     plan=("${PENDING[@]}")
     [ ${#plan[@]} -gt 0 ] || { log "Everything is already done. Redo it all with --force."; exit 0; }
     [ "$real" = "0" ] && log "Nothing new to install — just re-stowing."
 
-    still=()
     for s in "${added[@]}"; do
         [[ " ${plan[*]} " == *" $s "* ]] && still+=("$s")
     done

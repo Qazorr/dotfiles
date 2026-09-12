@@ -5,20 +5,30 @@
 DOTFILES_STATE_DIR="${DOTFILES_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles}"
 STAMP_DIR="$DOTFILES_STATE_DIR/steps"
 
-_stamp_file() { printf '%s/%s' "$STAMP_DIR" "$1"; }
-
 # The step file's hash, not a done-flag: editing a step must re-run it.
-_stamp_hash() { sha256sum "$REPO/setup/steps/$1.sh" 2>/dev/null | cut -d' ' -f1; }
+_stamp_hash() {
+    local h
+    h="$(sha256sum "$REPO/setup/steps/$1.sh" 2>/dev/null)"
+    printf '%s' "${h%% *}"
+}
 
 # 0 = done and unchanged since, 1 = never recorded, 2 = the step file changed.
 step_stamp_state() {
-    local f; f="$(_stamp_file "$1")"
+    local f="$STAMP_DIR/$1" first
+    # -f first: a missing file makes the redirection itself print an error.
     [ -f "$f" ] || return 1
-    [ "$(sed -n 1p "$f" 2>/dev/null)" = "$(_stamp_hash "$1")" ] || return 2
+    read -r first < "$f" || return 1
+    [ "$first" = "$(_stamp_hash "$1")" ] || return 2
     return 0
 }
 
-step_stamp_when() { sed -n 2p "$(_stamp_file "$1")" 2>/dev/null | cut -dT -f1; }
+step_stamp_when() {
+    local f="$STAMP_DIR/$1" when
+    [ -f "$f" ] || return 0
+    # line 1 is the hash, line 2 the timestamp
+    { read -r _; read -r when; } < "$f" || return 0
+    printf '%s' "${when%%T*}"
+}
 
 step_stamp_write() {
     mkdir -p "$STAMP_DIR"
@@ -26,10 +36,10 @@ step_stamp_write() {
         "$(_stamp_hash "$1")" \
         "$(date -Iseconds)" \
         "$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
-        > "$(_stamp_file "$1")"
+        > "$STAMP_DIR/$1"
 }
 
-step_stamp_clear() { rm -f "$(_stamp_file "$1")"; }
+step_stamp_clear() { rm -f "$STAMP_DIR/$1"; }
 
 # For a step returning 0 without having finished (krkcommute with no clone
 # auth): don't record it, so the next run retries. run_steps resets this.

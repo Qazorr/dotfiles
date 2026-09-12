@@ -5,7 +5,7 @@
 # binary directly earns a "started without start-hyprland" warning.
 register_step login \
     --desc "greetd + dms-greeter: DMS-themed login screen" \
-    --group desktop --root --needs hyprland danklinux \
+    --group desktop --root --needs hyprland danklinux quickshell \
     --provides /etc/greetd/config.toml dms-greeter
 
 step_login() {

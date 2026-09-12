@@ -20,6 +20,7 @@ step_groups() {
     local want=/usr/bin/zsh
     if [ ! -x "$want" ]; then
         warn "zsh isn't installed yet — run the desktop step, then this one"
+        stamp_skip
     elif [ "$(getent passwd "$USER" | cut -d: -f7)" != "$want" ]; then
         log "Making zsh $USER's login shell"
         sudo chsh -s "$want" "$USER"

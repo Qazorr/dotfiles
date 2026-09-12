@@ -4,8 +4,7 @@
 # setup/steps/quickshell.sh for what that replaced.
 register_step danklinux \
     --desc "DankLinux apt repo (Quickshell, dms-greeter)" \
-    --group desktop --root --needs prereqs \
-    --provides /etc/apt/sources.list.d/danklinux.list
+    --group desktop --root --needs prereqs
 
 DANKLINUX_REPO=https://download.opensuse.org/repositories/home:/AvengeMedia:/danklinux/Debian_13
 

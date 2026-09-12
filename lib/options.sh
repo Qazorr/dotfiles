@@ -18,13 +18,14 @@ resolve_step_options() {
         fi
 
         default="${OPTION_DEFAULT[$var]}"
-        local -a choices=(); mapfile -t choices <<<"${OPTION_CHOICES[$var]}"
         if [ ! -t 0 ] || [ "$yes" = "1" ]; then
             log "$var not set — using the default: $default"
             export "$var=$default"
             continue
         fi
 
+        local -a choices
+        mapfile -t choices <<<"${OPTION_CHOICES[$var]}"
         printf '\n\033[1;35m%s\033[0m  \033[2m(%s)\033[0m\n' "${OPTION_PROMPT[$var]}" "$step"
         local i=0 c val lbl mark
         for c in "${choices[@]}"; do

@@ -25,9 +25,5 @@ step_quickcapture() {
     log "Installing the verified Rust capture backend"
     sh "$dir/scripts/install-backend.sh" --version "$QUICKCAPTURE_VERSION"
 
-    # dms must discover it before `plugins enable` finds anything.
-    if pgrep -x qs >/dev/null 2>&1 && command -v dms >/dev/null 2>&1; then
-        dms ipc call plugin-scan scan >/dev/null 2>&1 || true
-        dms ipc call plugins enable quickCapture >/dev/null 2>&1 || true
-    fi
+    dms_enable_plugin quickCapture
 }

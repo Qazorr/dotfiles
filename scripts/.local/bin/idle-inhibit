@@ -17,8 +17,11 @@ notify() {
     command -v notify-send >/dev/null 2>&1 && notify-send "Idle inhibit" "$1" 2>/dev/null || true
 }
 
+# Builtin read, no fork: a bar widget polls `idle-inhibit status` every 4s.
 active() {
-    [ -f "$STATE" ] && kill -0 "$(cat "$STATE" 2>/dev/null)" 2>/dev/null
+    local pid
+    read -r pid < "$STATE" 2>/dev/null || return 1
+    kill -0 "$pid" 2>/dev/null
 }
 
 turn_on() {

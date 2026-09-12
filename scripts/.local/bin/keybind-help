@@ -54,17 +54,19 @@ RESET, DIM, BOLD = "\033[0m", "\033[2m", "\033[1m"
 KEYC, DESCC, HEADC = "\033[38;5;183m", "\033[38;5;252m", "\033[1;38;5;141m"
 
 
+def _keyname(n):
+    """X keycodes 10-19 are the number row; everything else stays raw."""
+    return str(n - 9) if 10 <= n <= 19 else f"code:{n}"
+
+
 def combo(bind):
     parts = [name for bit, name in MODS if bind["modmask"] & bit]
     key = bind.get("key") or ""
     if not key and bind.get("keycode"):
-        # code:NN binds (layout-independent workspace keys) report a keycode.
-        kc = bind["keycode"]
-        key = str(kc - 9) if 10 <= kc <= 19 else f"code:{kc}"
+        key = _keyname(bind["keycode"])
     if key.startswith("code:"):
         try:
-            n = int(key.split(":")[1])
-            key = str(n - 9) if 10 <= n <= 19 else key
+            key = _keyname(int(key.split(":")[1]))
         except ValueError:
             pass
     parts.append(PRETTY.get(key, key))
@@ -192,7 +194,7 @@ def main():
     width = shutil.get_terminal_size((100, 40)).columns
     keyw = max((len(k) for g in groups.values() for k, _ in g), default=20) + 2
 
-    print(f"\n {BOLD}Keyboard shortcuts{RESET}  {DIM}({len(seen)} bindings, live from hyprctl){RESET}\n")
+    print(f"\n {BOLD}Keyboard shortcuts{RESET}  {DIM}({len(uniq)} bindings, live from hyprctl){RESET}\n")
     for name in order:
         print(f" {HEADC}{name}{RESET}")
         for k, d in sorted(groups[name], key=lambda x: x[1]):

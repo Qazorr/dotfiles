@@ -52,6 +52,9 @@ step_known()     { [ -n "${STEP_DESC[$1]+x}" ]; }
 step_is_root()   { [ "${STEP_ROOT[$1]:-0}" = "1" ]; }
 step_is_always() { [ "${STEP_ALWAYS[$1]:-0}" = "1" ]; }
 step_is_optional() { [ "${STEP_OPTIONAL[$1]:-0}" = "1" ]; }
+# Opt-in steps are auto-excluded unless named on the command line. NAMED is
+# bootstrap.sh's record of what was actually typed.
+step_auto_excluded() { step_is_optional "$1" && [ -z "${NAMED[$1]+x}" ]; }
 
 # A step's own choices (which NVIDIA driver, say), keyed by the env var it
 # reads — not by step name, so two steps sharing a var collide loudly instead
@@ -151,6 +154,8 @@ steps_validate() {
             step_known "$n" || die "'$s' needs '$n', which isn't a step."
             [ "${pos[$n]}" -lt "${pos[$s]}" ] \
                 || die "'$s' needs '$n', but '$n' runs later in STEPS — reorder it."
+            step_is_optional "$n" \
+                && die "'$s' needs '$n', which is --optional — it must not be pulled in automatically."
         done
     done
     for v in "${OPTION_VARS[@]}"; do
