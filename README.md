@@ -69,6 +69,7 @@ read live from `hyprctl binds -j`, so it can't drift from this table.
 | `SUPER+Return` | Terminal |
 | `SUPER+E` | File manager |
 | `SUPER+B` | Browser |
+| `SUPER+C` | VS Code |
 | `SUPER+D` | App launcher |
 | `SUPER+A` | Dashboard overview |
 | `SUPER+H` | Help / cheat sheet |
@@ -78,8 +79,8 @@ read live from `hyprctl binds -j`, so it can't drift from this table.
 | `SUPER+N` / `SUPER+SHIFT+N` | Night light / notifications |
 | `SUPER+ALT+V` | Clipboard manager |
 | `SUPER+W` | Wallpaper picker |
-| `SUPER+M` | Monitor profile picker (hyprmon) |
-| `SUPER+SHIFT+M` | Monitor layout editor (hyprmon) |
+| `SUPER+M` | Monitor profile status |
+| `SUPER+SHIFT+M` | Monitor layout editor (hyprmon, writes into the active profile) |
 | `SUPER+I` | Toggle idle inhibit |
 | `SUPER+SHIFT+C` | Audio visualizer (cava) |
 | `SUPER+SHIFT+P` | Process list |
@@ -88,14 +89,17 @@ read live from `hyprctl binds -j`, so it can't drift from this table.
 | `SUPER+Q` / `SUPER+SHIFT+Q` | Close window / exit Hyprland |
 | `SUPER+Escape` / `SUPER+V` | Lock / power menu |
 | `SUPER+SPACE` | Float window |
+| `ALT+Tab` | Cycle windows |
 | `SUPER+SHIFT+F` / `SUPER+CTRL+F` | Fullscreen / maximize |
 | `SUPER+arrows` | Focus |
 | `SUPER+CTRL+arrows` | Move window |
 | `SUPER+ALT+arrows` | Swap window |
 | `SUPER+SHIFT+arrows` | Resize |
 | `SUPER+ALT+scroll` | Desktop zoom |
-| `SUPER+1-0` | Workspaces |
-| `SUPER+SHIFT+1-0` / `SUPER+CTRL+1-5` | Move window there / move silently |
+| Touchpad, 3 fingers | Swipe: workspaces · up/down: zoom |
+| Touchpad, 4 fingers | Up: dashboard · down: float window |
+| `SUPER+1-0` | Workspaces — again on the current one jumps back to the previous |
+| `SUPER+SHIFT+1-0` / `SUPER+CTRL+1-0` | Move window there / move silently |
 | `SUPER+U` / `SUPER+SHIFT+U` | Special workspace (scratchpad) |
 | `SUPER+CTRL+F9-F12` | Move workspace to another monitor |
 | `Print` variants | Screenshot: `SUPER` full, `+SHIFT` region, `ALT` window, `+CTRL` 5s, `+CTRL+SHIFT` 10s |

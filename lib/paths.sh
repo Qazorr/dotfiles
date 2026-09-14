@@ -15,4 +15,4 @@ DOTFILES_PATH_PREFIX="$(IFS=:; printf '%s' "${DOTFILES_PATH_DIRS[*]}")"
 # list drifts: backup used to probe for a .config/.local subdir, which misses
 # zsh (its files are top-level) and silently left it out of every snapshot.
 # shellcheck disable=SC2034  # read by step_stow, --doctor and dotfiles-backup
-STOW_PACKAGES=(hypr kitty zsh scripts fastfetch cava wallpaper dms)
+STOW_PACKAGES=(hypr kitty zsh scripts fastfetch cava wallpaper dms vscode)

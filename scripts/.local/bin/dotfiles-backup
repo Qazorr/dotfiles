@@ -141,6 +141,14 @@ if [ -d "$HOME/.config/DankMaterialShell" ]; then
         -type f -print0)
 fi
 
+# Monitor profiles are kept out of the repo (EDID descriptions carry serials),
+# so a snapshot is the only other copy. -type f skips the active.conf link.
+if [ -d "$HOME/.config/monitor-profiles" ]; then
+    while IFS= read -r -d '' f; do
+        capture_file "${f#"$HOME"/}"
+    done < <(find "$HOME/.config/monitor-profiles" -maxdepth 1 -name '*.conf' -type f -print0)
+fi
+
 for extra in \
     ".bashrc" ".profile" \
     ".config/gtk-3.0/settings.ini" \
