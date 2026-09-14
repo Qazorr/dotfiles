@@ -14,8 +14,10 @@ cava/.config/cava/              Audio visualizer (SUPER+SHIFT+C)
 dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json,
                                   the idleInhibitToggle plugin
 scripts/.local/bin/             dotfiles-backup, idle-inhibit, keybind-help,
-                                  lock-session, new-app, prime-run
+                                  lock-session, monitor-profile, new-app,
+                                  prime-run
 wallpaper/.local/share/wallpapers/  Default wallpaper
+vscode/.config/vscode-custom/   VS Code UI tweaks (custom.css/.js), see below
 bootstrap.sh                    Entrypoint: run order + command line
 setup/steps/                    One file per stage: register_step + step_<name>()
 lib/common.sh                   log / warn / die
@@ -136,15 +138,89 @@ kitty follows the shell theme automatically via `globinclude dank-*.conf` in
 ## Window rules
 
 
-Hyprland 0.55 removed matcher support from hyprlang `windowrule` — use inline
-rules on the exec dispatcher instead:
+Rules live in `hypr/.config/hypr/conf.d/windowrules.conf`, in the 0.53+
+syntax where matchers are `match:<prop>` fields:
+
+```
+windowrule {
+  name = wireshark
+  match:class = ^(.*Wireshark.*)$
+  float = true
+}
+
+windowrule = match:class ^vlc$, float on
+```
+
+The pre-0.53 form, `windowrule = float, class:^(x)$`, fails with "invalid
+field", and `windowrulev2` is deprecated — both verified on 0.55.2.
+`hyprctl clients` shows a window's class and title.
+
+Anything launched from a keybind can instead carry inline rules on the exec
+dispatcher:
 
 ```
 bindd = $mainMod SHIFT, C, Audio visualizer (cava), exec, [float; size 640 360; center] $terminal --class cava -e cava
 ```
 
-That covers anything launched from a keybind. Windows opened by other apps
-(PiP, VS Code's quick-open popup) can't be ruled on from hyprlang right now.
+
+## VS Code UI tweaks
+
+
+`vscode/.config/vscode-custom/` holds `custom.css` and `custom.js`: heavier
+line numbers, boxed tabs, and a floating command palette with a blurred
+backdrop. VS Code doesn't load these itself — the
+[Custom UI Style](https://marketplace.visualstudio.com/items?itemName=subframe7536.custom-ui-style)
+extension injects them by patching VS Code's install, so it needs write
+access to `/usr/share/code`. An `apt upgrade` of `code` puts root ownership
+back, so redo this after updates:
+
+```
+sudo chown -R "$USER" /usr/share/code
+```
+
+Then in VS Code's `settings.json` (not tracked here):
+
+```json
+"custom-ui-style.external.imports": [
+    "file:///home/<you>/.config/vscode-custom/custom.css",
+    "file:///home/<you>/.config/vscode-custom/custom.js"
+]
+```
+
+and run the extension's reload command from the command palette. The older
+[Custom CSS and JS Loader](https://marketplace.visualstudio.com/items?itemName=be5invis.vscode-custom-css)
+takes the same two URLs under `vscode_custom_css.imports`.
+
+
+## Monitor profiles
+
+
+One file per desk in `~/.config/monitor-profiles/`: `monitor=` rules,
+`workspace=` pinning, and anything else that desk needs (lid binds, say).
+Deliberately not in this repo — external monitors are matched by EDID
+description, which includes the serial number, and the repo is public.
+`dotfiles-backup` snapshots them; bootstrap doesn't recreate them.
+
+`monitor-profile --watch` (autostart) points `active.conf`, the file
+`hyprland.conf` sources, at the profile whose `monitor = desc:…` lines are all
+connected — on login and on every plug/unplug. The profile with the most
+matching lines wins; none means no rules at all, Hyprland's defaults.
+Workspaces already open move to the monitor their rule names.
+
+```
+monitor-profile --status       what's connected, which profile matches (SUPER+M)
+monitor-profile                re-check now
+monitor-profile --save <name>  keep the current unmatched layout as a profile
+```
+
+Setting up a new desk: plug in, `SUPER+SHIFT+M` (hyprmon), arrange, turn on
+**Write as desc:** for each external monitor in its display settings (`C`),
+then `S` — hyprmon is pointed at `active.conf`, so the monitor lines land
+there. `monitor-profile --save <desk>` keeps them; add `workspace =` lines by
+hand. Name the laptop panel `eDP-1` rather than by `desc:`, so a profile
+survives swapping laptops.
+
+hyprmon leaves `active.conf.bak.<timestamp>` backups next to the profiles.
 
 
 ## Adding a new app launcher
@@ -192,6 +268,10 @@ Order matters: syntax-highlighting must be last.
 
 
 - **Theming** is matugen (wallpaper → Material palette), driven by DMS.
+- **Cursor** is Bibata-Modern-Classic from Debian's `bibata-cursor-theme`
+  (XCursor only, no hyprcursor build): `XCURSOR_THEME` in
+  `conf.d/environment.conf` for Hyprland, gsettings (desktop step) for GTK
+  apps and DMS.
 - **Idle/lock** stays on `hypridle` + `hyprlock`. `hypridle`'s `lock_cmd`
   goes through `scripts/.local/bin/lock-session` rather than the documented
   `pidof hyprlock || hyprlock`, which let a hung hyprlock stop the session

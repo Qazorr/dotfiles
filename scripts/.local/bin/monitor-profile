@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# Apply the monitor profile for whichever desk this is, and keep applying it
+# as monitors come and go.
+#
+#   monitor-profile                re-check now, apply if the match changed
+#   monitor-profile --watch        the same, then again on every hotplug
+#   monitor-profile --status       connected monitors, profiles, what matches
+#   monitor-profile --save <name>  keep the current unmatched layout as <name>
+#
+# Profiles are ~/.config/monitor-profiles/<name>.conf — monitor= and
+# workspace= rules, or any other hyprlang. hyprland.conf sources active.conf,
+# which this points at the winner. They live outside the dotfiles repo on
+# purpose: EDID descriptions carry monitor serials, and the repo is public.
+#
+# A profile matches when every `monitor = desc:...` line in it is connected;
+# the most such lines wins, so a three-monitor desk beats a two-monitor
+# subset. No match leaves a placeholder: Hyprland's defaults.
+set -euo pipefail
+
+DIR="${MONITOR_PROFILES_DIR:-$HOME/.config/monitor-profiles}"
+ACTIVE="$DIR/active.conf"
+PLACEHOLDER="# No monitor profile matches the connected monitors — Hyprland defaults."
+
+die() { echo "monitor-profile: $*" >&2; exit 1; }
+
+notify() {
+    # Same chain as idle-inhibit: DMS toast, then notify-send, then nothing.
+    if command -v dms >/dev/null 2>&1 && pgrep -x qs >/dev/null 2>&1; then
+        dms ipc call toast info "$1" >/dev/null 2>&1 && return 0
+    fi
+    command -v notify-send >/dev/null 2>&1 && notify-send "Monitors" "$1" 2>/dev/null || true
+}
+
+# `monitors all`: a lid-closed, disabled panel still counts as connected.
+connected() { hyprctl monitors all -j | jq -r '.[].description'; }
+
+descs_in() {
+    sed -nE 's/^[[:space:]]*monitor[[:space:]]*=[[:space:]]*desc:([^,]*[^,[:space:]])[[:space:]]*,.*/\1/p' "$1"
+}
+
+profiles() {
+    local f
+    for f in "$DIR"/*.conf; do
+        [ -f "$f" ] && [ "$f" != "$ACTIVE" ] && basename "$f" .conf
+    done
+    return 0
+}
+
+# Prints how many desc: lines a profile has when all of them are connected;
+# nothing when one is missing or it has none.
+match_count() {
+    local have="$1" d n=0
+    while IFS= read -r d; do
+        grep -qxF -- "$d" <<< "$have" || return 0
+        n=$((n + 1))
+    done < <(descs_in "$DIR/$2.conf")
+    [ "$n" -gt 0 ] && echo "$n"
+    return 0
+}
+
+pick() {
+    local have name n best="" best_n=0
+    have="$(connected)"
+    while IFS= read -r name; do
+        n="$(match_count "$have" "$name")"
+        [ -n "$n" ] && [ "$n" -gt "$best_n" ] && { best="$name"; best_n="$n"; }
+    done < <(profiles)
+    printf '%s\n' "$best"
+}
+
+# The profile active.conf points at; empty for the placeholder.
+current() {
+    [ -L "$ACTIVE" ] && basename "$(readlink "$ACTIVE")" .conf
+    return 0
+}
+
+# One rename, so an autoreload mid-swap never finds active.conf missing — a
+# missing source is a config error in Hyprland 0.55.
+set_active() {
+    local tmp="$ACTIVE.tmp.$$"
+    if [ -n "$1" ]; then
+        ln -s "$1.conf" "$tmp"
+    else
+        printf '%s\n' "$PLACEHOLDER" > "$tmp"
+    fi
+    mv -fT "$tmp" "$ACTIVE"
+}
+
+# Workspaces already open when the profile changes may sit on the wrong
+# monitor; move each onto the (connected) monitor its rule names.
+move_workspaces() {
+    local cmds
+    cmds="$(jq -rn \
+        --argjson rules "$(hyprctl workspacerules -j)" \
+        --argjson spaces "$(hyprctl workspaces -j)" \
+        --argjson mons "$(hyprctl monitors -j)" '
+        [ $rules[] | select(.monitor != null and .monitor != "") as $r
+          | ($r.monitor
+             | if startswith("desc:") then ltrimstr("desc:") as $d | $mons[] | select(.description == $d) | .name
+               else . end) as $target
+          | select(any($mons[]; .name == $target))
+          | $spaces[] | select(.name == $r.workspaceString and .monitor != $target)
+          | "dispatch moveworkspacetomonitor \(.id) \($target)" ]
+        | join(" ; ")')"
+    [ -n "$cmds" ] && hyprctl --batch "$cmds" >/dev/null
+    return 0
+}
+
+apply() {
+    mkdir -p "$DIR"
+    local want
+    want="$(pick)"
+    if [ "$want" = "$(current)" ] && [ -e "$ACTIVE" ]; then
+        echo "${want:-none} (unchanged)"
+        return 0
+    fi
+    set_active "$want"
+    hyprctl reload >/dev/null
+    move_workspaces
+    notify "Monitor profile: ${want:-none, Hyprland defaults}"
+    echo "${want:-none}"
+}
+
+# A dock brings its monitors up one event at a time. Wait until no monitor
+# event has arrived for ~2s, so a half-connected desk never gets matched.
+settle() {
+    local deadline=$((SECONDS + 2)) ev rc
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        rc=0
+        IFS= read -r -t 1 ev || rc=$?
+        [ "$rc" -gt 128 ] && continue    # timed out, keep waiting
+        [ "$rc" -ne 0 ] && return 0      # socket closed
+        case "$ev" in
+            monitoradded*|monitorremoved*) deadline=$((SECONDS + 2)) ;;
+        esac
+    done
+}
+
+watch() {
+    # One watcher per session: exec-once plus a manual run would reload twice.
+    exec 9> "$XDG_RUNTIME_DIR/monitor-profile.lock"
+    flock -n 9 || { echo "already watching" >&2; exit 0; }
+    apply || true
+    local ev
+    while IFS= read -r ev; do
+        case "$ev" in
+            monitoraddedv2\>\>*|monitorremovedv2\>\>*)
+                settle
+                apply || true ;;
+        esac
+    done < <(socat -U - "UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock")
+}
+
+status() {
+    local have cur want name n state found=0
+    have="$(connected)"
+    cur="$(current)"
+    echo "Connected:"
+    hyprctl monitors all -j | jq -r '.[] | "  \(.name)\t\(.description)\(if .disabled then "  (disabled)" else "" end)"'
+    echo
+    echo "Profiles in $DIR:"
+    while IFS= read -r name; do
+        found=1
+        n="$(match_count "$have" "$name")"
+        if [ -n "$n" ]; then state="matches"; else state="no match"; fi
+        [ "$name" = "$cur" ] && state="$state, active"
+        printf '  %-14s %s\n' "$name" "$state"
+    done < <(profiles)
+    [ "$found" = 1 ] || echo "  (none yet)"
+    want="$(pick)"
+    echo
+    echo "Active:  ${cur:-none (Hyprland defaults)}"
+    echo "Matches: ${want:-none (Hyprland defaults)}"
+}
+
+save() {
+    local name="$1"
+    [ -n "$name" ] || die "usage: monitor-profile --save <name>"
+    if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]] || [ "$name" = active ]; then
+        die "bad profile name: $name"
+    fi
+    [ -e "$DIR/$name.conf" ] && die "$DIR/$name.conf already exists"
+    [ -L "$ACTIVE" ] && die "already on profile '$(current)' — edit $DIR/$(current).conf instead"
+    cp "$ACTIVE" "$DIR/$name.conf"
+    set_active "$name"
+    echo "saved $DIR/$name.conf"
+    [ -n "$(descs_in "$DIR/$name.conf")" ] || echo "warning: no 'monitor = desc:…' lines, so it will never match on its own." \
+        "In hyprmon, turn on 'Write as desc:' for each external monitor and save (S) again." >&2
+}
+
+[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || die "not inside a Hyprland session"
+
+case "${1:-}" in
+    "")       apply ;;
+    --watch)  watch ;;
+    --status) status ;;
+    --save)   save "${2:-}" ;;
+    *) echo "usage: monitor-profile [--watch | --status | --save <name>]" >&2; exit 1 ;;
+esac

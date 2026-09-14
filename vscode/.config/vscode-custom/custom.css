@@ -1,0 +1,251 @@
+.line-numbers {
+    font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
+    font-weight: 700;
+}
+
+.active-line-number {
+    font-weight: 900 !important;
+    color: var(--tab-border-top-color) !important;
+    scale: 1.2;
+}
+
+/* Code canvas top shadow */
+.monaco-editor .scroll-decoration {
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, .75) !important;
+    top: -6px !important;
+}
+
+/* Side bar */
+.part.sidebar {
+    box-shadow: 0px 0px 50px rgba(0, 0, 0, .25);
+}
+
+/* File Explorer Selected Item */
+.monaco-list.list_id_1 .monaco-list-row.selected {
+    font-weight: 900 !important;
+    opacity: 1 !important;
+    background-color: var(--vscode-editor-background) !important;
+    /* filter: brightness(2) saturate(3) !important; */
+}
+
+/* List item label name */
+.monaco-list.list_id_1 .monaco-list-row.selected .label-name {
+    color: #fff !important;
+    opacity: 1 !important;
+}
+
+.label-name {
+    font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
+    font-weight: 300;
+}
+
+/* File explorer action buttons */
+.monaco-workbench .part.sidebar .title-actions .actions-container {
+    display: flex;
+}
+
+.action-item {
+    transition: background-color 0.2s ease-in-out !important;
+}
+
+.action-item.checked {
+    background-color: rgba(var(--vscode-editor-background) 0.6) !important;
+    /* filter: brightness(2.5) !important; */
+}
+
+.action-item.start-debug-action-item {
+    display: flex !important;
+}
+
+.tabs-container>.tab {
+    border-top: 2px solid var(--tab-border-top-color) !important;
+    border-left: 2px solid var(--tab-border-top-color) !important;
+    border-right: 2px solid var(--tab-border-top-color) !important;
+    border-radius: 0px !important;
+}
+
+.tab-border-top-container {
+    display: none !important;
+}
+
+/* File Explorer Item Label */
+.monaco-tree .monaco-tree-row .label-name,
+.monaco-list .monaco-list-row .monaco-icon-label .label-name {
+    font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
+    font-weight: 400;
+}
+
+
+/* Sidebar top shadow */
+.monaco-scrollable-element>.shadow.top {
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, .75) !important;
+    top: -3px !important;
+}
+
+/* Sidebar title */
+.composite.title {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-items: center !important;
+}
+
+.composite.title h2 {
+    font-weight: bold !important;
+    text-transform: uppercase;
+    color: #bc9abc !important;
+}
+
+/* Scroll Bar */
+.slider {
+    position: absolute !important;
+    right: 1px !important;
+    width: 5px !important;
+    background: #bc9abc !important;
+    left: auto !important;
+}
+
+.codicon-toolbar-more,
+.codicon-word-wrap {
+    display: block !important;
+}
+
+/* Tooltip box style */
+.monaco-editor-hover,
+.monaco-hover {
+    box-shadow: 0px 1px 2px var(--vscode-badge-foreground) !important;
+    outline: 1px solid var(--vscode-badge-foreground) !important;
+    padding: 2px !important;
+    background-color: var(--vscode-editor-background) !important;
+    /* filter: brightness(1.1) !important; */
+    backdrop-filter: blur(3px) !important;
+    border: none !important;
+}
+
+/* Project title's style at the top. */
+.monaco-workbench .part.titlebar>.titlebar-container>.titlebar-center>.window-title>.command-center .action-item.command-center-center {
+    border: none !important;
+    background: transparent !important;
+}
+
+/* Project Title */
+.titlebar-left {
+    width: auto !important;
+}
+
+/* Search Label */
+.search-label {
+    font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
+    color: #fff;
+}
+
+/* Search icon */
+.search-icon {
+    display: none !important;
+}
+
+.codicon-search::before {
+    display: none !important;
+}
+
+.codicon-arrow-right,
+.codicon-arrow-left {
+    display: none !important;
+}
+
+.titlebar-right>* {
+    display: none !important;
+}
+
+/* Command Palette */
+.quick-input-widget {
+    top: 0% !important;
+    box-shadow: 0px 8px 20px rgba(0, 0, 0, .45) !important;
+    padding: 10px 10px 18px 10px !important;
+    background: var(--vscode-editor-background) !important;
+    backdrop-filter: blur(3px) !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--vscode-editor-foreground) !important;
+    /* animation: quick-input-widget-in 0.1s ease-in-out forwards; */
+}
+
+@keyframes quick-input-widget-in {
+    from {
+        transform: translateY(-50%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+/* Remove background for lists */
+.monaco-list-rows {
+    background: transparent !important;
+}
+
+/* List hover */
+.monaco-list-row:hover {
+    background: rgba(0, 0, 0, .2) !important;
+}
+
+.monaco-list-row {
+    font-weight: 400 !important;
+    color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.notifications-toasts .monaco-list-row:hover {
+    background: none !important;
+}
+
+.monaco-list-row.focused {
+    background-color: rgba(var(--vscode-editor-background)) !important;
+}
+
+.monaco-list-row.focused .label-name {
+    color: #fff !important;
+    font-weight: 900 !important;
+    font-size: 14px !important;
+}
+
+/* Command palette text input */
+.quick-input-filter .monaco-inputbox {
+    border-radius: 12px !important;
+    padding: 8px !important;
+    border: none !important;
+    background-color: rgba(34, 34, 34, .40) !important;
+    font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
+    margin-bottom: 16px !important;
+}
+
+#command-blur {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, .15);
+    top: 0;
+    left: 0;
+    backdrop-filter: blur(2px);
+}
+
+/* Command palette's input box placeholder. */
+.monaco-inputbox input::placeholder {
+    color: rgba(255, 255, 255, .3) !important;
+}
+
+.command-center-center {
+    width: auto !important;
+}
+
+.letterpress {
+    background-image: url('data:image/svg+xml,<%3Fxml version="1.0" encoding="UTF-8" standalone="no"%3F><!-- Created with Inkscape (http://www.inkscape.org/) --><svg width="250mm" height="250mm" viewBox="0 0 250 250" version="1.1" id="svg1" xml:space="preserve" sodipodi:docname="wrench_code.svg" inkscape:version="1.2.2 (b0a8486541, 2022-12-01)" inkscape:export-filename="WRENCH_circle_white.png" inkscape:export-xdpi="96" inkscape:export-ydpi="96" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns%23" xmlns:cc="http://creativecommons.org/ns%23" xmlns:dc="http://purl.org/dc/elements/1.1/"><defs id="defs1"><marker id="DistanceX" orient="auto" refX="0.0" refY="0.0" style="overflow:visible"><path d="M 3,-3 L -3,3 M 0,-5 L 0,5" style="stroke:%23000000; stroke-width:0.5" id="path1" /></marker><pattern id="Hatch" patternUnits="userSpaceOnUse" width="8" height="8" x="0" y="0"><path d="M8 4 l-4,4" stroke="%23000000" stroke-width="0.25" linecap="square" id="path2" /><path d="M6 2 l-4,4" stroke="%23000000" stroke-width="0.25" linecap="square" id="path3" /><path d="M4 0 l-4,4" stroke="%23000000" stroke-width="0.25" linecap="square" id="path4" /></pattern><symbol id="*Model_Space" /><symbol id="*Paper_Space" /><symbol id="*Paper_Space0" /></defs><sodipodi:namedview id="base" pagecolor="%237e7e7e" bordercolor="%23000000" borderopacity="0.29803922" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="0.6946134" inkscape:cx="269.2145" inkscape:cy="558.5841" inkscape:document-units="mm" inkscape:showpageshadow="0" inkscape:pagecheckerboard="0" inkscape:deskcolor="%234a4a4a" inkscape:window-width="1908" inkscape:window-height="1025" inkscape:window-x="0" inkscape:window-y="0" inkscape:window-maximized="1" inkscape:current-layer="g1" showguides="false" showgrid="false"><sodipodi:guide position="250.00003,74.953375" orientation="-0.70710678,-0.70710678" id="guide3" inkscape:locked="false" /><sodipodi:guide position="175.04671,5.3783399e-05" orientation="-0.70710678,-0.70710678" id="guide4" inkscape:locked="false" /></sodipodi:namedview><metadata id="metadata1"><rdf:RDF><cc:Work rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><ellipse style="display:inline;opacity:1;fill:%23f2f2f2;fill-opacity:1;stroke-width:0.270282" id="path5" cx="128.01207" cy="123.57317" rx="119.99342" ry="120.13663" inkscape:label="fill" /><g inkscape:groupmode="layer" id="layer1" inkscape:label="Layer 1"><g inkscape:label="0" id="g24" transform="matrix(-0.21778633,0,0,0.21778633,231.18045,-13.289172)"><g id="g3" inkscape:label="ref" style="display:none;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1"><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 944.882,177.638 V 1122.52" id="path8" inkscape:label="rL" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 944.882,1122.52 H 0" id="path9" inkscape:label="rB" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 0,1122.52 V 177.638" id="path10" inkscape:label="rR" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 0,177.638 H 944.882" id="path11" inkscape:label="rT" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 944.882,177.638 0,1122.52" id="path17" inkscape:label="diag" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 74.8308,764.401 216.475,906.045" id="path19" inkscape:label="refArm" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="m 472.848,620.28 29.392,29.391" id="path22" inkscape:label="refCircle" /></g><g id="g2" inkscape:label="Circle" style="display:inline;opacity:1;fill:%23626262;fill-opacity:1"><path id="path21" style="display:inline;fill:%23000000;fill-opacity:1;stroke:none" inkscape:label="innerCircle" d="m 530.43669,62.624328 a 573.95623,573.95623 0 0 1 531.06451,572.351572 573.95706,573.95706 0 0 1 -1147.914123,0 A 573.95623,573.95623 0 0 1 530.43669,62.624328 Z m -3.39453,45.339842 a 528.60188,528.60188 0 0 0 -568.099614,527.01173 528.60188,528.60188 0 0 0 1057.203154,0 528.60188,528.60188 0 0 0 -489.10354,-527.01173 z" transform="translate(3.1496066e-6)" /></g><g id="g1" inkscape:label="Logo" transform="translate(3.1496066e-6)"><path d="M -34.44968,873.61342 1.0708662e-4,839.23143 74.830828,764.40072 C 22.21087,619.08079 52.972648,456.63374 155.08118,340.61397 257.18971,224.59419 414.41287,173.44528 565.24,207.17831 l -280.6156,280.6156 52.47887,297.6225 297.6225,52.47888 280.61561,-280.61561 C 949.07443,708.10682 897.92553,865.33 781.90575,967.43855 665.88597,1069.5471 503.4389,1100.3089 358.11896,1047.6889 l -74.83103,74.831 -34.38167,34.4495" style="display:inline;fill:%23000000;fill-opacity:1;stroke:%23000000;stroke-width:6.0743788;stroke-dasharray:none;stroke-opacity:1" id="path6" inkscape:label="Wrench" transform="translate(3.1496066e-6)" sodipodi:nodetypes="cccscccccsccc" /><path d="m 786.15342,555.57887 a 219.2126,219.2126 0 0 0 -438.4252,0 219.2126,219.2126 0 0 0 438.4252,0 z" style="display:inline;fill:%23f84018;fill-opacity:1;stroke:none" id="path12" inkscape:label="dot" /><path style="fill:%23000000;stroke-width:0.41324908;stroke:%23000000;stroke-opacity:1;stroke-dasharray:none;fill-opacity:1" d="m 541.28795,663.3619 c 20.76156,-20.539 47.26528,-46.73236 58.89715,-58.20745 l 21.14885,-20.86379 35.49065,26.69515 35.49065,26.69516 14.44483,-4.81488 14.44482,-4.81489 -24.05366,-23.75745 C 683.92172,591.22715 667.7138,575.18751 661.13363,568.6501 l -11.96394,-11.8862 11.96394,-11.8862 c 6.58017,-6.53741 22.78809,-22.57705 36.01761,-35.64365 l 24.05366,-23.75745 -14.44482,-4.81489 -14.44483,-4.81488 -35.51847,26.71609 -35.51849,26.71609 -10.39473,-10.31336 c -5.7171,-5.67234 -26.45323,-26.16378 -46.08028,-45.53652 -19.62705,-19.37274 -41.46636,-40.96774 -48.53179,-47.98889 l -12.84625,-12.76572 -35.31893,15.00686 -35.31894,15.00685 V 556.7639 670.83957 l 35.19004,14.95209 c 19.35452,8.22365 35.27378,14.94349 35.37614,14.93299 0.10236,-0.0105 17.17283,-16.82374 37.9344,-37.36275 z m -37.95458,-106.598 c 0,-33.58155 0.0918,-61.05736 0.20398,-61.05736 0.41941,0 80.86204,60.74069 80.86204,61.05737 0,0.34859 -80.22499,60.97327 -80.7566,61.02641 -0.17018,0.017 -0.30942,-27.44487 -0.30942,-61.02642 z" id="path3307" inkscape:label="vscode" /></g></g></g></svg>') !important;
+    background-repeat: no-repeat no-repeat !important;
+    background-position: center center !important;
+    background-size: contain !important;
+    width: 150% !important;
+    filter: brightness(1.5) !important;
+}
+
+.window-appicon {
+    background-image: url('data:image/svg+xml,<%3Fxml version="1.0" encoding="UTF-8" standalone="no"%3F><!-- Created with Inkscape (http://www.inkscape.org/) --><svg width="512" height="512" viewBox="0 0 512 512" version="1.1" id="svg1" inkscape:version="1.4 (e7c3feb100, 2024-10-09)" sodipodi:docname="sauron_circle.svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview id="namedview1" pagecolor="%23ffffff" bordercolor="%23000000" borderopacity="0.25" inkscape:showpageshadow="2" inkscape:pageopacity="0.0" inkscape:pagecheckerboard="0" inkscape:deskcolor="%23d1d1d1" inkscape:document-units="px" inkscape:zoom="1.6566915" inkscape:cx="155.43026" inkscape:cy="259.25164" inkscape:window-width="3440" inkscape:window-height="1403" inkscape:window-x="3840" inkscape:window-y="583" inkscape:window-maximized="1" inkscape:current-layer="layer1-2" /><defs id="defs1" /><g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1" transform="matrix(1.0861895,0,0,1.0861895,-21.473777,-18.500859)"><g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1-2" transform="matrix(0.3912536,0,0,0.3912536,54.201289,26.694773)"><circle style="fill:%23b4b4b4;fill-opacity:1;stroke:%23000000;stroke-width:11.7654" id="path2" cx="514.93427" cy="561.19818" r="557.48608" inkscape:label="background" /><g inkscape:label="0" id="g24" transform="matrix(-0.70710693,-0.70710693,-0.70710693,0.70710693,1305.7417,348.53877)" style="display:inline;fill:%23000000"><g id="g3" inkscape:label="ref" style="display:none;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1"><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 944.882,177.638 V 1122.52" id="path8" inkscape:label="rL" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 944.882,1122.52 H 0" id="path9" inkscape:label="rB" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 0,1122.52 V 177.638" id="path10" inkscape:label="rR" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 0,177.638 H 944.882" id="path11" inkscape:label="rT" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 944.882,177.638 0,1122.52" id="path17" inkscape:label="diag" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="M 74.8308,764.401 216.475,906.045" id="path19" inkscape:label="refArm" transform="translate(3.1496066e-6)" /><path style="display:inline;fill:none;stroke:%23b8b8b8;stroke-width:0.623622;stroke-dasharray:1.87087, 1.87087;stroke-dashoffset:0;stroke-opacity:1" d="m 472.848,620.28 29.392,29.391" id="path22" inkscape:label="refCircle" /></g><g id="g2" inkscape:label="Logo" transform="translate(3.1496066e-6)"><path d="M -58.007202,897.23904 0,839.23155 74.830828,764.40072 C 22.21087,619.08079 52.972648,456.63374 155.08118,340.61397 257.18971,224.59419 414.41287,173.44528 565.24,207.17831 l -280.6156,280.6156 52.47887,297.6225 297.6225,52.47888 280.61561,-280.61561 C 949.07443,708.10682 897.92553,865.33 781.90575,967.43855 665.88597,1069.5471 503.4389,1100.3089 358.11896,1047.6889 l -74.83083,74.8308 -58.00719,58.0075" style="display:inline;fill:%23000000;fill-opacity:1;stroke:none" id="path6" inkscape:label="Wrench" transform="translate(3.1496066e-6)" sodipodi:nodetypes="cccscccccsccc" /><path d="m 786.15342,555.57887 a 219.2126,219.2126 0 0 0 -438.4252,0 219.2126,219.2126 0 0 0 438.4252,0 z" style="display:inline;fill:%23f84018;fill-opacity:1;stroke:none" id="path12" inkscape:label="dot" /><path style="display:inline;fill:%23000001;fill-opacity:1;stroke:%23000000;stroke-width:2.80493px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M 676.01911,446.86305 C 549.9343,476.75934 479.4514,533.17659 458.08219,664.80006 587.14773,640.87292 647.81447,574.63952 676.01911,446.86305 Z" id="path2508" sodipodi:nodetypes="ccc" transform="translate(-3.1496068e-6)" inkscape:label="eye" /></g></g></g></g></svg>') !important;
+}

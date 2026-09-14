@@ -43,4 +43,17 @@ step_stow() {
             "# bootstrap.sh writes the NVIDIA env block here when it finds a card." \
             > "$local_conf"
     fi
+
+    # hyprland.conf sources this too. Profiles are per machine and live outside
+    # the repo; monitor-profile swaps the placeholder for a link once one
+    # matches. A dangling link (profile deleted) fails the source like a
+    # missing file, hence -e rather than -f.
+    local active="$HOME/.config/monitor-profiles/active.conf"
+    if [ ! -e "$active" ]; then
+        mkdir -p "$(dirname "$active")"
+        rm -f "$active"
+        printf '%s\n' \
+            "# No monitor profile matches the connected monitors — Hyprland defaults." \
+            > "$active"
+    fi
 }
