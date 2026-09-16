@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Remove Packages
+Comment=Pick manually installed packages and remove them with nala
+Exec=kitty --class pkgs -e pkgs remove --popup
+Icon=/usr/share/icons/gnome/256x256/actions/edit-delete.png
+Terminal=false
+Categories=System;PackageManager;
+Keywords=apt;nala;software;uninstall;

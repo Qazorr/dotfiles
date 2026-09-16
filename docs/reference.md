@@ -14,7 +14,7 @@ cava/.config/cava/              Audio visualizer (SUPER+SHIFT+C)
 dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json,
                                   the idleInhibitToggle plugin
 scripts/.local/bin/             dotfiles-backup, idle-inhibit, keybind-help,
-                                  lock-session, monitor-profile, new-app,
+                                  lock-session, monitor-profile, new-app, pkgs,
                                   prime-run
 wallpaper/.local/share/wallpapers/  Default wallpaper
 vscode/.config/vscode-custom/   VS Code UI tweaks (custom.css/.js), see below
@@ -22,7 +22,7 @@ bootstrap.sh                    Entrypoint: run order + command line
 setup/steps/                    One file per stage: register_step + step_<name>()
 lib/common.sh                   log / warn / die
 lib/paths.sh                    The PATH dirs this setup adds
-lib/apt.sh                      apt install + third-party repo-add wrappers
+lib/apt.sh                      nala install + third-party repo-add wrappers
 lib/fetch.sh                    GitHub-release fetching
 lib/steps.sh                    The step registry
 lib/state.sh                    What has already run
@@ -258,6 +258,25 @@ own apt repo, not Debian's `docker.io`. `bootstrap.sh groups` adds `$USER` to
 
 **lazydocker** / **lazygit** (`bootstrap.sh devtools`) — pinned release
 binaries (`v0.25.2` / `v0.64.1`) in `/usr/local/bin`.
+
+**nala** (`bootstrap.sh nala`) — the bootstrap installs everything through
+it, and `/usr/local/bin/apt` is a shim that hands it `apt install`, `upgrade`,
+`search` and the like from any shell, script or `sudo`. It falls through to
+the real apt when there's no terminal, for a flag nala doesn't share
+(`-s`, `--reinstall`, `--no-install-recommends`…) or a verb it lacks
+(`policy`, `edit-sources`). `apt-get` is untouched.
+
+For anything critical, `sudo /usr/bin/apt …` is plain apt, guaranteed: it's a
+path, not a flag the shim reads, so it works even if the shim or nala itself
+is broken. `sudo rm /usr/local/bin/apt` turns the shim off entirely.
+
+`pkgs` (`SUPER+ALT+I`, or **Install Packages** in the launcher) is an fzf
+picker over every package not yet installed, searchable by name and
+description; `pkgs remove` (`SUPER+ALT+SHIFT+I`, **Remove Packages**) lists
+only manually installed ones. Both hand the picks to nala, which still shows
+its summary and asks first. The launchers are stowed from
+`scripts/.local/share/applications/`; the popup's size is a window rule on
+class `pkgs`.
 
 **oh-my-zsh plugins** (`bootstrap.sh ohmyzsh`) — `docker`, `fzf`, `extract`,
 `command-not-found` ship with oh-my-zsh; `zsh-autosuggestions` and

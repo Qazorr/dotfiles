@@ -52,7 +52,7 @@ unset _step_file
 # Run order — the one fact that can't live in a step's own file. A step's
 # --needs must appear before it; steps_validate enforces that.
 STEPS=(
-    backup timeshift prereqs backports nvidia hyprland desktop services
+    backup timeshift prereqs nala backports nvidia hyprland desktop services
     danklinux quickshell login ohmyzsh hyprmon cli vscode claudedesktop brave dms quickcapture
     uv krkcommute docker devtools fonts groups stow summary
 )

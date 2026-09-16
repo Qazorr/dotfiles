@@ -16,7 +16,7 @@ step_brave() {
     if [ ! -f /etc/apt/sources.list.d/brave-browser-release.sources ]; then
         sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources \
             https://brave-browser-apt-release.s3.brave.com/brave-browser.sources
-        sudo apt update
+        apt_update
     fi
     log "Installing Brave"
     apt_install brave-browser

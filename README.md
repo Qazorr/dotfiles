@@ -78,6 +78,7 @@ read live from `hyprctl binds -j`, so it can't drift from this table.
 | `SUPER+T` | Theme switcher |
 | `SUPER+N` / `SUPER+SHIFT+N` | Night light / notifications |
 | `SUPER+ALT+V` | Clipboard manager |
+| `SUPER+ALT+I` / `SUPER+ALT+SHIFT+I` | Install / remove packages (fzf over apt, through nala — also in the launcher, `pkgs` in a shell) |
 | `SUPER+W` | Wallpaper picker |
 | `SUPER+M` | Monitor profile status |
 | `SUPER+SHIFT+M` | Monitor layout editor (hyprmon, writes into the active profile) |

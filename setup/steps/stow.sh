@@ -29,6 +29,9 @@ step_stow() {
     done
     [ "$moved" -gt 0 ] && log "Moved $moved pre-existing file(s) aside; originals kept as *.pre-dotfiles"
 
+    # A missing target dir gets folded into one symlink to the repo, and every
+    # app that later adds a launcher there would write into git.
+    mkdir -p "$HOME/.local/share/applications"
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || { warn "no such stow package: $pkg (skipping)"; continue; }
         stow --target="$HOME" --restow "$pkg"
