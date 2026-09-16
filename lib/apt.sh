@@ -1,14 +1,24 @@
 # shellcheck shell=bash
-# apt helpers. bootstrap.sh defines APT_OPTS.
+# Package helpers, run through nala. bootstrap.sh defines APT_OPTS.
 
-apt_install() { sudo apt install "${APT_OPTS[@]}" "$@"; }
-apt_install_backports() { sudo apt install "${APT_OPTS[@]}" -t trixie-backports "$@"; }
+# Lazy, not a step: timeshift installs before prereqs.
+ensure_nala() {
+    command -v nala >/dev/null 2>&1 && return 0
+    log "Installing nala"
+    sudo apt install "${APT_OPTS[@]}" nala
+}
+_nala() { ensure_nala; sudo nala "$@"; }
+
+apt_update() { _nala update; }
+# nala autoremoves on install by default; only apt_purge should remove.
+apt_install() { _nala install "${APT_OPTS[@]}" --no-autoremove "$@"; }
+apt_install_backports() { apt_install -t trixie-backports "$@"; }
 
 # Purge + autoremove, tolerating packages that were never installed (e.g.
 # switching NVIDIA driver variants only ever has one of them present).
 apt_purge() {
-    sudo apt purge "${APT_OPTS[@]}" "$@" || true
-    sudo apt autoremove -y || true
+    _nala purge "${APT_OPTS[@]}" "$@" || true
+    _nala autoremove -y || true
 }
 
 # Fetch a signing key to $2 if missing. $3 = "dearmor" for vendors serving
@@ -38,5 +48,5 @@ ensure_apt_list() {
         return 0    # added by hand under another filename; leave it alone
     fi
     echo "$deb_line" | sudo tee "$list_path" >/dev/null
-    sudo apt update
+    apt_update
 }

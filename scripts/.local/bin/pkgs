@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Fuzzy-pick apt packages to install or remove through nala.
+#
+#   pkgs [query]          install, from packages not installed yet
+#   pkgs remove [query]   remove, from manually installed packages
+#       --popup           wait for a key before exiting (launcher / SUPER+ALT+I)
+#
+# TAB marks several, Enter confirms, Esc quits, Alt-P toggles the preview.
+set -euo pipefail
+
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../.." && pwd)"
+# shellcheck source=../../../lib/common.sh
+source "$REPO/lib/common.sh"
+
+usage() {
+    sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+    exit "${1:-0}"
+}
+
+mode=install popup=0 query=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        remove)    mode=remove ;;
+        --popup)   popup=1 ;;
+        -h|--help) usage 0 ;;
+        -*)        die "unknown option '$1' — see pkgs --help" ;;
+        *)         query="${query:+$query }$1" ;;
+    esac
+    shift
+done
+
+command -v fzf >/dev/null || die "pkgs needs fzf — ./bootstrap.sh cli"
+
+installed() {
+    dpkg-query -W -f='${db:Status-Abbrev}\t${Package}\t${binary:Summary}\n' \
+        | awk -F'\t' '$1 ~ /^ii/'
+}
+
+# Exported for fzf's preview, which runs in a child bash.
+# shellcheck disable=SC2317  # only called from fzf's preview command
+preview_fields() {
+    awk '/^[^ ]/ { keep = $1 ~ /^(Package|Version|Section|Homepage|Description(-en)?):$/ }
+         $1 == "Installed-Size:" { printf "Installed-Size: %.1f MB\n", $2 / 1024; next }
+         keep'
+}
+export -f preview_fields
+
+# Lines are "name - summary", so fzf's {1} is the package name.
+if [ "$mode" = install ]; then
+    list() {
+        awk -F'\t' 'NR == FNR { have[$2]; next }
+                    { split($0, w, " ") } !(w[1] in have)' \
+            <(installed) <(apt-cache search .)
+    }
+    preview='apt-cache show --no-all-versions {1} | preview_fields'
+else
+    list() {
+        awk -F'\t' 'NR == FNR { manual[$1]; next } ($2 in manual) { print $2 " - " $3 }' \
+            <(apt-mark showmanual) <(installed)
+    }
+    preview='dpkg -s {1} | preview_fields'
+fi
+
+picked="$(list | fzf --multi --query "$query" --prompt "$mode> " \
+    --layout reverse --with-shell 'bash -c' \
+    --header 'TAB mark · Enter go · Alt-P preview · Alt-J/K scroll it' \
+    --preview "$preview" --preview-window 'down:55%:wrap' \
+    --bind 'alt-p:toggle-preview,alt-j:preview-down,alt-k:preview-up')" || exit 0
+mapfile -t names < <(awk '{ print $1 }' <<<"$picked")
+
+pm=apt
+command -v nala >/dev/null && pm=nala
+
+rc=0
+sudo "$pm" "$mode" "${names[@]}" || rc=$?
+
+if [ "$popup" = 1 ]; then
+    printf '\n'
+    read -rsn1 -p "Done (exit $rc) — press any key to close" || true
+fi
+exit "$rc"

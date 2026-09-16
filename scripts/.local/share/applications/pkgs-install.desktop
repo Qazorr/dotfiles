@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Install Packages
+Comment=Search apt packages and install them with nala
+Exec=kitty --class pkgs -e pkgs --popup
+Icon=/usr/share/icons/gnome/256x256/apps/system-software-install.png
+Terminal=false
+Categories=System;PackageManager;
+Keywords=apt;nala;software;install;

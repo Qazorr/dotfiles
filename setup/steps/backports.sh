@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 register_step backports \
-    --desc "Enable trixie-backports and refresh apt" \
+    --desc "Enable trixie-backports and refresh the package lists" \
     --group core --root
 
 step_backports() {
@@ -9,5 +9,5 @@ step_backports() {
         echo "deb http://deb.debian.org/debian trixie-backports main" \
             | sudo tee /etc/apt/sources.list.d/trixie-backports.list >/dev/null
     fi
-    sudo apt update
+    apt_update
 }

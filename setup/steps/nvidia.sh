@@ -89,7 +89,7 @@ deb http://deb.debian.org/debian $codename contrib non-free
 deb http://deb.debian.org/debian $codename-updates contrib non-free
 deb http://security.debian.org/debian-security $codename-security contrib non-free
 EOF
-    sudo apt update
+    apt_update
 }
 
 # open/nvidia modes only. Same method NVIDIA's own install instructions use:
@@ -102,7 +102,7 @@ _nvidia_enable_cuda_repo() {
         "https://developer.download.nvidia.com/compute/cuda/repos/$NVIDIA_CUDA_SUITE/x86_64/cuda-keyring_${NVIDIA_CUDA_KEYRING_VERSION}_all.deb"
     sudo dpkg -i "$tmp"
     rm -f "$tmp"
-    sudo apt update
+    apt_update
 }
 
 _nvidia_write_modprobe() {
