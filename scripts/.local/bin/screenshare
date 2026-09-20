@@ -1,0 +1,303 @@
+#!/usr/bin/env bash
+# Tell whether anything is capturing the screen, and switch Hyprland options
+# while it is.
+#
+#   screenshare status          on | off | unknown   (cheap; poll from a bar)
+#   screenshare status --json   {"active":true,"kind":"monitor",...}
+#   screenshare watch           the daemon: apply the profile while capturing
+#   screenshare test [secs]     apply the profile for a few seconds, then revert
+#
+# Hyprland has no "am I being captured right now?" query, only `screencast`
+# events on socket2, so `watch` has to be running for `status` to know
+# anything. Without it status is "unknown", never a confident "off".
+#
+# Hiding a window from viewers is deliberately NOT done here. Hyprland does it
+# natively with a `no_screen_share` window rule and no daemon at all — see
+# conf.d/windowrules.conf. This only handles the part nothing else does:
+# options that have to change and change back.
+set -euo pipefail
+
+CONF="${SCREENSHARE_CONF:-$HOME/.config/hypr/screenshare.conf}"
+RUN="${XDG_RUNTIME_DIR:-/tmp}"
+STATE="$RUN/screenshare.state"        # "<count> <kind>", written by watch
+SNAP="$RUN/screenshare.snapshot"      # option<TAB>original<TAB>applied
+LOCK="$RUN/screenshare.lock"
+# Overridable so the event handling can be driven from a scripted socket.
+SOCKET="${SCREENSHARE_SOCKET:-$RUN/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket2.sock}"
+
+# Seconds of quiet before acting on a change. A screenshot opens and closes a
+# screencopy session in milliseconds; waiting a beat means its start and stop
+# cancel out and the desktop never strobes.
+SETTLE="${SCREENSHARE_SETTLE:-1}"
+
+# Only ever sent to Hyprland after matching these. Values allow spaces because
+# plenty of options take several words (`gaps_out = 5 5 5 5`).
+OPT_RE='^[a-zA-Z0-9_]+(:[a-zA-Z0-9_.]+)+$'
+VAL_RE='^[A-Za-z0-9_.,()%#[:space:]-]+$'
+
+die()  { echo "screenshare: $*" >&2; exit 1; }
+warn() { echo "screenshare: $*" >&2; }
+
+notify() {
+    # Same chain as idle-inhibit: DMS toast, then notify-send, then nothing.
+    if command -v dms >/dev/null 2>&1 && pgrep -x qs >/dev/null 2>&1; then
+        dms ipc call toast "${2:-info}" "$1" >/dev/null 2>&1 && return 0
+    fi
+    command -v notify-send >/dev/null 2>&1 && notify-send "Screen sharing" "$1" 2>/dev/null || true
+}
+
+trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf '%s' "$s"
+}
+
+# `getoption` puts the value under whichever key fits the type. Multi-word
+# values and gradients come back as "custom", which an int/float/str list
+# alone would miss.
+get_option() {
+    # An unknown-but-well-formed name gets a plain-text error rather than
+    # JSON, so jq's own complaint is muted too and the caller sees "".
+    hyprctl -j getoption "$1" 2>/dev/null | jq -r '
+        if   .int    != null then .int
+        elif .float  != null then .float
+        elif .str    != null then .str
+        elif .custom != null then .custom
+        else empty end' 2>/dev/null
+}
+
+# hyprctl exits 0 whatever happens — a bad option name still gives you status
+# 0 — so success is the literal "ok" it prints, nothing else.
+hc() { [ "$(hyprctl "$@" 2>&1)" = ok ]; }
+
+declare -a OPT_K=() OPT_V=() HOOK_START=() HOOK_STOP=()
+
+# The config is Hyprland option names and values, written the way you would
+# write them anywhere else: `decoration:blur:enabled = 0`. Two reserved names,
+# exec-start and exec-stop, run a command instead.
+#
+# Re-read before every apply, so editing the file takes effect on the next
+# share with no restart. Parses into locals and only commits on success:
+# a typo then leaves the last good config in place instead of either taking
+# the daemon down or half-applying.
+load_conf() {
+    [ -f "$CONF" ] || { warn "no $CONF, nothing to apply"; return 0; }
+    local line key val n=0
+    local -a k=() v=() hstart=() hstop=()
+    while IFS= read -r line || [ -n "$line" ]; do
+        n=$((n + 1))
+        # Whole-line comments only: values and commands may contain '#'.
+        [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+        [[ "$line" == *=* ]] || { warn "$CONF:$n: expected 'name = value', got: $line"; return 1; }
+        key="$(trim "${line%%=*}")"
+        val="$(trim "${line#*=}")"
+        case "$key" in
+            exec-start) [ -n "$val" ] && hstart+=("$val") ;;
+            exec-stop)  [ -n "$val" ] && hstop+=("$val") ;;
+            *)
+                [[ "$key" =~ $OPT_RE ]] || { warn "$CONF:$n: bad option name: $key"; return 1; }
+                [[ "$val" =~ $VAL_RE ]] || { warn "$CONF:$n: bad value for $key: $val"; return 1; }
+                k+=("$key"); v+=("$val") ;;
+        esac
+    done < "$CONF"
+    # Assigned element-wise, never by unquoted expansion: a value like
+    # "5 5 5 5" is one element and must stay one.
+    OPT_K=(); OPT_V=(); HOOK_START=(); HOOK_STOP=()
+    [ ${#k[@]}      -gt 0 ] && OPT_K=("${k[@]}")
+    [ ${#v[@]}      -gt 0 ] && OPT_V=("${v[@]}")
+    [ ${#hstart[@]} -gt 0 ] && HOOK_START=("${hstart[@]}")
+    [ ${#hstop[@]}  -gt 0 ] && HOOK_STOP=("${hstop[@]}")
+    return 0
+}
+
+apply() {
+    local i k v cur
+    # Truncated and rebuilt every time, so a re-apply after `hyprctl reload`
+    # snapshots the values the reload just restored — the real originals.
+    : > "$SNAP"
+    for ((i = 0; i < ${#OPT_K[@]}; i++)); do
+        k="${OPT_K[i]}"; v="${OPT_V[i]}"
+        # `|| true`: jq still exits nonzero on the non-JSON error text.
+        cur="$(get_option "$k")" || true
+        [ -n "$cur" ] || { warn "unknown option, skipping: $k"; continue; }
+        # Self-describing on purpose: `status --json` reports what changed
+        # without having to parse the config a second time.
+        printf '%s\t%s\t%s\n' "$k" "$cur" "$v" >> "$SNAP"
+        hc keyword "$k" "$v" || warn "could not set $k to $v"
+    done
+}
+
+revert() {
+    local k v
+    # Always from the snapshot, never from defaults: a themer may have moved
+    # one of these while we had it overridden.
+    if [ -s "$SNAP" ]; then
+        while IFS=$'\t' read -r k v _; do
+            [ -n "${k:-}" ] || continue
+            hc keyword "$k" "$v" || warn "could not restore $k to $v"
+        done < "$SNAP"
+    fi
+    rm -f "$SNAP"
+}
+
+hooks() {
+    local cmd
+    for cmd in "$@"; do
+        [ -n "$cmd" ] || continue
+        setsid sh -c "$cmd" >/dev/null 2>&1 &
+    done
+}
+
+write_state() { printf '%s %s\n' "$1" "${2:-}" > "$STATE"; }
+
+# Hyprland only announces transitions, so a watcher started in the middle of a
+# share would sit idle until the next one — which is exactly what happens after
+# editing the config and restarting. The portal keeps a PipeWire node open for
+# the whole cast, so count those to seed the starting state. Best effort: a
+# missing pw-dump or jq just means we start from zero, as before.
+portal_casts() {
+    local n
+    command -v pw-dump >/dev/null 2>&1 || { echo 0; return 0; }
+    n="$(pw-dump 2>/dev/null | jq '[.[]
+        | select(.type == "PipeWire:Interface:Node")
+        | .info.props // {}
+        | select((."media.class" // "") == "Video/Source")
+        | select((."node.name"   // "") == "xdg-desktop-portal-hyprland")
+        ] | length' 2>/dev/null)" || n=0
+    [[ "$n" =~ ^[0-9]+$ ]] || n=0
+    echo "$n"
+}
+
+# Nobody holding the lock means no watcher, so we genuinely don't know.
+watching() { ! ( exec 8> "$LOCK"; flock -n 8 ); }
+
+status() {
+    local count=0 kind="" active=false
+    # Guarded, not redirected-and-silenced: a missing file is a shell-level
+    # redirection error that 2>/dev/null on the read would not catch.
+    if [ -r "$STATE" ]; then
+        read -r count kind < "$STATE" || true
+    fi
+    [ "${count:-0}" -gt 0 ] 2>/dev/null && active=true
+    if [ "${1:-}" = --json ]; then
+        if ! watching; then
+            # No watcher, so "off" would be a guess. Say so instead.
+            echo '{"active":null,"kind":null,"count":0,"watching":false,"applied":[]}'
+            return 0
+        fi
+        local applied="[]"
+        if [ -s "$SNAP" ]; then
+            applied="$(jq -R -s 'split("\n") | map(select(length > 0) | split("\t")
+                                 | {option: .[0], from: .[1], to: .[2]})' < "$SNAP")" || applied="[]"
+        fi
+        jq -cn --argjson active "$active" \
+               --arg     kind   "$kind" \
+               --argjson count  "${count:-0}" \
+               --argjson applied "$applied" \
+            '{active: $active, kind: (if $kind == "" then null else $kind end),
+              count: $count, watching: true, applied: $applied}'
+        return 0
+    fi
+    watching || { echo unknown; return 0; }
+    $active && echo on || echo off
+}
+
+test_run() {
+    local secs="${1:-5}"
+    [[ "$secs" =~ ^[0-9]+$ ]] || die "usage: screenshare test [seconds]"
+    load_conf || die "$CONF has errors, nothing applied"
+    echo "applying for ${secs}s…"
+    apply
+    hooks ${HOOK_START[@]+"${HOOK_START[@]}"}
+    awk -F'\t' '{printf "  %s: %s -> %s\n", $1, $2, $3}' "$SNAP" 2>/dev/null || true
+    sleep "$secs"
+    revert
+    hooks ${HOOK_STOP[@]+"${HOOK_STOP[@]}"}
+    echo "reverted"
+}
+
+watch() {
+    # One watcher per session: exec-once plus a manual run would double-apply.
+    exec 9> "$LOCK"
+    flock -n 9 || { echo "already watching" >&2; exit 0; }
+    load_conf || die "$CONF has errors"
+    # A leftover journal means a previous session died mid-share. Put it back
+    # before we start tracking, or those changes would stick forever.
+    [ -s "$SNAP" ] && { warn "restoring state from a previous session"; revert; }
+    write_state 0 ""
+    # Cleanup hangs off EXIT alone; the signals just ask for an exit. A trap
+    # that only reverted would leave bash resuming the read loop afterwards,
+    # which made the watcher survive its own SIGTERM.
+    trap 'revert; write_state 0 ""' EXIT
+    trap 'exit 0' INT TERM HUP
+
+    local ev rc payload state owner count=0 kind="" applied=0
+    # Seed from the portal so a restart mid-share picks up straight away
+    # rather than waiting for the next one.
+    count="$(portal_casts)"
+    if [ "$count" -gt 0 ]; then
+        kind=monitor
+        write_state "$count" "$kind"
+        warn "already sharing on startup ($count), applying"
+    fi
+    while :; do
+        rc=0
+        IFS= read -r -t "$SETTLE" ev || rc=$?
+        if [ "$rc" -eq 0 ]; then
+            case "$ev" in
+                screencast\>\>*)
+                    payload="${ev#screencast>>}"
+                    state="${payload%%,*}"
+                    owner="${payload#*,}"
+                    # Hyprland does NOT aggregate: every client gets its own
+                    # start and its own stop, so count rather than assign, or
+                    # one viewer leaving would look like the share ending.
+                    # OWNER is the word "monitor"/"window", not a 0/1 flag.
+                    if [ "$state" = 1 ]; then
+                        count=$((count + 1)); kind="$owner"
+                    else
+                        count=$((count - 1))
+                        [ "$count" -lt 0 ] && count=0
+                        [ "$count" -eq 0 ] && kind=""
+                    fi
+                    write_state "$count" "$kind" ;;
+                configreloaded*)
+                    # A reload drops every runtime `hyprctl keyword`, so ours
+                    # are gone and the snapshot now describes values Hyprland
+                    # has already restored. Re-apply, which re-snapshots.
+                    [ "$applied" -eq 1 ] && apply ;;
+            esac
+            continue
+        fi
+        [ "$rc" -gt 128 ] || break     # not a timeout: socket closed, stop
+        # A full SETTLE with no new event, so the count has settled. A
+        # screenshot's start/stop pair has already cancelled out by here.
+        if [ "$count" -gt 0 ] && [ "$applied" -eq 0 ]; then
+            load_conf || warn "keeping the last good config"
+            apply; applied=1
+            hooks ${HOOK_START[@]+"${HOOK_START[@]}"}
+            if [ "$kind" = window ]; then
+                notify "Sharing a window"
+            else
+                notify "Sharing your screen"
+            fi
+        elif [ "$count" -eq 0 ] && [ "$applied" -eq 1 ]; then
+            revert; applied=0
+            hooks ${HOOK_STOP[@]+"${HOOK_STOP[@]}"}
+            notify "Sharing stopped, settings restored"
+        fi
+    # 9>&-: socat must not inherit the lock fd. If it did, killing the
+    # watcher would leave socat holding the lock until its next write
+    # failed, blocking a restart and making `status` claim a watcher.
+    done < <(socat -U - "UNIX-CONNECT:$SOCKET" 9>&-)
+}
+
+[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || die "not inside a Hyprland session"
+
+case "${1:-status}" in
+    status) status "${2:-}" ;;
+    watch)  watch ;;
+    test)   test_run "${2:-5}" ;;
+    *) echo "usage: screenshare {status [--json] | watch | test [seconds]}" >&2; exit 1 ;;
+esac

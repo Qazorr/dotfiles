@@ -54,7 +54,7 @@ unset _step_file
 STEPS=(
     backup timeshift prereqs nala backports nvidia hyprland desktop services
     danklinux quickshell login ohmyzsh hyprmon cli vscode claudedesktop brave dms quickcapture
-    uv krkcommute docker devtools fonts groups stow summary
+    uv krkcommute walls docker devtools fonts groups stow summary
 )
 
 GROUP_ORDER=(core safety shell desktop apps dev personal)

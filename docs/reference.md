@@ -15,8 +15,8 @@ dms/.config/DankMaterialShell/  DMS settings.json, plugin_settings.json,
                                   the idleInhibitToggle plugin
 scripts/.local/bin/             dotfiles-backup, idle-inhibit, keybind-help,
                                   lock-session, monitor-profile, new-app, pkgs,
-                                  prime-run
-wallpaper/.local/share/wallpapers/  Default wallpaper
+                                  prime-run, screenshare
+wallpaper/.local/share/wallpapers/  Default wallpaper (+ dharmx/walls, opt-in)
 vscode/.config/vscode-custom/   VS Code UI tweaks (custom.css/.js), see below
 bootstrap.sh                    Entrypoint: run order + command line
 setup/steps/                    One file per stage: register_step + step_<name>()
@@ -120,6 +120,21 @@ Until then the daemon exits and the widget shows a warning triangle — that's
 correct, not broken. `krk-commute favourites` lists saved route names.
 
 
+## Wallpapers (dharmx/walls)
+
+
+`bootstrap.sh walls` clones [dharmx/walls](https://github.com/dharmx/walls)
+(~3.7GB of images, shallow) into `~/.local/share/wallpapers/walls`, next to
+the stowed `default.png`. It's `--optional`: a plain `bootstrap.sh` run never
+pulls it, since it's a multi-gigabyte download. Re-running the step does a
+`git pull --ff-only` instead of a fresh clone.
+
+If DMS is already running, the step also sets one image from the collection
+as the current wallpaper, so the picker (`SUPER+W`) opens straight into that
+folder; otherwise browse to `~/.local/share/wallpapers/walls` there once
+manually.
+
+
 ## Ricing DMS
 
 
@@ -221,6 +236,68 @@ hand. Name the laptop panel `eDP-1` rather than by `desc:`, so a profile
 survives swapping laptops.
 
 hyprmon leaves `active.conf.bak.<timestamp>` backups next to the profiles.
+
+
+## Screen sharing
+
+
+Two separate things, deliberately kept apart.
+
+**Hiding a window from viewers** is native to Hyprland and needs no daemon: a
+`no_screen_share` window rule draws the window as a black rectangle for anyone
+capturing, while it stays normal on your own screen. There's a commented
+template in `conf.d/windowrules.conf`. Rules are evaluated when a window opens,
+so this is config, not something toggled mid-session — and it applies to every
+capture, screenshots included, which is what you want for a password manager.
+
+**Switching options for the duration** is the part nothing else does, and what
+`screenshare` is for. `screenshare watch` (autostart) listens for Hyprland's
+`screencast` events and applies `~/.config/hypr/screenshare.conf` while
+anything is capturing, then puts it back.
+
+```
+screenshare status          on | off | unknown
+screenshare status --json   {"active":true,"kind":"monitor","count":1,...}
+screenshare test [seconds]  apply the profile briefly, without a real call
+```
+
+The config is Hyprland option names and values written the way you'd write
+them anywhere else, one per line:
+
+```
+decoration:blur:enabled = 0
+general:gaps_out        = 5 5 5 5
+```
+
+Anything `hyprctl keyword` accepts works, multi-word values included; check a
+name with `hyprctl getoption <name>`. Two reserved names, `exec-start` and
+`exec-stop`, run a command instead. Each option's value is read and stored
+before it's changed and restored from that snapshot, so a themer moving it
+meanwhile doesn't get clobbered back to a default. Ships with blur and
+animations off while sharing: both are expensive to encode and the first things
+a call's compression smears.
+
+For the bar indicator, DMS's own `privacyIndicator` widget is enabled rather
+than anything custom — it also covers mic and camera. It detects sharing by
+matching PipeWire node names, so it sees portal casts and won't false-positive
+on a screenshot. Note that DMS's *control centre* screen-share icon
+(`controlCenterShowScreenSharingIcon`) is Niri-only and does nothing here.
+
+Worth knowing, all verified against 0.55.2 rather than assumed:
+
+- There is no "am I being captured?" query, only events. That is why the
+  watcher has to be running for `status` to answer at all — with no watcher it
+  says `unknown`, never a confident `off`.
+- The events fire for **any** screencopy client, not just a browser call, so a
+  plain `grim` screenshot emits the same start/stop pair a real share does.
+  The watcher waits a second (`SCREENSHARE_SETTLE`) before acting, which the
+  pair cancels out inside.
+- Hyprland does **not** aggregate: six clients produce six starts and six
+  stops. The watcher counts rather than assigns, or the first viewer to leave
+  a call would look like the whole share ending.
+- `hyprctl` exits 0 whatever happens, so success is the literal `ok` it prints.
+- `hyprctl reload` drops every runtime `keyword`, so the watcher re-applies on
+  `configreloaded`.
 
 
 ## Adding a new app launcher
