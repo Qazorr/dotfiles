@@ -4,13 +4,10 @@ register_step nala \
     --group shell --root \
     --provides nala /usr/local/bin/apt
 
-# /usr/local/bin precedes /usr/bin in PATH and sudo's secure_path, so the shim
-# catches every shell, script and `sudo apt`. apt-get stays plain apt.
 step_nala() {
     ensure_nala
 
     log "Installing the apt → nala shim at /usr/local/bin/apt"
-    # A root-owned copy, not a symlink into the repo: sudo runs it.
     sudo tee /usr/local/bin/apt >/dev/null <<'EOF'
 #!/bin/sh
 # Managed by ~/dotfiles (setup/steps/nala.sh). Anything nala can't take the

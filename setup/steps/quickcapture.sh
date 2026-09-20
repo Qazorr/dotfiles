@@ -15,8 +15,6 @@ step_quickcapture() {
     fi
 
     log "Installing Quick Capture $QUICKCAPTURE_VERSION"
-    # Upstream code, not vendored — replaced wholesale like the DMS QML tree.
-    # The enablement state IS tracked, under a stow path this doesn't touch.
     mkdir -p "$(dirname "$dir")"
     rm -rf "$dir"
     git clone --depth=1 --branch "$QUICKCAPTURE_VERSION" \

@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# Fuzzy-pick apt packages to install or remove through nala.
-#
-#   pkgs [query]          install, from packages not installed yet
-#   pkgs remove [query]   remove, from manually installed packages
-#       --popup           wait for a key before exiting (launcher / SUPER+ALT+I)
-#
-# TAB marks several, Enter confirms, Esc quits, Alt-P toggles the preview.
 set -euo pipefail
+
+# TAB marks several, Enter confirms, Esc quits, Alt-P toggles the preview.
 
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../.." && pwd)"
 # shellcheck source=../../../lib/common.sh
@@ -36,7 +31,6 @@ installed() {
         | awk -F'\t' '$1 ~ /^ii/'
 }
 
-# Exported for fzf's preview, which runs in a child bash.
 # shellcheck disable=SC2317  # only called from fzf's preview command
 preview_fields() {
     awk '/^[^ ]/ { keep = $1 ~ /^(Package|Version|Section|Homepage|Description(-en)?):$/ }
@@ -45,7 +39,6 @@ preview_fields() {
 }
 export -f preview_fields
 
-# Lines are "name - summary", so fzf's {1} is the package name.
 if [ "$mode" = install ]; then
     list() {
         awk -F'\t' 'NR == FNR { have[$2]; next }

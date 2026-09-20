@@ -3,17 +3,6 @@ import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
 
-// Bar pill + Control Center toggle for scripts/.local/bin/idle-inhibit — the
-// same script SUPER+I runs; just another way to reach it, not a second
-// inhibitor.
-//
-// DMS's own idle-inhibitor toggle (IdleInhibitor.qml, SessionService.idle
-// Inhibited) is left disabled: that flag has no D-Bus/systemd/Wayland
-// registration, so it doesn't affect hypridle, which is what actually locks
-// this session — see the README's "Idle inhibitor" section.
-//
-// Polls `idle-inhibit status` rather than tracking a local boolean, so it
-// can't disagree with the real lock state (keybind, another bar, a terminal).
 PluginComponent {
     id: root
 
@@ -84,7 +73,4 @@ PluginComponent {
 
     pillClickAction: () => root.toggle()
 
-    // Control Center integration (ccWidgetIcon etc.) was tried and dropped —
-    // it rendered as a bare "Unknown" tile instead of picking those up, and
-    // debugging DMS's Control Center internals was out of scope. Bar-only.
 }

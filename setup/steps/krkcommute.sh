@@ -26,22 +26,19 @@ step_krkcommute() {
     log "Installing krk-commute's Python dependencies"
     ( cd "$dir" && uv sync --locked --no-dev )
 
-    # Not ~/.local/bin: stow symlink into this repo.
     local bin_dir="$HOME/.local/share/krk-commute/bin"
     mkdir -p "$bin_dir"
     ln -sf "$dir/.venv/bin/krk-commute" "$bin_dir/krk-commute"
 
     log "Installing the krk-commute user service"
-    # The shipped unit hardcodes %h/.local/bin/krk-commute — wrong for the
-    # same reason, so substitute the path instead of symlinking the unit.
     mkdir -p "$HOME/.config/systemd/user"
     sed "s|%h/.local/bin/krk-commute|$bin_dir/krk-commute|" \
         "$dir/systemd/krk-commute.service" > "$HOME/.config/systemd/user/krk-commute.service"
+    # The shipped unit hardcodes %h/.local/bin/krk-commute, which is a stow
+    # symlink into this repo, so the path is substituted instead.
     systemctl --user daemon-reload
     systemctl --user enable --now krk-commute.service
 
-    # The widget lives in krk-commute's own repo next to its daemon;
-    # symlinked so it tracks that repo.
     mkdir -p "$HOME/.config/DankMaterialShell/plugins"
     ln -sfn "$dir/plugin-dms" "$HOME/.config/DankMaterialShell/plugins/krkCommute"
     dms_enable_plugin krkCommute

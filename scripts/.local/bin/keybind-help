@@ -21,22 +21,18 @@ import shutil
 import subprocess
 import sys
 
-# Hyprland modmask bits.
 MODS = [(64, "SUPER"), (4, "CTRL"), (8, "ALT"), (1, "SHIFT")]
 
-# Keys whose names read badly in a cheat sheet.
 PRETTY = {
     "Return": "Enter", "Escape": "Esc", "Slash": "/", "Print": "PrtSc",
     "mouse_down": "Wheel↓", "mouse_up": "Wheel↑",
     "mouse:272": "LMB", "mouse:273": "RMB",
-    # Media/laptop function keys, which report as raw XF86 symbols.
     "XF86AudioRaiseVolume": "Vol ↑", "XF86AudioLowerVolume": "Vol ↓",
     "XF86AudioMute": "Mute", "XF86AudioMicMute": "Mic mute",
     "XF86MonBrightnessUp": "Bright ↑", "XF86MonBrightnessDown": "Bright ↓",
     "XF86AudioPlay": "Play", "XF86AudioNext": "Next", "XF86AudioPrev": "Prev",
 }
 
-# Grouped by leading word of the description, in this order.
 CATEGORIES = [
     ("Launch",     ("Open", "App", "Terminal", "Settings", "Network", "Bluetooth",
                     "Audio", "File", "Browser")),
@@ -53,11 +49,9 @@ CATEGORIES = [
 RESET, DIM, BOLD = "\033[0m", "\033[2m", "\033[1m"
 KEYC, DESCC, HEADC = "\033[38;5;183m", "\033[38;5;252m", "\033[1;38;5;141m"
 
-
 def _keyname(n):
     """X keycodes 10-19 are the number row; everything else stays raw."""
     return str(n - 9) if 10 <= n <= 19 else f"code:{n}"
-
 
 def combo(bind):
     parts = [name for bit, name in MODS if bind["modmask"] & bit]
@@ -72,16 +66,12 @@ def combo(bind):
     parts.append(PRETTY.get(key, key))
     return " + ".join(p for p in parts if p)
 
-
 def label(bind):
     if bind.get("description"):
         return bind["description"]
     d, a = bind.get("dispatcher", ""), bind.get("arg", "")
     return f"{d} {a}".strip() or "(no description)"
 
-
-# (head, category), longest head first: "Toggle bar" must be checked before
-# "Toggle", or the generic head always wins.
 _HEAD_TABLE = sorted(
     ((head, name) for name, heads in CATEGORIES for head in heads),
     key=lambda pair: len(pair[0]), reverse=True,
@@ -89,8 +79,6 @@ _HEAD_TABLE = sorted(
 
 def categorise(desc):
     low = desc.lower()
-    # Check the subject before the verb: "Move to workspace 3" is a workspace
-    # binding, not a window one, even though it starts with "Move".
     if "workspace" in low:
         return "Workspace"
     if "screenshot" in low:
@@ -100,11 +88,8 @@ def categorise(desc):
             return name
     return "Other"
 
-
-# Dispatchers that end or disrupt the session badly enough to confirm first.
 DESTRUCTIVE = {"exit"}
 DESTRUCTIVE_ARGS = ("poweroff", "reboot", "suspend", "hyprlock")
-
 
 def run_bind(bind):
     """Execute a binding through hyprctl, confirming the dangerous ones."""
@@ -121,7 +106,6 @@ def run_bind(bind):
     subprocess.run(["hyprctl", "dispatch", disp] + ([arg] if arg else []),
                    capture_output=True)
 
-
 def interactive(binds, query=""):
     """Fuzzy-search the binds with fzf. Returns True if it ran."""
     if not shutil.which("fzf") or not sys.stdout.isatty():
@@ -132,8 +116,6 @@ def interactive(binds, query=""):
     for i, b in enumerate(binds):
         d, a = b.get("dispatcher", ""), b.get("arg", "")
         cmd = f"{d} {a}".strip()
-        # Index first, hidden, so the selection maps back exactly when two
-        # bindings share a description.
         lines.append(
             f"{i}\t{KEYC}{combo(b):<{keyw}}{RESET}{DESCC}{label(b):<34}{RESET}{DIM}{cmd}{RESET}"
         )
@@ -159,7 +141,6 @@ def interactive(binds, query=""):
     run_bind(binds[idx])
     return True
 
-
 def main():
     try:
         raw = subprocess.run(["hyprctl", "binds", "-j"],
@@ -170,7 +151,6 @@ def main():
     except json.JSONDecodeError:
         sys.exit("could not parse `hyprctl binds -j`")
 
-    # The same combo+description appears twice when a bind has flag variants.
     seen = set()
     uniq = []
     for b in binds:
@@ -202,13 +182,11 @@ def main():
             print(line if len(k) + len(d) + 5 < width else f"   {KEYC}{k}{RESET}\n     {DESCC}{d}{RESET}")
         print()
 
-    # Only pause when run interactively in its own window; piping stays clean.
     if sys.stdout.isatty() and os.environ.get("KEYBIND_HELP_HOLD") != "0":
         try:
             input(f" {DIM}Press Enter to close…{RESET}")
         except (EOFError, KeyboardInterrupt):
             pass
-
 
 if __name__ == "__main__":
     main()

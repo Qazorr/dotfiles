@@ -9,26 +9,21 @@
     scale: 1.2;
 }
 
-/* Code canvas top shadow */
 .monaco-editor .scroll-decoration {
     box-shadow: 0px 0px 20px rgba(0, 0, 0, .75) !important;
     top: -6px !important;
 }
 
-/* Side bar */
 .part.sidebar {
     box-shadow: 0px 0px 50px rgba(0, 0, 0, .25);
 }
 
-/* File Explorer Selected Item */
 .monaco-list.list_id_1 .monaco-list-row.selected {
     font-weight: 900 !important;
     opacity: 1 !important;
     background-color: var(--vscode-editor-background) !important;
-    /* filter: brightness(2) saturate(3) !important; */
 }
 
-/* List item label name */
 .monaco-list.list_id_1 .monaco-list-row.selected .label-name {
     color: #fff !important;
     opacity: 1 !important;
@@ -39,7 +34,6 @@
     font-weight: 300;
 }
 
-/* File explorer action buttons */
 .monaco-workbench .part.sidebar .title-actions .actions-container {
     display: flex;
 }
@@ -50,7 +44,6 @@
 
 .action-item.checked {
     background-color: rgba(var(--vscode-editor-background) 0.6) !important;
-    /* filter: brightness(2.5) !important; */
 }
 
 .action-item.start-debug-action-item {
@@ -68,21 +61,17 @@
     display: none !important;
 }
 
-/* File Explorer Item Label */
 .monaco-tree .monaco-tree-row .label-name,
 .monaco-list .monaco-list-row .monaco-icon-label .label-name {
     font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
     font-weight: 400;
 }
 
-
-/* Sidebar top shadow */
 .monaco-scrollable-element>.shadow.top {
     box-shadow: 0px 0px 10px rgba(0, 0, 0, .75) !important;
     top: -3px !important;
 }
 
-/* Sidebar title */
 .composite.title {
     display: flex !important;
     flex-direction: row !important;
@@ -96,7 +85,6 @@
     color: #bc9abc !important;
 }
 
-/* Scroll Bar */
 .slider {
     position: absolute !important;
     right: 1px !important;
@@ -110,36 +98,30 @@
     display: block !important;
 }
 
-/* Tooltip box style */
 .monaco-editor-hover,
 .monaco-hover {
     box-shadow: 0px 1px 2px var(--vscode-badge-foreground) !important;
     outline: 1px solid var(--vscode-badge-foreground) !important;
     padding: 2px !important;
     background-color: var(--vscode-editor-background) !important;
-    /* filter: brightness(1.1) !important; */
     backdrop-filter: blur(3px) !important;
     border: none !important;
 }
 
-/* Project title's style at the top. */
 .monaco-workbench .part.titlebar>.titlebar-container>.titlebar-center>.window-title>.command-center .action-item.command-center-center {
     border: none !important;
     background: transparent !important;
 }
 
-/* Project Title */
 .titlebar-left {
     width: auto !important;
 }
 
-/* Search Label */
 .search-label {
     font-family: "FiraCode Nerd Font Mono Med", "JetBrainsMono Nerd Font Mono" !important;
     color: #fff;
 }
 
-/* Search icon */
 .search-icon {
     display: none !important;
 }
@@ -157,7 +139,6 @@
     display: none !important;
 }
 
-/* Command Palette */
 .quick-input-widget {
     top: 0% !important;
     box-shadow: 0px 8px 20px rgba(0, 0, 0, .45) !important;
@@ -166,7 +147,6 @@
     backdrop-filter: blur(3px) !important;
     border-radius: 10px !important;
     border: 1px solid var(--vscode-editor-foreground) !important;
-    /* animation: quick-input-widget-in 0.1s ease-in-out forwards; */
 }
 
 @keyframes quick-input-widget-in {
@@ -179,12 +159,10 @@
     }
 }
 
-/* Remove background for lists */
 .monaco-list-rows {
     background: transparent !important;
 }
 
-/* List hover */
 .monaco-list-row:hover {
     background: rgba(0, 0, 0, .2) !important;
 }
@@ -208,7 +186,6 @@
     font-size: 14px !important;
 }
 
-/* Command palette text input */
 .quick-input-filter .monaco-inputbox {
     border-radius: 12px !important;
     padding: 8px !important;
@@ -228,7 +205,6 @@
     backdrop-filter: blur(2px);
 }
 
-/* Command palette's input box placeholder. */
 .monaco-inputbox input::placeholder {
     color: rgba(255, 255, 255, .3) !important;
 }

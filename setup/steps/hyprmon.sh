@@ -15,8 +15,6 @@ step_hyprmon() {
 
     require_disk_space 2
     log "Installing golang-go (build dependency for hyprmon)"
-    # go.mod needs go 1.26; trixie main has 1.24. Go would auto-fetch it
-    # mid-build, at the cost of a second ~100MB download.
     apt_install_backports golang-go
 
     local src="$HOME/.cache/dotfiles-build/hyprmon-src"
@@ -29,6 +27,5 @@ step_hyprmon() {
     ( cd "$src" && go build \
         -ldflags="-s -w -X main.Version=$HYPRMON_VERSION -X main.GitCommit=$commit" \
         -o hyprmon . )
-    # /usr/local/bin, matching hyprmon's own documented install method.
     sudo install -m755 "$src/hyprmon" /usr/local/bin/hyprmon
 }

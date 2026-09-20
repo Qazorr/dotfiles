@@ -1,17 +1,13 @@
 #!/usr/bin/env bash
-# Lock the session, defensively.
-#
-# hypridle's documented `pidof hyprlock || hyprlock` fails in practice: a
-# hyprlock that starts without presenting a lock surface sticks around, pidof
-# succeeds forever, and the session never locks again. So skip only if
-# hyprlock is running AND actually locking.
 set -euo pipefail
+
+# Skips only when hyprlock is running AND actually locking. A hyprlock that
+# starts without presenting a lock surface sticks around, and a plain pidof
+# check would then leave the session unlockable for good.
 
 locking() {
     pgrep -x hyprlock >/dev/null 2>&1 || return 1
-    # A real lock owns a session-lock surface. A hung hyprlock does not.
     hyprctl layers 2>/dev/null | grep -qi 'hyprlock' && return 0
-    # Fall back to logind's view, in case the compositor names it differently.
     [ "$(loginctl show-session "${XDG_SESSION_ID:-}" -p LockedHint --value 2>/dev/null)" = "yes" ]
 }
 

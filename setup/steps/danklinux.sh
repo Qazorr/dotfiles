@@ -1,27 +1,23 @@
 # shellcheck shell=bash
-# DankLinux's own Debian 13 repo (the DankMaterialShell author's). It packages
-# Quickshell and the DMS greeter, neither of which is in Debian proper — see
-# setup/steps/quickshell.sh for what that replaced.
-# --always, because the step is two idempotent file checks and recording it
-# is what broke it: stamped done, it was skipped on every later run, so a
-# danklinux.list rewritten behind our back — by hand, or by upstream's own
-# install snippet, both of which use the MirrorBrain URL — survived forever
-# and every dms-greeter install kept failing on a desynced mirror.
+# DankLinux's own Debian 13 repo, packaging Quickshell and the DMS greeter.
+#
+# --always, because the step is two idempotent file checks and recording it is
+# what broke it: stamped done, it was skipped forever, so a danklinux.list
+# rewritten behind our back kept every dms-greeter install failing on a
+# desynced mirror.
 register_step danklinux \
     --desc "DankLinux apt repo (Quickshell, dms-greeter)" \
     --group desktop --root --always --needs prereqs
 
-# downloadcontent, not download: the latter is MirrorBrain and redirects to
-# a nearby mirror, which can serve a .deb that doesn't match the index yet
-# ("File has unexpected size", apt refuses it). This host serves directly.
+# downloadcontent, not download: the latter is MirrorBrain and redirects to a
+# nearby mirror, which can serve a .deb that does not match the index yet
+# ("File has unexpected size"). This host serves directly.
 DANKLINUX_REPO=https://downloadcontent.opensuse.org/repositories/home:/AvengeMedia:/danklinux/Debian_13
 
 step_danklinux() {
     log "Adding the DankLinux apt repo"
     local key=/etc/apt/keyrings/danklinux.asc
     sudo install -m0755 -d /etc/apt/keyrings
-    # Served ASCII-armored, and signed-by= takes that as-is from a .asc —
-    # same as Anthropic's, unlike Microsoft's which needs dearmoring.
     ensure_apt_key "$DANKLINUX_REPO/Release.key" "$key"
     sudo chmod a+r "$key"
     # A flat repo: no suite or component, hence the bare trailing "/".

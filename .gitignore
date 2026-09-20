@@ -1,40 +1,36 @@
-# VM test environment: ISO/disk images are multi-GB binaries, not repo content
+# Multi-GB binaries, and local machine access rather than repo content.
 vm/iso/
 vm/disk/
-# Host's SSH access key for the VM — local machine access config, not dotfiles content
 vm/host-access/
-# cava writes its default GL shader assets here on first run — not something we author
+
+# Written on first run by the app itself.
 cava/.config/cava/shaders/
-# DMS's matugen hook regenerates this on every theme change, and
-# ~/.config/hypr is a stow symlink into this repo — so the write lands here.
-# Scoped to the generated file only: dms/binds.conf next to it IS ours.
+
+# matugen regenerates these on every theme change, and the config dirs are
+# stow symlinks into this repo, so the writes land here. Scoped to the
+# generated files only: dms/binds.conf next to colors.lua IS ours.
 hypr/.config/hypr/dms/colors.lua
-# matugen (via DMS) regenerates these on every theme change, and
-# ~/.config/kitty is a stow symlink into this repo — so the writes land here.
 kitty/.config/kitty/dank-*.conf
-# ~/.config/DankMaterialShell/plugins is a whole-directory stow symlink, so
-# anything a step installs under it lands physically in the repo.
-# idleInhibitToggle is ours and stays tracked. quickCapture is a ~8MB
-# third-party download refetched on every version bump (quickcapture.sh);
-# krkCommute symlinks to a separately-cloned repo (krkcommute.sh) — neither
-# has anything here to commit.
+
+# The plugins dir is a whole-directory stow symlink, so anything a step
+# installs under it lands physically in the repo. idleInhibitToggle is ours
+# and stays tracked; these two are fetched by their own steps.
 dms/.config/DankMaterialShell/plugins/quickCapture/
 dms/.config/DankMaterialShell/plugins/krkCommute
-# Claude Code's self-updater rewrites ~/.local/bin/claude to point at the
-# version it just installed — and ~/.local/bin is a stow symlink into this
-# repo, so that symlink lands here. It's a pointer at a machine-local install
-# under ~/.local/share/claude, not repo content.
+
+# Claude Code's self-updater rewrites this symlink to point at the version it
+# just installed, and ~/.local/bin is a stow symlink into this repo.
 scripts/.local/bin/claude
-# Machine-local Hyprland config (NVIDIA env block and anything else specific
-# to one box's hardware). Created by step_stow, written by step_nvidia, and
-# ~/.config/hypr is a stow symlink so it lands here.
+
+# Machine-local Hyprland config: the NVIDIA env block and anything else
+# specific to one box. Created by step_stow, written by step_nvidia.
 hypr/.config/hypr/conf.d/local.conf
-# keybind-help is Python, and running it writes __pycache__ next to itself —
-# which is inside a stow package, so the bytecode lands in the repo. Caught
-# only after it had been committed once.
+
+# keybind-help is Python, and running it writes __pycache__ next to itself,
+# which is inside a stow package.
 scripts/.local/bin/__pycache__/
-# ~/.local/share/wallpapers is a whole-directory stow symlink into the
-# wallpaper package, so dharmx/walls (walls.sh, opt-in, ~3.7GB) lands
-# physically in the repo when cloned there — not vendored, refetched by the
+
+# ~/.local/share/wallpapers is a whole-directory stow symlink, so dharmx/walls
+# (walls.sh, opt-in, ~3.7GB) lands physically in the repo. Refetched by the
 # step's `git pull`.
 wallpaper/.local/share/wallpapers/walls/

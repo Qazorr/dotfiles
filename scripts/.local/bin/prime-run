@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Run one program on the NVIDIA card on a hybrid-graphics laptop, leaving the
-# rest of the session on the integrated GPU.
-#
-#   prime-run blender
 set -euo pipefail
 
 [ $# -gt 0 ] || { echo "usage: prime-run <command> [args...]" >&2; exit 1; }

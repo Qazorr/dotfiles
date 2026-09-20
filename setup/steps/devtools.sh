@@ -1,7 +1,4 @@
 # shellcheck shell=bash
-# Not packaged for Debian, so fetched as GitHub release tarballs.
-# /usr/local/bin rather than ~/.local/bin, which is a stow symlink into this
-# repo — same as hyprmon.
 LAZYDOCKER_VERSION=v0.25.2
 LAZYGIT_VERSION=v0.64.1
 

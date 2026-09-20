@@ -1,7 +1,7 @@
 # shellcheck shell=bash
-# `./bootstrap.sh --pick`. Sets PICKED; returns 1 if the user backed out.
-# Plain bash, no whiptail/dialog/fzf — runs on tty1 before curl exists.
 
+# `./bootstrap.sh --pick`. Sets PICKED; returns 1 if the user backed out.
+# Plain bash, no whiptail/dialog/fzf: runs on tty1 before curl exists.
 _pick_locked() { [ "${STEP_GROUP[$1]}" = "core" ]; }
 
 _pick_render() {
@@ -16,8 +16,6 @@ _pick_render() {
             if _pick_locked "$s"; then mark='[*]'
             elif [ "${_sel[$i]}" = "1" ]; then mark='[x]'
             else mark='[ ]'; fi
-            # The record beats the probe: a step can be done and have
-            # nothing to probe for.
             status=""
             if step_is_always "$s"; then :
             elif step_stamp_state "$s"; then status=$'\033[2m  (done)\033[0m'
@@ -50,8 +48,6 @@ pick_steps() {
     for i in "${!STEPS[@]}"; do
         sel[$i]=0
         for s in "$@"; do [ "$s" = "${STEPS[$i]}" ] && sel[$i]=1; done
-        # Optional steps (nvidia) start unticked even in a default
-        # "everything" selection — NAMED tracks what was actually typed.
         step_auto_excluded "${STEPS[$i]}" && sel[$i]=0
         _pick_locked "${STEPS[$i]}" && sel[$i]=1
     done
@@ -75,7 +71,6 @@ pick_steps() {
                             _pick_locked "${STEPS[$s]}" || sel[$s]=0
                         done ;;
                 m|missing)
-                    # No probe counts as missing; those steps are cheap.
                     for s in "${!STEPS[@]}"; do
                         step_installed "${STEPS[$s]}" && sel[$s]=0 || sel[$s]=1
                         _pick_locked "${STEPS[$s]}" && sel[$s]=1
@@ -107,8 +102,6 @@ pick_steps() {
                     fi ;;
                 *[!0-9]*) warn "don't know what to do with '$tok'" ;;
                 *)  local idx=$((tok - 1))
-                    # Bash reads a negative index from the END of the array,
-                    # so a stray "0" would toggle the last step.
                     if [ "$idx" -lt 0 ] || [ -z "${STEPS[$idx]:-}" ]; then
                         warn "no step number $tok"
                     elif _pick_locked "${STEPS[$idx]}"; then

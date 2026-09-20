@@ -11,9 +11,6 @@ step_uv() {
         return 0
     fi
     log "Installing uv"
-    # UV_INSTALL_DIR, not the installer's default of ~/.local/bin — a stow
-    # symlink into this repo, so the default writes uv straight into git.
-    # That already happened once, before this step existed.
     mkdir -p "$dir"
     UV_INSTALL_DIR="$dir" sh -c "$(curl -LsSf https://astral.sh/uv/install.sh)"
 }
