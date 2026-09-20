@@ -1,20 +1,4 @@
 #!/usr/bin/env bash
-# Apply the monitor profile for whichever desk this is, and keep applying it
-# as monitors come and go.
-#
-#   monitor-profile                re-check now, apply if the match changed
-#   monitor-profile --watch        the same, then again on every hotplug
-#   monitor-profile --status       connected monitors, profiles, what matches
-#   monitor-profile --save <name>  keep the current unmatched layout as <name>
-#
-# Profiles are ~/.config/monitor-profiles/<name>.conf — monitor= and
-# workspace= rules, or any other hyprlang. hyprland.conf sources active.conf,
-# which this points at the winner. They live outside the dotfiles repo on
-# purpose: EDID descriptions carry monitor serials, and the repo is public.
-#
-# A profile matches when every `monitor = desc:...` line in it is connected;
-# the most such lines wins, so a three-monitor desk beats a two-monitor
-# subset. No match leaves a placeholder: Hyprland's defaults.
 set -euo pipefail
 
 DIR="${MONITOR_PROFILES_DIR:-$HOME/.config/monitor-profiles}"
@@ -24,7 +8,6 @@ PLACEHOLDER="# No monitor profile matches the connected monitors — Hyprland de
 die() { echo "monitor-profile: $*" >&2; exit 1; }
 
 notify() {
-    # Same chain as idle-inhibit: DMS toast, then notify-send, then nothing.
     if command -v dms >/dev/null 2>&1 && pgrep -x qs >/dev/null 2>&1; then
         dms ipc call toast info "$1" >/dev/null 2>&1 && return 0
     fi
@@ -46,8 +29,8 @@ profiles() {
     return 0
 }
 
-# Prints how many desc: lines a profile has when all of them are connected;
-# nothing when one is missing or it has none.
+# How many desc: lines a profile has when all of them are connected; nothing
+# when one is missing. Most lines wins, so a three-monitor desk beats a subset.
 match_count() {
     local have="$1" d n=0
     while IFS= read -r d; do
@@ -68,13 +51,12 @@ pick() {
     printf '%s\n' "$best"
 }
 
-# The profile active.conf points at; empty for the placeholder.
 current() {
     [ -L "$ACTIVE" ] && basename "$(readlink "$ACTIVE")" .conf
     return 0
 }
 
-# One rename, so an autoreload mid-swap never finds active.conf missing — a
+# One rename, so an autoreload mid-swap never finds active.conf missing: a
 # missing source is a config error in Hyprland 0.55.
 set_active() {
     local tmp="$ACTIVE.tmp.$$"
@@ -87,7 +69,7 @@ set_active() {
 }
 
 # Workspaces already open when the profile changes may sit on the wrong
-# monitor; move each onto the (connected) monitor its rule names.
+# monitor; move each onto the one its rule names.
 move_workspaces() {
     local cmds
     cmds="$(jq -rn \
@@ -121,8 +103,8 @@ apply() {
     echo "${want:-none}"
 }
 
-# A dock brings its monitors up one event at a time. Wait until no monitor
-# event has arrived for ~2s, so a half-connected desk never gets matched.
+# A dock brings its monitors up one event at a time. Wait for ~2s of quiet so
+# a half-connected desk never gets matched.
 settle() {
     local deadline=$((SECONDS + 2)) ev rc
     while [ "$SECONDS" -lt "$deadline" ]; do

@@ -6,9 +6,6 @@ register_step desktop \
                /usr/share/icons/Bibata-Modern-Classic
 
 step_desktop() {
-    # -t trixie-backports throughout: Hyprland comes from there and pulls a
-    # newer libxkbcommon, so resolving these against main too would conflict.
-    #
     log "Installing terminal, shell, screenshot/clipboard, network tools"
     apt_install_backports \
         kitty zsh stow \
@@ -22,9 +19,6 @@ step_desktop() {
         blueman bluez \
         bibata-cursor-theme
 
-    # Hyprland takes the cursor from XCURSOR_THEME (conf.d/environment.conf);
-    # GTK apps and DMS's "System Default" cursor read gsettings instead.
-    # Needs a session bus, so from a bare TTY it only warns.
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic 2>/dev/null \
         || warn "Couldn't set the GTK cursor theme (no session bus?) — re-run this step from inside Hyprland"
 }

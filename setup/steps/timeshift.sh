@@ -12,8 +12,6 @@ step_timeshift() {
 
     command -v timeshift >/dev/null 2>&1 || { log "Installing timeshift"; apt_install timeshift; }
 
-    # Without this, a re-run would spend ten minutes and several GB
-    # duplicating a snapshot you already have.
     local recent
     recent="$(sudo find /timeshift -maxdepth 3 -name 'info.json' -mtime -1 2>/dev/null | head -1 || true)"
     if [ -n "$recent" ]; then
@@ -21,8 +19,6 @@ step_timeshift() {
         return 0
     fi
 
-    # Snapshots land on the same disk: protects against a bad install, not
-    # against disk failure.
     local root_dev
     root_dev="$(findmnt -no SOURCE / 2>/dev/null || true)"
     [ -n "$root_dev" ] || { warn "couldn't determine the root device, skipping timeshift"; return 0; }
@@ -35,9 +31,10 @@ step_timeshift() {
     fi
 
     log "Creating a timeshift snapshot on $root_dev (first one takes a while)"
-    # --rsync explicitly so behaviour doesn't change on a btrfs root. No
+    # --rsync explicitly so behaviour does not change on a btrfs root. No
     # --tags: timeshift 24.06.6 rejects "--tags O" even though it lists O as
-    # valid — omitting it already defaults to on-demand.
+    # valid, and omitting it already defaults to on-demand. Snapshots land on
+    # the same disk: protection against a bad install, not disk failure.
     sudo timeshift --create --rsync \
         --snapshot-device "$root_dev" \
         --comments "before dotfiles bootstrap $(date +%F-%H%M)" \

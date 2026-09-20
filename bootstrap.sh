@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# Provisions a Hyprland desktop on Debian 13 (trixie). See README.md.
-#
-#   ./bootstrap.sh              run everything not done yet (nvidia is opt-in)
-#   ./bootstrap.sh --list       the steps, and what has already run
-#   ./bootstrap.sh --doctor     check this machine, change nothing
-#
-# Completed steps are recorded in ~/.local/state/dotfiles/steps and skipped
-# next time; editing a step's file un-records it. This file owns the run
-# order and command line; steps live in setup/steps/, helpers in lib/.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,19 +21,15 @@ source "$REPO/lib/options.sh"
 # shellcheck source=lib/doctor.sh
 source "$REPO/lib/doctor.sh"
 
-# --force-confold keeps your modified config files instead of opening the
-# conffile prompt, which would stall an unattended run.
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
-# dms-greeter stops to ask which of sudo/run0 to escalate with, and its own
-# -y only skips the confirmation prompt, not that picker.
 export DMS_PRIVESC=sudo
+# --force-confold keeps modified config files instead of opening the conffile
+# prompt, which would stall an unattended run.
 APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-confdef")
 
 export PATH="$DOTFILES_PATH_PREFIX:$PATH"
 
-
-# register_step runs at source time, so this must follow lib/steps.sh.
 for _step_file in "$REPO"/setup/steps/*.sh; do
     # shellcheck source=/dev/null
     source "$_step_file"
@@ -68,13 +55,8 @@ declare -A PROFILES=(
 
 steps_validate
 
-# ---------------------------------------------------------------------------
-# Preconditions
-# ---------------------------------------------------------------------------
 SUDO_KEEPALIVE_PID=""
 
-# Not a `trap ... RETURN` in the step: it stays registered and fires on the
-# caller's return, where `set -u` kills the run on the now-gone local.
 SCRATCH_DIRS=()
 scratch_dir() {
     local -n _dir="$1"
@@ -82,7 +64,6 @@ scratch_dir() {
     SCRATCH_DIRS+=("$_dir")
 }
 
-# A 40-minute install scrolls the interesting part off-screen.
 LOG_DIR="$DOTFILES_STATE_DIR/logs"
 LOG_FILE=""
 LOG_TEE_PID=""
@@ -90,13 +71,12 @@ start_logging() {
     [ "${DOTFILES_NO_LOG:-0}" = "1" ] && return 0
     mkdir -p "$LOG_DIR" 2>/dev/null \
         || { warn "can't write to $LOG_DIR — this run won't be logged"; return 0; }
-    # $$ too, so two runs in the same second don't share one interleaved file.
+    # $$ too, so two runs in the same second don't interleave into one file.
     LOG_FILE="$LOG_DIR/bootstrap-$(date +%Y%m%d-%H%M%S)-$$.log"
-    # cleanup() waits for this tee, or an early exit drops the last line.
     exec > >(tee -a "$LOG_FILE") 2>&1
     LOG_TEE_PID=$!
     log "Logging this run to $LOG_FILE"
-    # Keep ten; `|| true` since ls on an empty glob would fail the run under pipefail.
+    # `|| true`: ls on an empty glob would fail the run under pipefail.
     ls -1t "$LOG_DIR"/bootstrap-*.log 2>/dev/null | tail -n +10 | xargs -r rm -f || true
     return 0
 }
@@ -104,7 +84,8 @@ start_logging() {
 cleanup() {
     [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
     [ ${#SCRATCH_DIRS[@]} -gt 0 ] && rm -rf "${SCRATCH_DIRS[@]}"
-    # Last: closing these is what gives tee EOF, and nothing can print after.
+    # Closing these is what gives tee EOF; waiting stops an early exit dropping
+    # the last line. Nothing can print after this.
     if [ -n "$LOG_TEE_PID" ]; then
         exec 1>&- 2>&-
         wait "$LOG_TEE_PID" 2>/dev/null
@@ -132,7 +113,6 @@ ensure_sudo() {
     log "Installing system packages needs sudo — asking once, now, so the rest runs unattended."
     sudo -v || die "sudo authentication failed"
 
-    # A long apt upgrade can outlast sudo's 15-minute timeout.
     ( while true; do
           sleep 50
           kill -0 "$$" 2>/dev/null || exit 0
@@ -161,9 +141,6 @@ check_environment() {
     fi
 }
 
-# ---------------------------------------------------------------------------
-# Command line
-# ---------------------------------------------------------------------------
 list_steps() {
     local g s rc status root opt needs done_
     printf 'Steps, in run order. sudo = needs root.\n'
@@ -241,9 +218,6 @@ Environment overrides:
 EOF
 }
 
-# ---------------------------------------------------------------------------
-# Runner
-# ---------------------------------------------------------------------------
 run_steps() {
     local plan=("$@")
     local total=${#plan[@]} i=0 s failed=()
@@ -252,7 +226,6 @@ run_steps() {
         printf '\033[1;35m[%d/%d]\033[0m %s\n' "$i" "$total" "$s"
         STAMP_SKIP=0
         if "step_$s"; then
-            # --always steps aren't recorded; nor is one that called stamp_skip.
             if ! step_is_always "$s" && [ "$STAMP_SKIP" != "1" ]; then
                 step_stamp_write "$s" || warn "ran $s but couldn't record it in $STAMP_DIR"
             fi
@@ -263,7 +236,6 @@ run_steps() {
             warn "step '$s' failed — continuing because of --keep-going"
             continue
         fi
-        # So a 40-minute install isn't restarted from the top over one 404.
         warn "step '$s' failed."
         [ -n "$LOG_FILE" ] && warn "Full output: $LOG_FILE"
         warn "Resume with: ./bootstrap.sh ${plan[*]:$((i - 1))}"
@@ -280,7 +252,6 @@ run_steps() {
 
 KEEP_GOING=0
 FORCE=0
-# NAMED holds the steps named literally on the command line.
 declare -A NAMED=()
 
 plan_pending() {
@@ -317,8 +288,6 @@ main() {
             --keep-going|-k) KEEP_GOING=1; shift ;;
             --force|-f)    FORCE=1; shift ;;
             --yes|-y)      yes=1; shift ;;
-            # For a machine set up before these records existed. With no
-            # names, every step whose --provides probe already passes.
             --mark-done)
                 shift
                 while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
@@ -377,7 +346,6 @@ main() {
 
     case "$mode" in
         missing) for s in "${STEPS[@]}"; do
-                     # rc 2 is "no probe, can't tell" — include it anyway.
                      rc=0; step_installed "$s" || rc=$?
                      [ "$rc" != "0" ] && requested+=("$s")
                  done
@@ -386,8 +354,6 @@ main() {
         *)       requested=("${STEPS[@]}") ;;
     esac
 
-    # Optional steps run only when named. --pick is exempt: it shows them
-    # unticked instead.
     if [ "$pick" != "1" ]; then
         local optkept=() s2
         for s2 in "${requested[@]}"; do
@@ -410,7 +376,6 @@ main() {
     plan_pending "${plan[@]}"
     [ ${#SKIPPED[@]} -gt 0 ] && log "Already done, skipping: ${SKIPPED[*]}"
 
-    # Nothing to install means nothing to roll back from — skip the snapshots.
     for s in "${PENDING[@]}"; do
         [ "${STEP_GROUP[$s]}" = "safety" ] && continue
         keep+=("$s")
@@ -432,10 +397,9 @@ main() {
         exit 0
     fi
 
-    # Every prompt happens here: step options, then sudo — nothing after this should ask again.
+    # Every prompt happens here: step options, then sudo. Nothing after this asks.
     resolve_step_options "$yes" "${plan[@]}"
 
-    # Once, up front, before any long build — and only if this run needs it.
     for s in "${plan[@]}"; do
         step_is_root "$s" && needs_root=1 && break
     done

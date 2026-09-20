@@ -1,6 +1,4 @@
 # shellcheck shell=bash
-# `./bootstrap.sh --doctor` — check this machine against what the repo expects,
-# changing nothing. Every check here is a mistake that actually happened.
 
 DOCTOR_PROBLEMS=0
 DOCTOR_NOTES=0
@@ -10,8 +8,12 @@ _doc_note() { printf '  \033[1;33mnote\033[0m  %s\n' "$*"; DOCTOR_NOTES=$((DOCTO
 _doc_bad()  { printf '  \033[1;31mbad\033[0m   %s\n' "$*"; DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1)); }
 _doc_head() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 
+# `--doctor` checks this machine against what the repo expects, changing
+# nothing. Every check here is a mistake that actually happened.
+#
 # The stowed dirs are symlinks INTO this repo, so writing there writes into
-# git — has happened seven times.
+# git. Untracked-only would miss a writethrough someone already committed,
+# which is how a __pycache__ .pyc ended up in the repo.
 _doc_check_writethrough() {
     _doc_head "Stow writethrough (files that landed in the repo)"
     local untracked tracked pkg found=0 f
@@ -33,8 +35,6 @@ _doc_check_writethrough() {
         [ "$found" = "0" ] && _doc_ok "no untracked files inside a stow package"
     fi
 
-    # Untracked-only misses a writethrough someone already committed — how a
-    # __pycache__ .pyc from keybind-help ended up in the repo.
     tracked="$(git -C "$REPO" ls-files \
         | grep -E '(^|/)(__pycache__|\.venv|node_modules)/|\.(pyc|pyo|o|so)$' || true)"
     if [ -n "$tracked" ]; then
@@ -130,7 +130,6 @@ _doc_check_state() {
                rc2=0; step_installed "$s" || rc2=$?
                [ "$rc2" = "1" ] && gone+=("$s") ;;
             2) changed+=("$s") ;;
-            # Opt-in steps (nvidia) are meant to sit unrun until named.
             *) step_is_optional "$s" || never+=("$s") ;;
         esac
     done
@@ -141,9 +140,10 @@ _doc_check_state() {
     return 0
 }
 
-# Whether a graphical session can actually start, not just whether the
-# packages are installed — a greeter with no DRM access restart-loops until
-# systemd gives up on greetd, a 2D-only device leaves Hyprland on llvmpipe.
+# Whether a graphical session can actually start, not just whether the packages
+# are installed: a greeter with no DRM access restart-loops until systemd gives
+# up, and a 2D-only device leaves Hyprland on llvmpipe. The VT check costs a
+# whole boot to notice otherwise.
 _doc_check_session() {
     _doc_head "Graphical session"
     local n missing drv vt
@@ -156,7 +156,6 @@ _doc_check_session() {
         fi
     fi
 
-    # No render node means EGL falls back to software.
     for n in /dev/dri/card0 /dev/dri/renderD128; do
         if [ ! -e "$n" ]; then
             _doc_note "$n missing — no DRM device (expected on a headless machine)"
@@ -167,7 +166,6 @@ _doc_check_session() {
         fi
     done
 
-    # The greeter runs its own compositor and needs the same access.
     if getent passwd greeter >/dev/null 2>&1; then
         missing=""
         for n in video render; do
@@ -180,9 +178,6 @@ _doc_check_session() {
         fi
     fi
 
-    # greetd's VT has to be one its unit blocks a getty on, or the getty takes
-    # the console back mid-session. Debian's unit names tty7; dms-greeter
-    # writes vt = 1. Costs a whole boot to notice, so check it here.
     if [ -f /etc/greetd/config.toml ]; then
         vt="$(sed -n 's/^[[:space:]]*vt[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' /etc/greetd/config.toml | head -1)"
         if [ -z "$vt" ]; then
@@ -195,8 +190,6 @@ _doc_check_session() {
     fi
 
     if command -v eglinfo >/dev/null 2>&1; then
-        # `|| true` inside the substitution: awk's early exit SIGPIPEs eglinfo,
-        # and pipefail would otherwise make a successful read look like failure.
         drv="$(eglinfo 2>/dev/null | awk -F': ' '/^EGL driver name/{print $2; exit}' || true)"
         case "${drv:-}" in
             "")                    _doc_note "EGL reported no driver — rendering may not work at all" ;;
@@ -221,13 +214,12 @@ _doc_check_session() {
     return 0
 }
 
-# Only meaningful once ./bootstrap.sh nvidia has run (any mode). Module not
-# loaded is expected before the first reboot — the point is telling that
-# apart from Secure Boot blocking it, which is a black screen with no KMS
-# driver at all, not a slow one.
+# Only meaningful once ./bootstrap.sh nvidia has run. Module not loaded is
+# expected before the first reboot; the point is telling that apart from Secure
+# Boot blocking it, which is a black screen with no KMS driver at all.
+# Both predicates come from setup/steps/nvidia.sh rather than being
+# re-implemented here, which would only let them drift.
 _doc_check_nvidia() {
-    # Both predicates live in setup/steps/nvidia.sh, which bootstrap.sh has
-    # already sourced — re-implementing them here just lets them drift.
     [ "$(_nvidia_installed_variant)" != nouveau ] || return 0
     _doc_head "NVIDIA"
     local sb=0
@@ -264,7 +256,6 @@ _doc_check_groups() {
 _doc_check_leftovers() {
     _doc_head "Leftovers"
     local found f
-    # -prune, not -not -path: the latter still descends into ~/.cache.
     found="$(find "$HOME" -maxdepth 4         \( -name .cache -o -name .venv -o -name node_modules -o -name .git \) -prune -o         -name '*.pre-dotfiles' -print 2>/dev/null | head -20)"
     if [ -n "$found" ]; then
         _doc_note "pre-existing configs moved aside by the stow step (review, then delete):"
@@ -276,7 +267,6 @@ _doc_check_leftovers() {
 }
 
 # Advisory: shellcheck arrives with the cli step, which must run on a machine
-# that has nothing.
 _doc_check_lint() {
     _doc_head "Lint"
     if ! command -v shellcheck >/dev/null 2>&1; then

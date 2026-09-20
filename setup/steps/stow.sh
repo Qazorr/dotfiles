@@ -8,7 +8,7 @@ step_stow() {
     cd "$REPO" || die "can't cd to $REPO"
 
     # stow aborts on a target that's already a real file (oh-my-zsh's .zshrc).
-    # Move those aside — not `stow --adopt`, which pulls them INTO the repo.
+    # Move those aside; `stow --adopt` would pull them INTO the repo instead.
     local pkg rel target moved=0
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || continue
@@ -16,11 +16,9 @@ step_stow() {
             rel="${rel#./}"
             target="$HOME/$rel"
             [ -e "$target" ] || [ -L "$target" ] || continue
-            # Already ours: resolves back into this repo.
             [[ "$(readlink -f "$target" 2>/dev/null)" == "$REPO"/* ]] && continue
-            # Also ours: a link inside a package pointing outside the repo
-            # (gitignored claude/krkCommute links) — without this, restow
-            # renames our own file aside.
+            # A link inside a package pointing outside the repo is also ours;
+            # without this, restow renames our own file aside.
             [ "$target" -ef "$pkg/$rel" ] && continue
             warn "Moving aside $rel -> $rel.pre-dotfiles"
             mv "$target" "$target.pre-dotfiles"
@@ -37,8 +35,9 @@ step_stow() {
         stow --target="$HOME" --restow "$pkg"
     done
 
-    # hyprland.conf sources this unconditionally, so it must exist even when
-    # empty. Untracked; step_nvidia writes into it.
+    # hyprland.conf sources these two unconditionally, so they must exist even
+    # when empty. -e rather than -f below: a dangling link (profile deleted)
+    # fails the source the same way a missing file does.
     local local_conf="$HOME/.config/hypr/conf.d/local.conf"
     if [ ! -f "$local_conf" ]; then
         printf '%s\n' \
@@ -47,10 +46,6 @@ step_stow() {
             > "$local_conf"
     fi
 
-    # hyprland.conf sources this too. Profiles are per machine and live outside
-    # the repo; monitor-profile swaps the placeholder for a link once one
-    # matches. A dangling link (profile deleted) fails the source like a
-    # missing file, hence -e rather than -f.
     local active="$HOME/.config/monitor-profiles/active.conf"
     if [ ! -e "$active" ]; then
         mkdir -p "$(dirname "$active")"

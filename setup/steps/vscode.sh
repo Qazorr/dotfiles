@@ -9,8 +9,6 @@ step_vscode() {
         log "VS Code already installed, skipping"
         return 0
     fi
-    # Not in any Debian release. Preferred over the flatpak, which makes
-    # reaching toolchains outside the sandbox awkward.
     log "Adding Microsoft apt repo and installing VS Code"
     ensure_apt_key https://packages.microsoft.com/keys/microsoft.asc \
         /usr/share/keyrings/microsoft.gpg dearmor

@@ -13,8 +13,6 @@ step_ohmyzsh() {
             "" --unattended --keep-zshrc
     fi
 
-    # Separate repos, unlike the bundled plugins .zshrc also names. Cloned
-    # where oh-my-zsh already looks.
     local custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
     local name url
     for name in zsh-autosuggestions zsh-syntax-highlighting; do

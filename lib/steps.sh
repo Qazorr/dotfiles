@@ -1,24 +1,18 @@
 # shellcheck shell=bash
-# The step registry: each setup/steps/<name>.sh declares its own metadata, so
-# bootstrap.sh only owns the run order. steps_validate() turns drift into a
-# startup error rather than a silent bug.
 
 # shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
 declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=() \
            STEP_ALWAYS=() STEP_OPTIONAL=()
 
-# register_step <name> --desc "..." [--group <group>] [--root] [--always]
-#                      [--optional] [--needs <step>...] [--provides <cmd-or-path>...]
+# register_step <name> --desc "..." [--group g] [--root] [--always]
+#                      [--optional] [--needs s...] [--provides cmd-or-path...]
 #
 #   --root      calls sudo, so a run containing it asks for a password
-#   --always    never recorded, so it runs every time (stow, summary)
-#   --optional  never auto-selected (not by a plain run, --profile, --group
-#               or --missing) — only by naming it, or ticking it in --pick
+#   --always    never recorded, runs every time (stow, summary)
+#   --optional  only runs when named, or ticked in --pick
 #   --needs     must already be done for this step's INSTALL to succeed;
-#               pulled in automatically. Install-time only — `bootstrap.sh
-#               dms` must not trigger an NVIDIA driver install.
-#   --provides  a command or path that exists once the step has run. Drives
-#               --list, --missing and --doctor.
+#               install-time only, so `bootstrap.sh dms` can't pull in nvidia
+#   --provides  exists once the step has run; drives --list/--missing/--doctor
 register_step() {
     local name="$1"; shift
     local desc="" group=core root=0 always=0 optional=0 needs="" provides=""
@@ -52,25 +46,16 @@ step_known()     { [ -n "${STEP_DESC[$1]+x}" ]; }
 step_is_root()   { [ "${STEP_ROOT[$1]:-0}" = "1" ]; }
 step_is_always() { [ "${STEP_ALWAYS[$1]:-0}" = "1" ]; }
 step_is_optional() { [ "${STEP_OPTIONAL[$1]:-0}" = "1" ]; }
-# Opt-in steps are auto-excluded unless named on the command line. NAMED is
-# bootstrap.sh's record of what was actually typed.
 step_auto_excluded() { step_is_optional "$1" && [ -z "${NAMED[$1]+x}" ]; }
 
-# A step's own choices (which NVIDIA driver, say), keyed by the env var it
-# reads — not by step name, so two steps sharing a var collide loudly instead
-# of silently. resolve_step_options() (lib/options.sh) asks for these once,
-# up front, for whatever ends up in the plan.
 # shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
 declare -A OPTION_STEP=() OPTION_PROMPT=() OPTION_CHOICES=() OPTION_DEFAULT=()
 OPTION_VARS=()   # registration order, so prompts come out in a stable order
 
-# register_option <step> <ENV_VAR> --prompt "..." \
-#     --choices "value:label" [...] --default <value>
+# register_option <step> <ENV_VAR> --prompt "..." --choices "value:label"... --default v
 #
-# <step> reads $<ENV_VAR> to decide what to do. If that env var is already
-# set when its step is about to run, resolve_step_options leaves it alone —
-# that's what keeps `DOTFILES_NVIDIA_MODE=open ./bootstrap.sh nvidia` working
-# unattended. Otherwise it prompts for it, with --default on a bare Enter.
+# The step reads $<ENV_VAR>. Already set when the step runs means no prompt,
+# which is what keeps DOTFILES_NVIDIA_MODE=open unattended.
 register_option() {
     local step="$1" var="$2"; shift 2
     local prompt="" default="" choices=()
@@ -89,8 +74,6 @@ register_option() {
     [ -n "$default" ]       || die "register_option $step $var: --default is required"
     OPTION_STEP[$var]="$step"
     OPTION_PROMPT[$var]="$prompt"
-    # One choice per line, not space-joined: labels contain spaces, and
-    # splitting those back on IFS turned 4 choices into 13 one-word entries.
     OPTION_CHOICES[$var]="$(printf '%s\n' "${choices[@]}")"
     OPTION_DEFAULT[$var]="$default"
     OPTION_VARS+=("$var")
@@ -108,8 +91,8 @@ step_installed() {
     return 0
 }
 
-# Expand a request into a full plan: pull in --needs, then sort back into
-# STEPS order so nothing runs before its prerequisite.
+# Expand a request into a plan: pull in --needs, then sort back into STEPS
+# order so nothing runs before its prerequisite.
 steps_resolve() {
     local -A chosen=()
     local queue=("$@") s n

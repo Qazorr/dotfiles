@@ -1,11 +1,11 @@
 # shellcheck shell=bash
-# Pinned, not "latest": the QML tracks the CLI's API version. Bump together.
+# Pinned: the QML tracks the CLI's API version, so bump these together.
 DMS_VERSION=v1.5.3
 DGOP_VERSION=v0.2.3
 DSEARCH_VERSION=v0.3.2
 MATUGEN_VERSION=v4.2.0
 
-# Not ~/.local/bin: stow symlink into this repo.
+# Outside ~/.local/bin, which is a stow symlink into this repo.
 DMS_BIN="$HOME/.local/share/dms/bin"
 DMS_QML="$HOME/.config/quickshell/dms"
 
@@ -25,13 +25,12 @@ step_dms() {
     mkdir -p "$DMS_BIN"
     local tmp; scratch_dir tmp
 
-    # A binary plus a QML tree, so not install_github_release_binary's shape.
     curl -fsSL -o "$tmp/dms.tar.gz" \
         "https://github.com/AvengeMedia/DankMaterialShell/releases/download/$DMS_VERSION/dms-full-amd64.tar.gz"
     mkdir -p "$tmp/dms" && tar xzf "$tmp/dms.tar.gz" -C "$tmp/dms"
     install -m755 "$tmp/dms/bin/dms" "$DMS_BIN/dms"
 
-    # Replaced wholesale so removed upstream files don't linger. Settings in
+    # Replaced wholesale so removed upstream files do not linger. Settings in
     # ~/.config/DankMaterialShell are untouched.
     mkdir -p "$(dirname "$DMS_QML")"
     rm -rf "$DMS_QML"

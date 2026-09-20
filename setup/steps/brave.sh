@@ -11,8 +11,6 @@ step_brave() {
         sudo curl -fsSLo "$key" \
             https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
     fi
-    # Brave's documented method is a whole pre-written deb822 .sources file,
-    # not ensure_apt_list's single .list line. Verified 2026-08-27.
     if [ ! -f /etc/apt/sources.list.d/brave-browser-release.sources ]; then
         sudo curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources \
             https://brave-browser-apt-release.s3.brave.com/brave-browser.sources

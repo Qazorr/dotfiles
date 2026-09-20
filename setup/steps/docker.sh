@@ -10,8 +10,6 @@ step_docker() {
         return 0
     fi
 
-    # Debian's docker.io trails upstream badly; this repo is docker.com's own
-    # documented method.
     log "Adding Docker's apt repo"
     local key=/etc/apt/keyrings/docker.asc
     sudo install -m0755 -d /etc/apt/keyrings
@@ -25,6 +23,4 @@ step_docker() {
     apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     sudo systemctl enable --now docker
 
-    # step_groups adds $USER to the docker group this created; that needs a
-    # fresh login to take effect.
 }
