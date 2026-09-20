@@ -33,3 +33,8 @@ hypr/.config/hypr/conf.d/local.conf
 # which is inside a stow package, so the bytecode lands in the repo. Caught
 # only after it had been committed once.
 scripts/.local/bin/__pycache__/
+# ~/.local/share/wallpapers is a whole-directory stow symlink into the
+# wallpaper package, so dharmx/walls (walls.sh, opt-in, ~3.7GB) lands
+# physically in the repo when cloned there — not vendored, refetched by the
+# step's `git pull`.
+wallpaper/.local/share/wallpapers/walls/
