@@ -89,7 +89,7 @@ shell), so it can't drift from this table.
 | `SUPER+SHIFT+1-0` / `SUPER+CTRL+1-0` | Move window there / move silently |
 | `SUPER+U` / `SUPER+SHIFT+U` | Special workspace (scratchpad) |
 | `SUPER+CTRL+F9-F12` | Move workspace to another monitor |
-| `Print` variants | Screenshot: `SUPER` full, `+SHIFT` region, `ALT` window, `+CTRL` 5s, `+CTRL+SHIFT` 10s |
+| `Print` variants | Screenshot: `SUPER` full, `+SHIFT` region, `ALT` window, `+CTRL` 5s, `+CTRL+SHIFT` 10s, `SUPER+ALT` history |
 | `SUPER+SHIFT+S` | Screenshot (region) — same as `SUPER+SHIFT+Print` |
 
 ## Layout

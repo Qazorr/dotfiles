@@ -576,12 +576,10 @@
         "systemTray",
         "clipboard",
         "cpuUsage",
-        "memUsage",
         "notificationButton",
         "battery",
         "privacyIndicator",
         "idleInhibitToggle",
-        "quickCapture",
         "krkCommute",
         "controlCenterButton"
       ],
