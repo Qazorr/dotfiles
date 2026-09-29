@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 install_github_release_binary() {
     local repo="$1" tag="$2" asset="$3" bin_in_tarball="$4" dest="$5" tmp="$6"
     curl -fsSL -o "$tmp/$asset" \

@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step services \
     --desc "Enable NetworkManager + Bluetooth" \
     --group desktop --root --needs desktop

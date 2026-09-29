@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 # A private repo with no version tags, so this pulls rather than pinning.
 register_step krkcommute \
     --desc "krk-commute: transit-departure bar widget (private repo)" \

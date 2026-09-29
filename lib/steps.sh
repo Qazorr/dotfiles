@@ -1,5 +1,3 @@
-# shellcheck shell=bash
-
 # shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
 declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=() \
            STEP_ALWAYS=() STEP_OPTIONAL=()

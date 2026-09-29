@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step timeshift \
     --desc "Full-system snapshot (rsync mode) before install" \
     --group safety --root --always \

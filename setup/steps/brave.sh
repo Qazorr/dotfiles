@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step brave \
     --desc "Brave, from its own apt repo" \
     --group apps --root --needs prereqs \

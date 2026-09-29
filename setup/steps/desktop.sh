@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step desktop \
     --desc "Terminal, shell, screenshot/clipboard, network, Qt runtime, cursor" \
     --group desktop --root --needs backports \

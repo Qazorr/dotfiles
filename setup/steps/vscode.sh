@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step vscode \
     --desc "VS Code from Microsoft's apt repo" \
     --group apps --root --needs prereqs \

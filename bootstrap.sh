@@ -40,8 +40,8 @@ unset _step_file
 # --needs must appear before it; steps_validate enforces that.
 STEPS=(
     backup timeshift prereqs nala backports nvidia hyprland desktop services
-    danklinux quickshell login ohmyzsh hyprmon cli vscode claudedesktop brave dms quickcapture
-    uv krkcommute walls docker devtools fonts groups stow summary
+    danklinux quickshell login ohmyzsh hyprmon cli vscode claudedesktop brave bitwarden dms quickcapture
+    uv krkcommute walls docker devtools precommit fonts groups stow summary
 )
 
 GROUP_ORDER=(core safety shell desktop apps dev personal)

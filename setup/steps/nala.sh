@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step nala \
     --desc "nala, plus an apt shim in /usr/local/bin that hands it apt's everyday verbs" \
     --group shell --root \

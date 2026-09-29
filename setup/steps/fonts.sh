@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step fonts \
     --desc "JetBrainsMono Nerd Font, for the terminal" \
     --group shell --needs prereqs \

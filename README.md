@@ -1,5 +1,7 @@
 # dotfiles
 
+[![ci](https://github.com/Qazorr/dotfiles/actions/workflows/ci.yml/badge.svg)](https://github.com/Qazorr/dotfiles/actions/workflows/ci.yml)
+
 Personal Hyprland setup for Debian 13 (trixie), with
 [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) as the
 desktop shell — bar, launcher, control centre, notifications, clipboard,
@@ -102,6 +104,7 @@ bootstrap.sh                         Entrypoint: run order + command line
 setup/steps/                         One file per stage
 lib/                                 Step registry, state, apt/fetch helpers, doctor
 vm/                                  Throwaway QEMU test VM
+.github/                             Workflows, and the checks they run
 ```
 
 DankMaterialShell installs to `~/.config/quickshell/dms` and its binaries to
@@ -134,6 +137,30 @@ so anything written there gets committed. Use `/usr/local/bin` or
 
 Anything that could cost you the machine — driver, bootloader, login manager
 — goes in the VM first (`vm/README.md`).
+
+## CI
+
+`ci.yml` on every push and PR. The YAML is a thin wrapper around
+`.github/scripts/`, so the same thing runs here:
+
+```
+for c in .github/scripts/check-*.sh; do "$c"; done
+```
+
+| Job | What it checks |
+|---|---|
+| shell | `shellcheck --severity=warning`, `bash -n`, and `zsh -n` for `zsh/`. Same file set and flags as `--doctor`'s lint check, so the two can't disagree about what clean means |
+| step registry | `--list` and `--help` (they exit before `check_environment`, so they run anywhere), then what `steps_validate()` doesn't: a `--group` outside `GROUP_ORDER`, a profile naming a group that isn't one, a step file registering some other name, a plan that drops a `--needs` or comes back out of order, an option default outside its own `--choices` |
+| stow | `step_stow` into a throwaway `$HOME`, against a copy of the tracked tree — every file resolves back to its source, a restow moves nothing aside, every `source =` in `hyprland.conf` resolves |
+| configs | JSON, JSONC, `.desktop`, Python syntax + ruff, `DOTFILES_PATH_DIRS` against the three files that repeat it, shebang vs `+x`, nothing generated tracked, relative links in the markdown |
+| actionlint | Pinned to a version; it shellchecks the `run:` blocks too |
+
+A check whose tool is missing skips and passes, so the scripts work on a fresh
+clone; the workflow asserts each tool is present, so CI can't skip one quietly.
+
+`install.yml` runs the steps for real in a `debian:trixie` container, weekly
+and on demand — that's where a moved release URL or a dead apt repo shows up.
+Nothing in `ci.yml` touches machine state.
 
 ## NVIDIA
 

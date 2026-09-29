@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step cli \
     --desc "ripgrep, fd, bat, fzf, zoxide, eza, jq, tmux, direnv, gh, btop, neovim, shellcheck…" \
     --group shell --root \

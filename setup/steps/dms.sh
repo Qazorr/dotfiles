@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 # Pinned: the QML tracks the CLI's API version, so bump these together.
 DMS_VERSION=v1.5.3
 DGOP_VERSION=v0.2.3

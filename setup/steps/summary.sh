@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step summary \
     --desc "Print what to do next" \
     --group core --always
@@ -6,18 +5,14 @@ register_step summary \
 step_summary() {
     cat <<'TXT'
 
-Done.
+Done. Next:
 
-- You were added to video/render/input groups, and zsh is now your login
-  shell — log out and back in (or reboot) for both to take effect.
-- greetd is enabled but not started, so the greeter comes up on the next
-  reboot, on tty1, which is now the greeter’s alone. Pick "Hyprland" — not
-  "Hyprland (uwsm-managed)" — and it remembers the choice. If it ever
-  fails, Ctrl+Alt+F2 gets you a console.
-- First real boot: SUPER+SHIFT+M opens hyprmon's layout editor — arrange
-  your actual monitors and press P to save a profile, then SUPER+M switches
-  to it.
-- Roll back config with: dotfiles-backup --list / --restore <name>
-- Roll back the whole system with: sudo timeshift --restore
+- Reboot. Group changes and zsh as login shell need a new session.
+- At the greeter pick "Hyprland", not "Hyprland (uwsm-managed)".
+  Ctrl+Alt+F2 gives a console if it fails.
+- SUPER+SHIFT+M: arrange monitors in hyprmon, press P to save a profile.
+  It applies whenever those monitors are connected; SUPER+M shows status.
+- Undo config changes:  dotfiles-backup --list, dotfiles-backup --restore <name>
+- Undo system changes:  sudo timeshift --restore
 TXT
 }

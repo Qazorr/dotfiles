@@ -1,7 +1,5 @@
-# shellcheck shell=bash
-# --optional so a fresh install can't black-screen on it unattended; run by
-# name when ready. No --provides: it succeeds on a card-less machine, and
-# --provides nvidia-smi would then read as "recorded as done but not installed".
+# --optional so an unattended install can't black-screen. No --provides: it
+# succeeds on card-less machines.
 register_step nvidia \
     --desc "NVIDIA driver — asks which one (opt-in: ./bootstrap.sh nvidia)" \
     --group desktop --root --optional --needs prereqs
@@ -21,7 +19,6 @@ register_option nvidia DOTFILES_NVIDIA_MODE \
         "nouveau:Uninstall and revert to the in-kernel driver" \
     --default "$NVIDIA_MODE_DEFAULT"
 
-# 10de is NVIDIA's PCI vendor ID.
 _nvidia_present() {
     lspci -nn 2>/dev/null | grep -Ei 'vga compatible controller|3d controller' \
         | grep -q '\[10de:'
@@ -35,8 +32,6 @@ _nvidia_mode() {
     esac
 }
 
-# Which variant is installed, so switching modes purges the right packages
-# first and re-running the same mode is a no-op.
 _nvidia_installed_variant() {
     dpkg -s nvidia-open   >/dev/null 2>&1 && { echo open; return; }
     dpkg -s cuda-drivers  >/dev/null 2>&1 && { echo nvidia; return; }
@@ -82,16 +77,11 @@ EOF
     apt_update
 }
 
-# open/nvidia modes. The keyring .deb also drops the repo's sources.list.d
-# entry, which is how NVIDIA's own instructions do it.
+# The keyring .deb also adds the repo's sources.list.d entry.
 _nvidia_enable_cuda_repo() {
     dpkg -s cuda-keyring >/dev/null 2>&1 && return 0
     log "Adding NVIDIA's CUDA apt repo ($NVIDIA_CUDA_SUITE)"
-    local tmp; tmp="$(mktemp)"
-    curl -fsSL -o "$tmp" \
-        "https://developer.download.nvidia.com/compute/cuda/repos/$NVIDIA_CUDA_SUITE/x86_64/cuda-keyring_${NVIDIA_CUDA_KEYRING_VERSION}_all.deb"
-    sudo dpkg -i "$tmp"
-    rm -f "$tmp"
+    apt_install "https://developer.download.nvidia.com/compute/cuda/repos/$NVIDIA_CUDA_SUITE/x86_64/cuda-keyring_${NVIDIA_CUDA_KEYRING_VERSION}_all.deb"
     apt_update
 }
 

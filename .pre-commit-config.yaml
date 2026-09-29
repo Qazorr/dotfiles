@@ -1,0 +1,27 @@
+repos:
+  - repo: local
+    hooks:
+      - id: shell
+        name: shell
+        entry: .github/scripts/check-shell.sh
+        language: system
+        pass_filenames: false
+        files: '(\.sh|^bootstrap\.sh|^scripts/\.local/bin/.*|^zsh/.*|^\.shellcheckrc)$'
+      - id: steps
+        name: step registry
+        entry: .github/scripts/check-steps.sh
+        language: system
+        pass_filenames: false
+        files: '^(bootstrap\.sh|lib/.*|setup/.*)$'
+      - id: configs
+        name: configs
+        entry: .github/scripts/check-configs.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: stow
+        name: stow
+        entry: .github/scripts/check-stow.sh
+        language: system
+        pass_filenames: false
+        always_run: true

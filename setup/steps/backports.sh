@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step backports \
     --desc "Enable trixie-backports and refresh the package lists" \
     --group core --root

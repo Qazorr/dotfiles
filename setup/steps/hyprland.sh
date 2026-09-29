@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step hyprland \
     --desc "Hyprland + hyprlock/hypridle/portal, from backports" \
     --group desktop --root --needs backports \

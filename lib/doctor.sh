@@ -1,5 +1,3 @@
-# shellcheck shell=bash
-
 DOCTOR_PROBLEMS=0
 DOCTOR_NOTES=0
 
@@ -8,12 +6,7 @@ _doc_note() { printf '  \033[1;33mnote\033[0m  %s\n' "$*"; DOCTOR_NOTES=$((DOCTO
 _doc_bad()  { printf '  \033[1;31mbad\033[0m   %s\n' "$*"; DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1)); }
 _doc_head() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 
-# `--doctor` checks this machine against what the repo expects, changing
-# nothing. Every check here is a mistake that actually happened.
-#
-# The stowed dirs are symlinks INTO this repo, so writing there writes into
-# git. Untracked-only would miss a writethrough someone already committed,
-# which is how a __pycache__ .pyc ended up in the repo.
+# Every check here is a mistake that actually happened.
 _doc_check_writethrough() {
     _doc_head "Stow writethrough (files that landed in the repo)"
     local untracked tracked pkg found=0 f
@@ -140,10 +133,8 @@ _doc_check_state() {
     return 0
 }
 
-# Whether a graphical session can actually start, not just whether the packages
-# are installed: a greeter with no DRM access restart-loops until systemd gives
-# up, and a 2D-only device leaves Hyprland on llvmpipe. The VT check costs a
-# whole boot to notice otherwise.
+# A greeter without DRM access restart-loops; a 2D-only device leaves Hyprland
+# on llvmpipe.
 _doc_check_session() {
     _doc_head "Graphical session"
     local n missing drv vt
@@ -214,11 +205,7 @@ _doc_check_session() {
     return 0
 }
 
-# Only meaningful once ./bootstrap.sh nvidia has run. Module not loaded is
-# expected before the first reboot; the point is telling that apart from Secure
-# Boot blocking it, which is a black screen with no KMS driver at all.
-# Both predicates come from setup/steps/nvidia.sh rather than being
-# re-implemented here, which would only let them drift.
+# Tells "not loaded until reboot" apart from Secure Boot blocking the module.
 _doc_check_nvidia() {
     [ "$(_nvidia_installed_variant)" != nouveau ] || return 0
     _doc_head "NVIDIA"
@@ -251,8 +238,6 @@ _doc_check_groups() {
     return 0
 }
 
-# step_stow moves conflicting files aside rather than clobbering them; those
-# copies are meant to be read once and deleted.
 _doc_check_leftovers() {
     _doc_head "Leftovers"
     local found f

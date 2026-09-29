@@ -1,0 +1,78 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell:
+    name: shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install zsh
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zsh
+      - name: Assert the tools are present
+        run: |
+          shellcheck --version
+          zsh --version
+      - run: .github/scripts/check-shell.sh
+
+  steps:
+    name: step registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: .github/scripts/check-steps.sh
+
+  stow:
+    name: stow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stow
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends stow
+      - name: Assert the tools are present
+        run: stow --version
+      - run: .github/scripts/check-stow.sh
+
+  configs:
+    name: configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install desktop-file-utils and ruff
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends desktop-file-utils
+          pipx install ruff
+      - name: Assert the tools are present
+        run: |
+          jq --version
+          desktop-file-validate --version
+          python3 --version
+          ruff --version
+      - run: .github/scripts/check-configs.sh
+
+  actions:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Also shellchecks the run: blocks, which check-shell.sh can't see.
+      - uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color

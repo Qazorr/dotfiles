@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 QUICKCAPTURE_VERSION=v5.1.4
 
 register_step quickcapture \

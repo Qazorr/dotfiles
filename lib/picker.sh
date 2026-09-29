@@ -1,5 +1,3 @@
-# shellcheck shell=bash
-
 # `./bootstrap.sh --pick`. Sets PICKED; returns 1 if the user backed out.
 # Plain bash, no whiptail/dialog/fzf: runs on tty1 before curl exists.
 _pick_locked() { [ "${STEP_GROUP[$1]}" = "core" ]; }

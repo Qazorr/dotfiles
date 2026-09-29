@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step uv \
     --desc "uv, for krk-commute's Python venv/dependency management" \
     --group dev --needs prereqs \
