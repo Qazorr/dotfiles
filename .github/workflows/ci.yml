@@ -18,7 +18,7 @@ jobs:
     name: shell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install zsh
         run: |
           sudo apt-get update -qq
@@ -33,14 +33,14 @@ jobs:
     name: step registry
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: .github/scripts/check-steps.sh
 
   stow:
     name: stow
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install stow
         run: |
           sudo apt-get update -qq
@@ -53,7 +53,7 @@ jobs:
     name: configs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install desktop-file-utils and ruff
         run: |
           sudo apt-get update -qq
@@ -71,7 +71,7 @@ jobs:
     name: actionlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # Also shellchecks the run: blocks, which check-shell.sh can't see.
       - uses: docker://rhysd/actionlint:1.7.12
         with:
