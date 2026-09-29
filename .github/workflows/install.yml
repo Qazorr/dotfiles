@@ -36,7 +36,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends git sudo ca-certificates
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Create an unprivileged user with passwordless sudo
         run: |
