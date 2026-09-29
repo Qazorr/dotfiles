@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 DOTFILES_PATH_DIRS=(
     "$HOME/.local/share/dms/bin"
     "$HOME/.local/share/uv/bin"

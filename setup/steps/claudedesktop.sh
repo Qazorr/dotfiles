@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step claudedesktop \
     --desc "Claude Desktop, from Anthropic's own apt repo" \
     --group apps --root --needs prereqs \

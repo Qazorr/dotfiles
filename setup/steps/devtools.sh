@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 LAZYDOCKER_VERSION=v0.25.2
 LAZYGIT_VERSION=v0.64.1
 

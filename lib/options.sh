@@ -1,5 +1,3 @@
-# shellcheck shell=bash
-
 # Prompts for step options (register_option, lib/steps.sh) once, up front, for
 # whatever's in the plan, so the run itself never stops to ask again.
 resolve_step_options() {

@@ -1,10 +1,4 @@
-# shellcheck shell=bash
-# Session entries start Hyprland via Debian's hyprland.desktop
-# (Exec=/usr/bin/start-hyprland); launching the binary directly earns a
-# "started without start-hyprland" warning.
-#
-# --needs covers both greeters: the option is chosen after the plan is
-# resolved, so dms-greeter's Quickshell runtime has to be pulled in either way.
+# --needs covers both greeters: the option is chosen after the plan resolves.
 register_step login \
     --desc "greetd + a greeter (dms-greeter or tuigreet)" \
     --group desktop --root --needs hyprland danklinux quickshell \
@@ -24,10 +18,8 @@ register_option login DOTFILES_SESSION_ENTRIES \
         "all:Everything installed, GNOME included" \
     --default hyprland
 
-# gdm3 owns /etc/systemd/system/display-manager.service. greetd's postinst
-# presets its own unit, that preset fails on a symlink pointing elsewhere, and
-# the postinst aborts — leaving greetd half-configured and the greeter user
-# uncreated. No --now: that would kill the session this is running inside.
+# greetd's postinst aborts while display-manager.service points at gdm3. No
+# --now: it would kill this session.
 _login_free_display_manager() {
     local link=/etc/systemd/system/display-manager.service dm
     if [ -L "$link" ]; then
@@ -55,10 +47,8 @@ SESSION_DIRS=(/usr/share/wayland-sessions /usr/share/xsessions)
 SESSION_KEEP=hyprland.desktop
 HIDDEN_SESSIONS=/usr/share/dotfiles/hidden-sessions
 
-# The greeter lists every .desktop in the session dirs and honours neither
-# NoDisplay nor Hidden, so the entries have to actually leave the directory.
-# dpkg-divert moves a package-owned file without apt putting it back on the
-# next upgrade. GNOME stays installed and bootable, just not offered at login.
+# The greeter ignores NoDisplay and Hidden; dpkg-divert moves the entries out
+# without apt restoring them on upgrade.
 _login_divert_session() {
     # Flattened: gnome.desktop exists in both dirs and would collide.
     local f="$1" flat
@@ -96,11 +86,8 @@ _login_prune_sessions() {
     done
 }
 
-# Whatever VT the greeter picked has to be exclusively its own, or a getty
-# takes the console back after login and the compositor dies with it.
-# dms-greeter writes vt = 1, which Debian's unit leaves unguarded (it names
-# tty7). The Conflicts drop-in is greetd's own documented fix; masking stops
-# logind reviving a getty there. Costs tty1; Ctrl+Alt+F2..F6 still work.
+# A getty on the greeter's VT takes the console back and kills the compositor.
+# dms-greeter uses vt = 1, which Debian's unit leaves unguarded.
 _login_secure_vt() {
     local vt
     vt="$(sed -n 's/^[[:space:]]*vt[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' /etc/greetd/config.toml 2>/dev/null | head -1)"

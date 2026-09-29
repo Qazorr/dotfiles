@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step prereqs \
     --desc "curl, git, gnupg, unzip — what every other step assumes exists" \
     --group core --root \

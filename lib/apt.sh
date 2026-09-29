@@ -1,5 +1,3 @@
-# shellcheck shell=bash
-
 ensure_nala() {
     command -v nala >/dev/null 2>&1 && return 0
     log "Installing nala"

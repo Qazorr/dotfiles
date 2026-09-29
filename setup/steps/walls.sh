@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step walls \
     --desc "dharmx/walls wallpaper collection, ~3.7GB (opt-in: ./bootstrap.sh walls)" \
     --group personal --optional --needs prereqs \

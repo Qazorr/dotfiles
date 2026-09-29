@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step groups \
     --desc "video/render/input/docker groups, and zsh as the login shell" \
     --group core --root

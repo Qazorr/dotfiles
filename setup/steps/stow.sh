@@ -1,4 +1,3 @@
-# shellcheck shell=bash
 register_step stow \
     --desc "Symlink the dotfiles into \$HOME" \
     --group core --always

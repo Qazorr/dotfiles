@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Chromium doesn't recognise Hyprland and won't persist the login otherwise.
+exec /usr/bin/claude-desktop --password-store=gnome-libsecret "$@"

@@ -1,0 +1,70 @@
+name: install
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: 'Steps to run (empty = the default set below)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  # services and login need systemd; nvidia needs a card.
+  DEFAULT_STEPS: 'prereqs nala backports desktop hyprland cli fonts uv stow'
+  # bootstrap.sh refuses to run as root.
+  RUN_USER: ci
+
+jobs:
+  install:
+    name: fresh install
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container: debian:trixie
+    steps:
+      # Without git, actions/checkout downloads a tarball instead of a repo.
+      - name: Install git, sudo and CA certificates
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git sudo ca-certificates
+
+      - uses: actions/checkout@v5
+
+      - name: Create an unprivileged user with passwordless sudo
+        run: |
+          useradd --create-home --shell /bin/bash "$RUN_USER"
+          printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$RUN_USER" > "/etc/sudoers.d/$RUN_USER"
+          chmod 0440 "/etc/sudoers.d/$RUN_USER"
+          chown -R "$RUN_USER:$RUN_USER" "$GITHUB_WORKSPACE"
+
+      - name: Decide which steps to run
+        env:
+          REQUESTED: ${{ inputs.steps }}
+        run: echo "STEPS=${REQUESTED:-$DEFAULT_STEPS}" >> "$GITHUB_ENV"
+
+      - name: Run the installer
+        run: |
+          # -H, or every step leaves root-owned files in the user's home.
+          # shellcheck disable=SC2086
+          sudo -u "$RUN_USER" -H env \
+              DOTFILES_SKIP_BACKUP=1 DOTFILES_SKIP_TIMESHIFT=1 \
+              ./bootstrap.sh --yes $STEPS
+
+      # Idempotence: only the --always steps should do anything.
+      - name: Run it again
+        run: |
+          # shellcheck disable=SC2086
+          sudo -u "$RUN_USER" -H env \
+              DOTFILES_SKIP_BACKUP=1 DOTFILES_SKIP_TIMESHIFT=1 \
+              ./bootstrap.sh --yes $STEPS
+
+      - name: What ended up installed
+        run: sudo -u "$RUN_USER" -H ./bootstrap.sh --list

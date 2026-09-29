@@ -1,5 +1,3 @@
-# shellcheck shell=bash
-
 DOTFILES_STATE_DIR="${DOTFILES_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles}"
 STAMP_DIR="$DOTFILES_STATE_DIR/steps"
 
