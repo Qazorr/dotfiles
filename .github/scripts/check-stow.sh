@@ -35,22 +35,27 @@ source "$REPO/lib/common.sh"
 source "$REPO/lib/paths.sh"
 # shellcheck source=../../lib/steps.sh
 source "$REPO/lib/steps.sh"
-# shellcheck source=../../setup/steps/stow.sh
-source "$REPO/setup/steps/stow.sh"
+stow_files=("$REPO"/setup/steps/*-stow.sh)
+stow_file="${stow_files[0]#"$REPO"/}"
+# shellcheck source=/dev/null
+source "$REPO/$stow_file"
 
 check_head "step_stow"
 for run in 1 2; do
-    rc=0
-    out="$(step_stow 2>&1)" || rc=$?
+    # As run_steps calls it: set -e on, and not in a conditional context.
+    set +e
+    out="$(set -e; step_stow 2>&1)"
+    rc=$?
+    set -e
     if [ "$rc" = "0" ]; then
         check_ok "run $run"
     else
-        check_fail "setup/steps/stow.sh" "run $run exited $rc: $out"
+        check_fail "$stow_file" "run $run exited $rc: $out"
     fi
     if [ "$run" = "2" ]; then
         moved="$(printf '%s\n' "$out" | grep -c 'Moving aside' || true)"
         [ "$moved" -gt 0 ] \
-            && check_fail "setup/steps/stow.sh" "the second run moved $moved already-stowed file(s) aside"
+            && check_fail "$stow_file" "the second run moved $moved already-stowed file(s) aside"
     fi
 done
 
@@ -59,7 +64,7 @@ if [ ${#aside[@]} -eq 0 ]; then
     check_ok "no *.pre-dotfiles left behind"
 else
     for f in "${aside[@]}"; do
-        check_fail "setup/steps/stow.sh" "a restow moved an already-stowed file aside: ${f#"$HOME"/}"
+        check_fail "$stow_file" "a restow moved an already-stowed file aside: ${f#"$HOME"/}"
     done
 fi
 
@@ -79,15 +84,11 @@ mapfile -t mini_aside < <(find "$HOME/.config/mini" -name '*.pre-dotfiles')
 if [ ${#mini_aside[@]} -eq 0 ] && ! printf '%s' "$mini_out" | grep -q 'Moving aside'; then
     check_ok "a package's own link out of the repo survives a restow"
 else
-    check_fail "setup/steps/stow.sh" "a restow moved a package's own symlink aside — the -ef check in the move-aside loop is what stops that"
+    check_fail "$stow_file" "a restow moved a package's own symlink aside — the -ef check in the move-aside loop is what stops that"
 fi
 
 check_head "Stowed files"
 for pkg in "${STOW_PACKAGES[@]}"; do
-    if [ ! -d "$REPO/$pkg" ]; then
-        check_fail "lib/paths.sh" "STOW_PACKAGES names '$pkg', which isn't a directory in the repo"
-        continue
-    fi
     bad=0 n=0
     while IFS= read -r f; do
         [ -n "$f" ] || continue
@@ -108,7 +109,7 @@ done
 
 # shellcheck disable=SC2088  # ~/ is printed for a human, not expanded
 if [ -L "$HOME/.local/share/applications" ]; then
-    check_fail "setup/steps/stow.sh" "~/.local/share/applications came out a symlink into the repo — a .desktop file written there lands in git"
+    check_fail "$stow_file" "~/.local/share/applications came out a symlink into the repo — a .desktop file written there lands in git"
 else
     check_ok "~/.local/share/applications is a real directory"
 fi
@@ -138,14 +139,5 @@ else
     done < <(grep -nE '^[[:space:]]*source[[:space:]]*=' "$conf")
     [ "$bad" = "0" ] && check_ok "$n source = lines resolve"
 fi
-
-check_head "Stow package list"
-bad=0
-while IFS= read -r d; do
-    [ -n "$d" ] || continue
-    [[ " ${STOW_PACKAGES[*]} " == *" $d "* ]] \
-        || { check_fail "$d" "$d/ holds a dotfile tree but isn't in STOW_PACKAGES (lib/paths.sh), so nothing links it into \$HOME"; bad=1; }
-done < <(git -C "$CHECK_REPO" ls-files | awk -F/ 'NF > 1 && $1 !~ /^\./ && $2 ~ /^\./ {print $1}' | sort -u)
-[ "$bad" = "0" ] && check_ok "every dotfile tree in the repo is in STOW_PACKAGES"
 
 check_finish

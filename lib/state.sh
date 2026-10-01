@@ -4,7 +4,7 @@ STAMP_DIR="$DOTFILES_STATE_DIR/steps"
 # The step file's hash, not a done-flag: editing a step must re-run it.
 _stamp_hash() {
     local h
-    h="$(sha256sum "$REPO/setup/steps/$1.sh" 2>/dev/null)"
+    h="$(sha256sum "$REPO/${STEP_FILE[$1]}" 2>/dev/null)"
     printf '%s' "${h%% *}"
 }
 
@@ -35,7 +35,6 @@ step_stamp_write() {
 
 step_stamp_clear() { rm -f "$STAMP_DIR/$1"; }
 
-# shellcheck disable=SC2034  # STAMP_SKIP is read by bootstrap.sh's run_steps
 # For a step returning 0 without finishing: don't record it, so the next run
-# retries. run_steps resets this.
-stamp_skip() { STAMP_SKIP=1; }
+# retries. A file because steps run in a subshell; run_steps sets the path.
+stamp_skip() { : > "$STAMP_SKIP_FILE"; }

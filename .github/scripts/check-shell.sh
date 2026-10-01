@@ -7,31 +7,19 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 cd "$CHECK_REPO"
 
-# Must match --doctor's _doc_check_lint, so the two agree on "clean".
-check_head "Parity with --doctor"
-_frag_ok=1
-for _frag in \
-    "git ls-files '*.sh' bootstrap.sh" \
-    "grep -lE '^#!.*sh' \"\$REPO\"/scripts/.local/bin/*" \
-    "shellcheck --severity=warning --external-sources"
-do
-    grep -qF -- "$_frag" lib/doctor.sh || {
-        check_fail "lib/doctor.sh" "_doc_check_lint no longer contains: $_frag — update .github/scripts/check-shell.sh to match"
-        _frag_ok=0
-    }
-done
-[ "$_frag_ok" = "1" ] && check_ok "_doc_check_lint's file set and flags are unchanged"
-
-# scripts/.local/bin also holds Python.
-files=()
-mapfile -t files < <(git ls-files '*.sh' bootstrap.sh)
-mapfile -t -O "${#files[@]}" files < <(grep -lE '^#!.*sh' scripts/.local/bin/* 2>/dev/null)
+# shell_files and SHELLCHECK_ARGS come from --doctor, so the two agree on
+# what clean means.
+# shellcheck disable=SC2034  # read by shell_files
+REPO="$CHECK_REPO"
+# shellcheck source=../../lib/doctor.sh
+source lib/doctor.sh
+mapfile -t files < <(shell_files)
 
 check_head "shellcheck (${#files[@]} files)"
 if have shellcheck; then
-    out="$(shellcheck --severity=warning --external-sources --format=gcc "${files[@]}" 2>&1 || true)"
+    out="$(shellcheck "${SHELLCHECK_ARGS[@]}" --format=gcc "${files[@]}" 2>&1 || true)"
     if [ -z "$out" ]; then
-        check_ok "no findings at --severity=warning"
+        check_ok "no findings with ${SHELLCHECK_ARGS[*]}"
     else
         while IFS= read -r line; do
             [ -n "$line" ] || continue

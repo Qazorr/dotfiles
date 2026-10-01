@@ -15,13 +15,11 @@ trap 'rm -rf "$DOTFILES_STATE_DIR" "$SCRATCH"' EXIT
 # --list/--help exit before check_environment, so they run anywhere and still
 # prove every file sources and steps_validate passes.
 check_head "bootstrap.sh smoke test"
-list_out=""
 for flag in --list --help; do
     rc=0
     out="$("$CHECK_REPO/bootstrap.sh" "$flag" 2>&1)" || rc=$?
     if [ "$rc" = "0" ]; then
         check_ok "./bootstrap.sh $flag"
-        [ "$flag" = "--list" ] && list_out="$out"
     else
         check_fail "bootstrap.sh" "./bootstrap.sh $flag exited $rc: $out"
     fi
@@ -55,23 +53,6 @@ _line_of() {   # _line_of <file> <grep -E pattern>
     printf '%s' "${1}${n:+:$n}"
 }
 
-# An unknown --group isn't an error anywhere; the step silently drops out of
-# --list and every profile.
-check_head "Groups"
-bad=0
-for s in "${STEPS[@]}"; do
-    _in_list "${STEP_GROUP[$s]}" "${GROUP_ORDER[@]}" \
-        || { check_fail "$(_line_of "setup/steps/$s.sh" '\-\-group')" "--group ${STEP_GROUP[$s]} isn't in bootstrap.sh's GROUP_ORDER — $s vanishes from --list and from every profile"; bad=1; }
-done
-[ "$bad" = "0" ] && check_ok "every step's group is in GROUP_ORDER"
-
-listed="$(printf '%s\n' "$list_out" | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^  [^ ]* /    /' | awk '/^    /{print $1}')"
-bad=0
-for s in "${STEPS[@]}"; do
-    _in_list "$s" $listed || { check_fail "bootstrap.sh" "$s is in STEPS but --list never prints it"; bad=1; }
-done
-[ "$bad" = "0" ] && check_ok "--list prints all ${#STEPS[@]} steps"
-
 # A typo'd group in PROFILES quietly selects nothing.
 check_head "Profiles"
 bad=0
@@ -79,7 +60,7 @@ for p in "${!PROFILES[@]}"; do
     n=0
     for g in ${PROFILES[$p]}; do
         if ! _in_list "$g" "${GROUP_ORDER[@]}"; then
-            check_fail "bootstrap.sh" "PROFILES[$p] names group '$g', which isn't in GROUP_ORDER — --profile $p selects nothing for it"
+            check_fail "bootstrap.sh" "PROFILES[$p] names group '$g', which no step is in — --profile $p selects nothing for it"
             bad=1; continue
         fi
         for s in "${STEPS[@]}"; do
@@ -89,30 +70,6 @@ for p in "${!PROFILES[@]}"; do
     [ "$n" -gt 0 ] || { check_fail "bootstrap.sh" "--profile $p selects no steps at all"; bad=1; }
 done
 [ "$bad" = "0" ] && check_ok "${#PROFILES[@]} profiles name real, non-empty groups"
-
-# Run records hash setup/steps/<step>.sh, so a step named differently from its
-# file tracks the wrong file, or none and re-runs forever.
-check_head "Step files"
-bad=0
-for f in "$CHECK_REPO"/setup/steps/*.sh; do
-    base="$(basename "$f" .sh)"
-    mapfile -t names < <(sed -n 's/^register_step[[:space:]]\+\([A-Za-z0-9_-]\+\).*/\1/p' "$f")
-    if [ ${#names[@]} -eq 0 ]; then
-        check_fail "setup/steps/$base.sh" "no register_step — nothing in this file can ever run"
-        bad=1; continue
-    fi
-    for n in "${names[@]}"; do
-        [ "$n" = "$base" ] || {
-            check_fail "$(_line_of "setup/steps/$base.sh" "^register_step[[:space:]]+$n")" "registers '$n', but run records are keyed off setup/steps/$n.sh's hash — rename the file or the step"
-            bad=1
-        }
-    done
-done
-for s in "${STEPS[@]}"; do
-    [ -f "$CHECK_REPO/setup/steps/$s.sh" ] \
-        || { check_fail "bootstrap.sh" "STEPS names '$s', but there is no setup/steps/$s.sh for its run record to hash"; bad=1; }
-done
-[ "$bad" = "0" ] && check_ok "every step is registered by the file it's named after"
 
 # Asserts properties rather than re-implementing the walk, which would agree
 # with a bug in it.
@@ -176,11 +133,11 @@ for v in "${OPTION_VARS[@]}"; do
     found=0
     while IFS= read -r c; do
         [ -n "$c" ] || continue
-        [[ "$c" == *:* ]] || { check_fail "setup/steps/$step.sh" "register_option $v: choice '$c' isn't value:label"; bad=1; }
+        [[ "$c" == *:* ]] || { check_fail "${STEP_FILE[$step]}" "register_option $v: choice '$c' isn't value:label"; bad=1; }
         [ "${c%%:*}" = "${OPTION_DEFAULT[$v]}" ] && found=1
     done <<<"${OPTION_CHOICES[$v]}"
     [ "$found" = "1" ] || {
-        check_fail "$(_line_of "setup/steps/$step.sh" '\-\-default')" "register_option $v --default '${OPTION_DEFAULT[$v]}' isn't one of its --choices — every unattended run uses it"
+        check_fail "$(_line_of "${STEP_FILE[$step]}" '\-\-default')" "register_option $v --default '${OPTION_DEFAULT[$v]}' isn't one of its --choices — every unattended run uses it"
         bad=1
     }
 done

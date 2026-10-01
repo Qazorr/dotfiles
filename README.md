@@ -100,12 +100,15 @@ dms/                                 DMS settings + idleInhibitToggle plugin
 scripts/.local/bin/                  dotfiles-backup, idle-inhibit, keybind-help,
                                        lock-session, monitor-profile, new-app,
                                        pkgs, prime-run, screenshare
-bootstrap.sh                         Entrypoint: run order + command line
-setup/steps/                         One file per stage
+bootstrap.sh                         Entrypoint: profiles + command line
+setup/steps/                         One file per step, NNN-<name>.sh
 lib/                                 Step registry, state, apt/fetch helpers, doctor
 vm/                                  Throwaway QEMU test VM
 .github/                             Workflows, and the checks they run
 ```
+
+Any top-level directory holding a dotfile (`hypr/.config`, `zsh/.zshrc`) is a
+stow package.
 
 DankMaterialShell installs to `~/.config/quickshell/dms` and its binaries to
 `~/.local/share/dms/bin`. Generated theme files are gitignored; matugen
@@ -113,7 +116,8 @@ rewrites them on every theme change.
 
 ## Adding a step
 
-One self-describing file in `setup/steps/`:
+One self-describing file in `setup/steps/`, named `<NNN>-<name>.sh`. The
+number is its place in the run order:
 
 ```bash
 register_step docker \
@@ -125,8 +129,8 @@ step_docker() { ...; }
 
 `--optional` keeps it out of unattended runs, `--always` never records it,
 `--needs` must already be done, `--provides` drives `--list`/`--missing`/
-`--doctor`. `STEPS` in `bootstrap.sh` is the run order and
-`steps_validate()` aborts if the two disagree. Steps must be idempotent, and
+`--doctor`. A step's `--needs` must sort before it, or `steps_validate()`
+aborts. Groups come from the steps themselves. Steps must be idempotent, and
 should call `stamp_skip` if they return without doing their work. A step
 needing a choice declares `register_option`; all options are asked up front,
 before sudo.
@@ -150,7 +154,7 @@ for c in .github/scripts/check-*.sh; do "$c"; done
 | Job | What it checks |
 |---|---|
 | shell | `shellcheck --severity=warning`, `bash -n`, and `zsh -n` for `zsh/`. Same file set and flags as `--doctor`'s lint check, so the two can't disagree about what clean means |
-| step registry | `--list` and `--help` (they exit before `check_environment`, so they run anywhere), then what `steps_validate()` doesn't: a `--group` outside `GROUP_ORDER`, a profile naming a group that isn't one, a step file registering some other name, a plan that drops a `--needs` or comes back out of order, an option default outside its own `--choices` |
+| step registry | `--list` and `--help` (they exit before `check_environment`, so they run anywhere), then what `steps_validate()` doesn't: a profile naming a group no step is in, a plan that drops a `--needs` or comes back out of order, an option default outside its own `--choices` |
 | stow | `step_stow` into a throwaway `$HOME`, against a copy of the tracked tree — every file resolves back to its source, a restow moves nothing aside, every `source =` in `hyprland.conf` resolves |
 | configs | JSON, JSONC, `.desktop`, Python syntax + ruff, `DOTFILES_PATH_DIRS` against the three files that repeat it, shebang vs `+x`, nothing generated tracked, relative links in the markdown |
 | actionlint | Pinned to a version; it shellchecks the `run:` blocks too |
@@ -225,7 +229,7 @@ out of that file. `general:border_size = 0` covers borders.
 
 - **Idle/lock** is hypridle + hyprlock, with `lock_cmd` going through
   `lock-session` so a hung hyprlock can't stop the session locking.
-- **DMS versions are pinned** in `setup/steps/dms.sh` — the QML and CLI share
+- **DMS versions are pinned** in the dms step — the QML and CLI share
   an API version, so bump both together.
 - **Cursor** is Bibata-Modern-Classic, XCursor only.
 

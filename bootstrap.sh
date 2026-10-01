@@ -30,21 +30,7 @@ APT_OPTS=(-y -o "Dpkg::Options::=--force-confold" -o "Dpkg::Options::=--force-co
 
 export PATH="$DOTFILES_PATH_PREFIX:$PATH"
 
-for _step_file in "$REPO"/setup/steps/*.sh; do
-    # shellcheck source=/dev/null
-    source "$_step_file"
-done
-unset _step_file
-
-# Run order — the one fact that can't live in a step's own file. A step's
-# --needs must appear before it; steps_validate enforces that.
-STEPS=(
-    backup timeshift prereqs nala backports nvidia hyprland desktop services
-    danklinux quickshell login ohmyzsh hyprmon cli vscode claudedesktop brave bitwarden dms quickcapture
-    uv krkcommute walls docker devtools precommit fonts groups stow summary
-)
-
-GROUP_ORDER=(core safety shell desktop apps dev personal)
+steps_load
 
 declare -A PROFILES=(
     [full]="safety shell desktop apps dev personal"
@@ -57,11 +43,12 @@ steps_validate
 
 SUDO_KEEPALIVE_PID=""
 
-SCRATCH_DIRS=()
+# Created by run_steps. Steps run in a subshell, so anything they leave for the
+# parent shell (scratch dirs to clean up, stamp_skip) goes in here.
+RUN_DIR=""
 scratch_dir() {
     local -n _dir="$1"
-    _dir="$(mktemp -d)"
-    SCRATCH_DIRS+=("$_dir")
+    _dir="$(mktemp -d -p "$RUN_DIR")"
 }
 
 LOG_DIR="$DOTFILES_STATE_DIR/logs"
@@ -83,7 +70,7 @@ start_logging() {
 
 cleanup() {
     [ -n "$SUDO_KEEPALIVE_PID" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
-    [ ${#SCRATCH_DIRS[@]} -gt 0 ] && rm -rf "${SCRATCH_DIRS[@]}"
+    [ -n "$RUN_DIR" ] && rm -rf "$RUN_DIR"
     # Closing these is what gives tee EOF; waiting stops an early exit dropping
     # the last line. Nothing can print after this.
     if [ -n "$LOG_TEE_PID" ]; then
@@ -193,7 +180,7 @@ Choosing less than everything:
 
 What has already run is remembered in
 $STAMP_DIR — one file per step, so a
-re-run skips it. Editing setup/steps/<name>.sh un-remembers that step.
+re-run skips it. Editing a step's file in setup/steps/ un-remembers it.
   --force, -f        run everything selected, done or not
   --forget [step…]   drop those records (all of them if none named)
   --mark-done [step…]  record steps as done without running them. With no
@@ -220,13 +207,22 @@ EOF
 
 run_steps() {
     local plan=("$@")
-    local total=${#plan[@]} i=0 s failed=()
+    local total=${#plan[@]} i=0 s rc failed=()
+    RUN_DIR="$(mktemp -d)"
+    chmod 711 "$RUN_DIR"   # apt's _apt user reads .debs from scratch dirs inside
+    STAMP_SKIP_FILE="$RUN_DIR/stamp-skip"
     for s in "${plan[@]}"; do
         i=$((i + 1))
         printf '\033[1;35m[%d/%d]\033[0m %s\n' "$i" "$total" "$s"
-        STAMP_SKIP=0
-        if "step_$s"; then
-            if ! step_is_always "$s" && [ "$STAMP_SKIP" != "1" ]; then
+        rm -f "$STAMP_SKIP_FILE"
+        # A plain statement, not an `if` condition or `||` operand: either one
+        # turns set -e off for everything the step calls.
+        set +e
+        ( set -e; "step_$s" )
+        rc=$?
+        set -e
+        if [ "$rc" = "0" ]; then
+            if ! step_is_always "$s" && [ ! -e "$STAMP_SKIP_FILE" ]; then
                 step_stamp_write "$s" || warn "ran $s but couldn't record it in $STAMP_DIR"
             fi
             continue
@@ -264,7 +260,7 @@ plan_pending() {
         rc=0; step_stamp_state "$s" || rc=$?
         case "$rc" in
             0) SKIPPED+=("$s") ;;
-            2) log "setup/steps/$s.sh changed since it last ran — doing it again"
+            2) log "${STEP_FILE[$s]} changed since it last ran — doing it again"
                PENDING+=("$s") ;;
             *) PENDING+=("$s") ;;
         esac

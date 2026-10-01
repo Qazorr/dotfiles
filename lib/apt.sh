@@ -10,6 +10,17 @@ apt_update() { _nala update; }
 apt_install() { _nala install "${APT_OPTS[@]}" --no-autoremove "$@"; }
 apt_install_backports() { apt_install -t trixie-backports "$@"; }
 
+# nala refuses an unauthenticated .deb URL under --yes, so verify a pinned hash
+# and hand apt-get the local file.
+apt_install_deb() {   # apt_install_deb <url> <sha256>
+    local dir; scratch_dir dir
+    local deb="$dir/${1##*/}"
+    curl -fsSL -o "$deb" "$1" || return 1
+    echo "$2  $deb" | sha256sum -c --quiet - || { warn "${1##*/}: checksum mismatch"; return 1; }
+    chmod 755 "$dir"   # apt's _apt user has to read it
+    sudo /usr/bin/apt-get install "${APT_OPTS[@]}" "$deb"
+}
+
 apt_purge() {
     _nala purge "${APT_OPTS[@]}" "$@" || true
     _nala autoremove -y || true

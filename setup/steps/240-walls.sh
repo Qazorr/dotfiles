@@ -20,7 +20,7 @@ step_walls() {
         local pic
         pic="$(find -L "$WALLS_DIR" -maxdepth 2 -type f \
             \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) \
-            2>/dev/null | sort | head -1)"
-        [ -n "$pic" ] && dms ipc call wallpaper set "$pic" >/dev/null 2>&1
+            2>/dev/null | sort | head -1 || true)"
+        [ -z "$pic" ] || dms ipc call wallpaper set "$pic" >/dev/null 2>&1 || true
     fi
 }

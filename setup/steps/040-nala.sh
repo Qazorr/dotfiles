@@ -9,7 +9,7 @@ step_nala() {
     log "Installing the apt → nala shim at /usr/local/bin/apt"
     sudo tee /usr/local/bin/apt >/dev/null <<'EOF'
 #!/bin/sh
-# Managed by ~/dotfiles (setup/steps/nala.sh). Anything nala can't take the
+# Managed by ~/dotfiles (the nala step). Anything nala can't take the
 # same way — no terminal, an unshared verb or flag — goes to /usr/bin/apt.
 real=/usr/bin/apt
 if [ ! -x /usr/bin/nala ] || [ ! -t 1 ]; then

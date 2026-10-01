@@ -8,6 +8,7 @@ NVIDIA_MODPROBE_CONF=/etc/modprobe.d/zz-dotfiles-nvidia.conf
 NVIDIA_APT_LIST=/etc/apt/sources.list.d/debian-nonfree.list
 NVIDIA_CUDA_SUITE=debian13
 NVIDIA_CUDA_KEYRING_VERSION=1.1-1
+NVIDIA_CUDA_KEYRING_SHA256=d0d4ef986a44400f9db33c600ef33a985175e7cc63d805a10e1839c7a1e78f5f
 NVIDIA_MODE_DEFAULT=debian
 
 register_option nvidia DOTFILES_NVIDIA_MODE \
@@ -81,7 +82,8 @@ EOF
 _nvidia_enable_cuda_repo() {
     dpkg -s cuda-keyring >/dev/null 2>&1 && return 0
     log "Adding NVIDIA's CUDA apt repo ($NVIDIA_CUDA_SUITE)"
-    apt_install "https://developer.download.nvidia.com/compute/cuda/repos/$NVIDIA_CUDA_SUITE/x86_64/cuda-keyring_${NVIDIA_CUDA_KEYRING_VERSION}_all.deb"
+    apt_install_deb "https://developer.download.nvidia.com/compute/cuda/repos/$NVIDIA_CUDA_SUITE/x86_64/cuda-keyring_${NVIDIA_CUDA_KEYRING_VERSION}_all.deb" \
+        "$NVIDIA_CUDA_KEYRING_SHA256"
     apt_update
 }
 
