@@ -31,6 +31,6 @@ hypr/.config/hypr/conf.d/local.conf
 scripts/.local/bin/__pycache__/
 
 # ~/.local/share/wallpapers is a whole-directory stow symlink, so dharmx/walls
-# (walls.sh, opt-in, ~3.7GB) lands physically in the repo. Refetched by the
-# step's `git pull`.
+# (the walls step, opt-in, ~3.7GB) lands physically in the repo. Refetched by
+# the step's `git pull`.
 wallpaper/.local/share/wallpapers/walls/

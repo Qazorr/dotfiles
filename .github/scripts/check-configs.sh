@@ -105,12 +105,10 @@ else
     check_skip "ruff not installed"
 fi
 
-# These files can't source lib/paths.sh; drift shows up later as "binary could
-# not be found" from a keybind.
 check_head "PATH consistency (lib/paths.sh is the reference)"
 # shellcheck source=../../lib/paths.sh
 source "$CHECK_REPO/lib/paths.sh"
-for f in zsh/.zprofile zsh/.zshrc hypr/.config/hypr/conf.d/environment.conf; do
+for f in "${DOTFILES_PATH_FILES[@]}"; do
     missing=""
     for dir in "${DOTFILES_PATH_DIRS[@]}"; do
         grep -q "\$HOME/${dir#"$HOME"/}" "$f" || missing+="${dir#"$HOME"/} "

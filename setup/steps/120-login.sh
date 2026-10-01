@@ -90,7 +90,7 @@ _login_prune_sessions() {
 # dms-greeter uses vt = 1, which Debian's unit leaves unguarded.
 _login_secure_vt() {
     local vt
-    vt="$(sed -n 's/^[[:space:]]*vt[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' /etc/greetd/config.toml 2>/dev/null | head -1)"
+    vt="$(sed -n 's/^[[:space:]]*vt[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' /etc/greetd/config.toml 2>/dev/null | head -1 || true)"
     if [ -z "$vt" ]; then
         warn "greetd has no fixed vt — can't tell which console to keep clear"
         return 0
@@ -116,19 +116,19 @@ _login_dms() {
         # rebuild fails the size/hash check, and a refresh fixes it.
         warn "dms-greeter wouldn't download — refreshing the package index and retrying once"
         apt_update
-        apt_install dms-greeter || return 1
+        apt_install dms-greeter
     fi
     _login_ensure_greeter_user
 
     log "Enabling dms-greeter in greetd"
-    dms-greeter enable -y || return 1
+    dms-greeter enable -y
     dms-greeter sync -y >/dev/null 2>&1 \
         || warn "dms-greeter sync failed — the greeter works, it just won't match your theme. Re-run 'dms-greeter sync' once DMS is set up."
 }
 
 _login_tuigreet() {
     log "Installing greetd + tuigreet"
-    apt_install greetd tuigreet || return 1
+    apt_install greetd tuigreet
     _login_ensure_greeter_user
 
     log "Writing /etc/greetd/config.toml"
@@ -146,8 +146,8 @@ step_login() {
     _login_free_display_manager
 
     case "${DOTFILES_GREETER:-dms}" in
-        dms)      _login_dms || return 1 ;;
-        tuigreet) _login_tuigreet || return 1 ;;
+        dms)      _login_dms ;;
+        tuigreet) _login_tuigreet ;;
         *) die "DOTFILES_GREETER must be dms or tuigreet (got '${DOTFILES_GREETER}')" ;;
     esac
 

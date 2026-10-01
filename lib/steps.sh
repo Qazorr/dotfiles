@@ -1,6 +1,8 @@
 # shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
 declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=() \
-           STEP_ALWAYS=() STEP_OPTIONAL=()
+           STEP_ALWAYS=() STEP_OPTIONAL=() STEP_FILE=()
+STEPS=()         # run order: the filename order of setup/steps/
+GROUP_ORDER=()   # first appearance in STEPS
 
 # register_step <name> --desc "..." [--group g] [--root] [--always]
 #                      [--optional] [--needs s...] [--provides cmd-or-path...]
@@ -31,6 +33,8 @@ register_step() {
         esac
     done
     [ -n "$desc" ] || die "register_step $name: --desc is required (it's what --list prints)"
+    step_known "$name" && die "register_step $name: registered twice"
+    STEPS+=("$name")
     STEP_DESC[$name]="$desc"
     STEP_GROUP[$name]="$group"
     STEP_ROOT[$name]="$root"
@@ -38,6 +42,29 @@ register_step() {
     STEP_OPTIONAL[$name]="$optional"
     STEP_NEEDS[$name]="$needs"
     STEP_PROVIDES[$name]="$provides"
+}
+
+# setup/steps/<NNN>-<name>.sh, each registering <name>. The prefix is the run
+# order; a step's --needs must sort before it.
+steps_load() {
+    # Underscored: the step files are sourced in this scope.
+    local _f _base _name _n
+    for _f in "$REPO"/setup/steps/*.sh; do
+        _base="${_f##*/}"
+        [[ "$_base" =~ ^[0-9]+-(.+)\.sh$ ]] \
+            || die "setup/steps/$_base: name it <NNN>-<step>.sh — the number is its place in the run order"
+        _name="${BASH_REMATCH[1]}"
+        _n=${#STEPS[@]}
+        # shellcheck source=/dev/null
+        source "$_f"
+        [ ${#STEPS[@]} -eq $((_n + 1)) ] && [ "${STEPS[$_n]}" = "$_name" ] \
+            || die "setup/steps/$_base must register exactly one step, named '$_name'"
+        STEP_FILE[$_name]="setup/steps/$_base"
+    done
+    for _name in "${STEPS[@]}"; do
+        [[ " ${GROUP_ORDER[*]} " == *" ${STEP_GROUP[$_name]} "* ]] \
+            || GROUP_ORDER+=("${STEP_GROUP[$_name]}")
+    done
 }
 
 step_known()     { [ -n "${STEP_DESC[$1]+x}" ]; }
@@ -120,21 +147,14 @@ steps_added() {
 steps_validate() {
     local s n v idx=0
     local -A pos=()
+    for s in "${STEPS[@]}"; do pos[$s]=$((idx++)); done
     for s in "${STEPS[@]}"; do
-        step_known "$s" \
-            || die "bootstrap.sh's STEPS names '$s', but setup/steps/$s.sh has no register_step for it."
-        [ -z "${pos[$s]+x}" ] || die "'$s' appears twice in STEPS."
-        pos[$s]=$((idx++))
-    done
-    for s in "${!STEP_DESC[@]}"; do
-        [ -n "${pos[$s]+x}" ] \
-            || die "setup/steps/$s.sh registers '$s', but it's missing from bootstrap.sh's STEPS — it would never run."
         declare -F "step_$s" >/dev/null \
-            || die "'$s' is registered but defines no step_$s() function."
+            || die "${STEP_FILE[$s]} registers '$s' but defines no step_$s() function."
         for n in ${STEP_NEEDS[$s]}; do
             step_known "$n" || die "'$s' needs '$n', which isn't a step."
             [ "${pos[$n]}" -lt "${pos[$s]}" ] \
-                || die "'$s' needs '$n', but '$n' runs later in STEPS — reorder it."
+                || die "'$s' needs '$n', but ${STEP_FILE[$n]} sorts after ${STEP_FILE[$s]} — renumber one of them."
             step_is_optional "$n" \
                 && die "'$s' needs '$n', which is --optional — it must not be pulled in automatically."
         done

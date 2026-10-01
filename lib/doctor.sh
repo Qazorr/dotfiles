@@ -67,12 +67,11 @@ _doc_check_stow() {
     return 0
 }
 
-# Three files repeat this list and can't source lib/paths.sh. Drift surfaces
-# much later as "binary could not be found" from a keybind.
+# Drift surfaces much later as "binary could not be found" from a keybind.
 _doc_check_path() {
     _doc_head "PATH consistency (lib/paths.sh is the reference)"
     local f dir missing
-    for f in zsh/.zprofile zsh/.zshrc hypr/.config/hypr/conf.d/environment.conf; do
+    for f in "${DOTFILES_PATH_FILES[@]}"; do
         missing=""
         for dir in "${DOTFILES_PATH_DIRS[@]}"; do
             grep -q "\$HOME/${dir#"$HOME"/}" "$REPO/$f" || missing+="${dir#"$HOME"/} "
@@ -225,7 +224,7 @@ _doc_check_groups() {
     _doc_head "Group membership"
     local g current
     current="$(id -nG)"
-    for g in video render input docker; do
+    for g in "${USER_GROUPS[@]}"; do
         getent group "$g" >/dev/null 2>&1 || { _doc_ok "$g: group doesn't exist on this machine (nothing installed it)"; continue; }
         if [[ " $current " == *" $g "* ]]; then
             _doc_ok "$g"
@@ -251,24 +250,29 @@ _doc_check_leftovers() {
     return 0
 }
 
-# Advisory: shellcheck arrives with the cli step, which must run on a machine
+# Shared with .github/scripts/check-shell.sh, so the two agree on "clean".
+# Paths relative to $REPO; scripts/.local/bin holds Python too.
+SHELLCHECK_ARGS=(--severity=warning --external-sources)
+shell_files() {
+    ( cd "$REPO" && git ls-files '*.sh' bootstrap.sh \
+        && grep -lE '^#!.*sh' scripts/.local/bin/* 2>/dev/null ) || true
+}
+
+# Advisory: shellcheck arrives with the cli step.
 _doc_check_lint() {
     _doc_head "Lint"
     if ! command -v shellcheck >/dev/null 2>&1; then
         _doc_ok "shellcheck not installed (./bootstrap.sh cli) — skipped"
         return 0
     fi
-    # scripts/.local/bin holds a Python file too; shellcheck errors on it.
-    local out n
-    local files
-    mapfile -t files < <(cd "$REPO" && git ls-files '*.sh' bootstrap.sh)
-    mapfile -t -O "${#files[@]}" files < <(grep -lE '^#!.*sh' "$REPO"/scripts/.local/bin/* 2>/dev/null)
-    out="$(cd "$REPO" && shellcheck --severity=warning --external-sources "${files[@]}" 2>&1 || true)"
+    local out n files
+    mapfile -t files < <(shell_files)
+    out="$(cd "$REPO" && shellcheck "${SHELLCHECK_ARGS[@]}" "${files[@]}" 2>&1 || true)"
     n="$(printf '%s' "$out" | grep -c '^In .* line ' || true)"
     if [ "${n:-0}" -eq 0 ]; then
         _doc_ok "shellcheck is clean"
     else
-        _doc_note "shellcheck has $n finding(s) — see: shellcheck --severity=warning ${files[*]}"
+        _doc_note "shellcheck has $n finding(s) — see: shellcheck ${SHELLCHECK_ARGS[*]} ${files[*]}"
     fi
     return 0
 }
