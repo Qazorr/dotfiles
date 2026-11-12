@@ -14,65 +14,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  shell:
-    name: shell
+  check:
+    name: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install zsh
+      - name: Install zsh and stow
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends zsh
-      - name: Assert the tools are present
-        run: |
-          shellcheck --version
-          zsh --version
-      - run: .github/scripts/check-shell.sh
-
-  steps:
-    name: step registry
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: .github/scripts/check-steps.sh
-
-  stow:
-    name: stow
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install stow
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends stow
-      - name: Assert the tools are present
-        run: stow --version
-      - run: .github/scripts/check-stow.sh
-
-  configs:
-    name: configs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install desktop-file-utils and ruff
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends desktop-file-utils
-          pipx install ruff
-      - name: Assert the tools are present
-        run: |
-          jq --version
-          desktop-file-validate --version
-          python3 --version
-          ruff --version
-      - run: .github/scripts/check-configs.sh
+          sudo apt-get install -y --no-install-recommends zsh stow
+      - run: .github/scripts/check.sh
 
   actions:
     name: actionlint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # Also shellchecks the run: blocks, which check-shell.sh can't see.
       - uses: docker://rhysd/actionlint:1.7.12
         with:
           args: -color

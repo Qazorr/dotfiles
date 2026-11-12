@@ -2,9 +2,8 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-ISO="${DOTFILES_TEST_ISO:-$HERE/iso/debian-13.6.0-amd64-netinst.iso}"
-[ -f "$ISO" ] || [ ! -f "$HERE/$ISO" ] || ISO="$HERE/$ISO"
-[ -f "$ISO" ] || { echo "no such ISO: $ISO" >&2; exit 1; }
+ISO="${DOTFILES_TEST_ISO:-$HERE/../iso/out/dotfiles-trixie-amd64.iso}"
+[ -f "$ISO" ] || { echo "no such ISO: $ISO — build it with iso/build.sh" >&2; exit 1; }
 ISO="$(readlink -f "$ISO")"
 
 cd "$HERE"

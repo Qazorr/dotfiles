@@ -1,0 +1,16 @@
+[Unit]
+Description=Finish the dotfiles install
+ConditionPathExists=/etc/dotfiles-firstboot.conf
+Wants=network-online.target
+After=network-online.target systemd-user-sessions.service
+Before=getty@tty1.service greetd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dotfiles-firstboot
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

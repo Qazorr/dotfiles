@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# dotfiles status                  what this machine has that the repo doesn't
+# dotfiles sync [-y] [-m <msg>]    commit it, pull, push
+# dotfiles update [args]           pull, then run bootstrap.sh for what changed
+# dotfiles track <path> [package]  move a file or directory from $HOME into the repo
+
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../.." && pwd)"
+# shellcheck source=../../../../lib/common.sh
+source "$REPO/lib/common.sh"
+# shellcheck source=../../../../lib/paths.sh
+source "$REPO/lib/paths.sh"
+# shellcheck source=../../../../lib/state.sh
+source "$REPO/lib/state.sh"
+# shellcheck source=../../../../lib/packages.sh
+source "$REPO/lib/packages.sh"
+
+[ -f "$REPO/bootstrap.sh" ] || die "can't locate the dotfiles repo (looked in $REPO)"
+
+usage() {
+    sed -n '4,7p' "$0" | sed 's/^# \{0,1\}//'
+    exit "${1:-0}"
+}
+
+g() { git -C "$REPO" "$@"; }
+
+has_upstream() { g rev-parse --abbrev-ref '@{upstream}' >/dev/null 2>&1; }
+
+confirm() {   # confirm <question>; yes without a terminal or with -y
+    [ "$YES" = "1" ] && return 0
+    [ -t 0 ] || return 0
+    local reply
+    read -r -p "$1 [Y/n] " reply
+    [[ -z "$reply" || "$reply" == [yY]* ]]
+}
+
+cmd_status() {
+    local changes ahead=0 behind=0 new=() missing=()
+    changes="$(g status --short)"
+    if has_upstream; then
+        ahead="$(g rev-list --count '@{upstream}..HEAD')"
+        behind="$(g rev-list --count 'HEAD..@{upstream}')"
+    fi
+    mapfile -t new < <(packages_new)
+    mapfile -t missing < <(packages_missing)
+
+    if [ -n "$changes" ]; then
+        log "Config changed since the last commit:"
+        sed 's/^/    /' <<<"$changes"
+    fi
+    if [ ${#new[@]} -gt 0 ]; then
+        log "Packages installed by hand, not in packages.list:"
+        printf '    %s\n' "${new[@]}"
+    fi
+    if [ ${#missing[@]} -gt 0 ]; then
+        log "In packages.list but not installed here (dotfiles update installs them):"
+        printf '    %s\n' "${missing[@]}"
+    fi
+    [ "$ahead" -gt 0 ]  && log "$ahead commit(s) not pushed"
+    [ "$behind" -gt 0 ] && log "$behind commit(s) behind the last fetch — dotfiles update"
+
+    if [ -z "$changes" ] && [ ${#new[@]} -eq 0 ] && [ "$ahead" = "0" ]; then
+        log "In sync with the repo."
+    else
+        printf '\n    dotfiles sync    commit and push all of it\n'
+    fi
+}
+
+cmd_sync() {
+    local msg=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -y|--yes) YES=1; shift ;;
+            -m)       msg="${2:-}"; [ -n "$msg" ] || die "-m needs a message"; shift 2 ;;
+            *)        die "unknown option '$1' — see dotfiles --help" ;;
+        esac
+    done
+
+    g config user.email >/dev/null \
+        || die "git has no identity here — git config --global user.name '…' && git config --global user.email '…'"
+
+    local new=()
+    mapfile -t new < <(packages_new)
+    if [ ${#new[@]} -gt 0 ]; then
+        log "Installed by hand since the last sync:"
+        printf '    %s\n' "${new[@]}"
+        confirm "Add them to packages.list?" && packages_add "${new[@]}"
+    fi
+
+    g add -A
+    if g diff --cached --quiet; then
+        log "Nothing new to commit."
+    else
+        log "Committing:"
+        g status --short | sed 's/^/    /'
+        if ! confirm "Commit these?"; then
+            g reset --quiet
+            die "aborted — nothing committed"
+        fi
+        g commit --quiet -m "${msg:-sync from $(hostname) $(date +%F)}" \
+            || die "commit failed (a pre-commit check?) — fix it and run dotfiles sync again"
+    fi
+
+    has_upstream || { warn "this branch has no upstream — committed locally, nothing pushed"; return 0; }
+
+    local before; before="$(g rev-parse HEAD)"
+    log "Pulling"
+    g pull --rebase --autostash --quiet \
+        || die "pull failed — resolve it in $REPO (git status), then run dotfiles sync again"
+    if ! g diff --quiet "$before" HEAD -- steps lib packages.list bootstrap.sh 2>/dev/null; then
+        log "The pull changed the installer — run: dotfiles update"
+    fi
+
+    if [ "$(g rev-list --count '@{upstream}..HEAD')" = "0" ]; then
+        log "Nothing to push."
+        return 0
+    fi
+    log "Pushing"
+    g push --quiet \
+        || die "push failed — the commit is saved locally. Over https this needs: gh auth login && gh auth setup-git"
+    log "Synced."
+}
+
+cmd_update() {
+    if has_upstream; then
+        log "Pulling"
+        g pull --rebase --autostash --quiet \
+            || die "pull failed — resolve it in $REPO (git status), then run dotfiles update again"
+    fi
+    exec "$REPO/bootstrap.sh" "$@"
+}
+
+cmd_track() {
+    local src="${1:-}" pkg="${2:-}" rel dest
+    [ -n "$src" ] || die "usage: dotfiles track <path> [package]"
+    [ -e "$src" ] || die "no such file: $src"
+    src="$(realpath -s "$src")"
+
+    if [[ "$(readlink -f "$src")" == "$REPO"/* ]]; then
+        g add -- "$(readlink -f "$src")"
+        log "Already inside the repo — staged it."
+        return 0
+    fi
+    [[ "$src" == "$HOME"/* ]] || die "$src is not under $HOME"
+    rel="${src#"$HOME"/}"
+
+    if [ -z "$pkg" ]; then
+        case "$rel" in
+            .config/*)      pkg="${rel#.config/}" ;;
+            .local/share/*) pkg="${rel#.local/share/}" ;;
+            *)              pkg="$rel" ;;
+        esac
+        pkg="${pkg%%/*}"; pkg="${pkg#.}"; pkg="${pkg%%.*}"
+        pkg="${pkg,,}"
+    fi
+    [[ "$pkg" =~ ^[A-Za-z0-9_-]+$ ]] || die "can't derive a package name from '$rel' — pass one: dotfiles track $1 <package>"
+
+    dest="$STOW_DIR/$pkg/$rel"
+    [ ! -e "$dest" ] || die "home/$pkg/$rel already exists"
+    command -v stow >/dev/null || die "stow isn't installed — ./bootstrap.sh desktop"
+
+    mkdir -p "$(dirname "$dest")"
+    mv "$src" "$dest"
+    if ! ( cd "$STOW_DIR" && stow --target="$HOME" --restow "$pkg" ); then
+        mv "$dest" "$src"
+        die "stow refused to link it back — moved it home again, nothing changed"
+    fi
+    g add -- "$dest"
+    # shellcheck disable=SC2088  # ~/ is printed for a human, not expanded
+    log "~/$rel now lives in home/$pkg/ and is linked back. dotfiles sync to commit it."
+}
+
+YES=0
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+    status)       cmd_status ;;
+    sync)         cmd_sync "$@" ;;
+    update)       cmd_update "$@" ;;
+    track)        cmd_track "$@" ;;
+    -h|--help|"") usage 0 ;;
+    *)            warn "unknown command: $cmd"; usage 1 ;;
+esac

@@ -19,7 +19,6 @@ args=(
   -smp 6
   -m 6G
   -drive file=disk/debian13.qcow2,if=virtio,cache=writeback
-  -virtfs local,path=..,mount_tag=dotfiles,security_model=mapped-xattr,readonly=off
   # Must match install.sh, or the guest's NIC gets renamed.
   -device virtio-net-pci,netdev=net0,addr=0x5
   -netdev user,id=net0,hostfwd=tcp::2222-:22

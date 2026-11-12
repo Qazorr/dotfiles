@@ -1,36 +1,34 @@
 # Multi-GB binaries, and local machine access rather than repo content.
-vm/iso/
+iso/cache/
+iso/out/
 vm/disk/
 vm/host-access/
 
+# Per-machine installer answers: a password hash, a disk to erase.
+iso/config.local
+
 # Written on first run by the app itself.
-cava/.config/cava/shaders/
+home/cava/.config/cava/shaders/
 
 # matugen regenerates these on every theme change, and the config dirs are
 # stow symlinks into this repo, so the writes land here. Scoped to the
 # generated files only: dms/binds.conf next to colors.lua IS ours.
-hypr/.config/hypr/dms/colors.lua
-kitty/.config/kitty/dank-*.conf
-
-# The plugins dir is a whole-directory stow symlink, so anything a step
-# installs under it lands physically in the repo. idleInhibitToggle is ours
-# and stays tracked; these two are fetched by their own steps.
-dms/.config/DankMaterialShell/plugins/quickCapture/
-dms/.config/DankMaterialShell/plugins/krkCommute
+home/hypr/.config/hypr/dms/colors.lua
+home/kitty/.config/kitty/dank-*.conf
 
 # Claude Code's self-updater rewrites this symlink to point at the version it
 # just installed, and ~/.local/bin is a stow symlink into this repo.
-scripts/.local/bin/claude
+home/scripts/.local/bin/claude
 
 # Machine-local Hyprland config: the NVIDIA env block and anything else
 # specific to one box. Created by step_stow, written by step_nvidia.
-hypr/.config/hypr/conf.d/local.conf
+home/hypr/.config/hypr/conf.d/local.conf
 
 # keybind-help is Python, and running it writes __pycache__ next to itself,
 # which is inside a stow package.
-scripts/.local/bin/__pycache__/
+home/scripts/.local/bin/__pycache__/
 
 # ~/.local/share/wallpapers is a whole-directory stow symlink, so dharmx/walls
 # (the walls step, opt-in, ~3.7GB) lands physically in the repo. Refetched by
 # the step's `git pull`.
-wallpaper/.local/share/wallpapers/walls/
+home/wallpaper/.local/share/wallpapers/walls/

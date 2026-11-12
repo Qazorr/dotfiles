@@ -14,12 +14,10 @@ source "$REPO/lib/fetch.sh"
 source "$REPO/lib/steps.sh"
 # shellcheck source=lib/state.sh
 source "$REPO/lib/state.sh"
-# shellcheck source=lib/picker.sh
-source "$REPO/lib/picker.sh"
+# shellcheck source=lib/packages.sh
+source "$REPO/lib/packages.sh"
 # shellcheck source=lib/options.sh
 source "$REPO/lib/options.sh"
-# shellcheck source=lib/doctor.sh
-source "$REPO/lib/doctor.sh"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
@@ -33,10 +31,10 @@ export PATH="$DOTFILES_PATH_PREFIX:$PATH"
 steps_load
 
 declare -A PROFILES=(
-    [full]="safety shell desktop apps dev personal"
-    [desktop]="safety shell desktop"
-    [cli]="safety shell"
-    [dev]="safety shell apps dev"
+    [full]="shell desktop apps dev personal"
+    [desktop]="shell desktop"
+    [cli]="shell"
+    [dev]="shell apps dev"
 )
 
 steps_validate
@@ -174,31 +172,21 @@ Choosing less than everything:
   --profile <name>   a named set of groups: ${!PROFILES[*]}
   --group <name>     one group: ${GROUP_ORDER[*]}
   --missing          only steps whose tools aren't installed yet
-  --pick             choose interactively
   <step> ...         named steps; anything they --need is pulled in too.
                      Naming a step runs it even if it's recorded as done.
 
 What has already run is remembered in
 $STAMP_DIR — one file per step, so a
-re-run skips it. Editing a step's file in setup/steps/ un-remembers it.
+re-run skips it. Editing a step's file in steps/ un-remembers it.
   --force, -f        run everything selected, done or not
-  --forget [step…]   drop those records (all of them if none named)
-  --mark-done [step…]  record steps as done without running them. With no
-                     names, every step that already looks installed — for a
-                     machine set up before these records existed
 
   --list, -l         show every step, grouped, with install and run status
-  --doctor           check this machine against the repo, change nothing
   --dry-run, -n      print the plan and stop
   --keep-going, -k   don't abort on the first failing step
-  --all, -a          same as no arguments, kept for older muscle memory
   --yes, -y          never prompt
   --help, -h         this
 
 Environment overrides:
-  DOTFILES_SKIP_BACKUP=1      skip the config snapshot
-  DOTFILES_SKIP_TIMESHIFT=1   skip the full-system snapshot
-  DOTFILES_KRKCOMMUTE_DIR=…   clone krk-commute somewhere other than ~/Projects
   DOTFILES_NVIDIA_MODE=…      debian (default) | open | nvidia | nouveau
   DOTFILES_STATE_DIR=…        keep the run records and logs somewhere else
   DOTFILES_NO_LOG=1           don't write a log file for this run
@@ -269,49 +257,18 @@ plan_pending() {
 }
 
 main() {
-    local requested=() mode="" dry=0 pick=0 yes=0
-    local s grp rc needs_root=0 plan=() added=() forget=() real=0 keep=() still=()
+    local requested=() mode="" dry=0 yes=0
+    local s grp rc needs_root=0 plan=() added=() real=0 still=()
 
     while [ $# -gt 0 ]; do
         case "$1" in
             --list|-l)     list_steps; exit 0 ;;
             --help|-h)     usage; exit 0 ;;
-            --doctor)      run_doctor; exit $? ;;
-            --all|-a)      shift ;;   # same as no arguments
             --missing)     mode=missing; shift ;;
-            --pick)        pick=1; shift ;;
             --dry-run|-n)  dry=1; shift ;;
             --keep-going|-k) KEEP_GOING=1; shift ;;
             --force|-f)    FORCE=1; shift ;;
             --yes|-y)      yes=1; shift ;;
-            --mark-done)
-                shift
-                while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
-                    step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
-                    forget+=("$1"); shift
-                done
-                if [ ${#forget[@]} -eq 0 ]; then
-                    for s in "${STEPS[@]}"; do
-                        step_is_always "$s" && continue
-                        step_installed "$s" && forget+=("$s")
-                    done
-                fi
-                for s in "${forget[@]}"; do
-                    step_is_always "$s" && { warn "$s always runs — nothing to record"; continue; }
-                    step_stamp_write "$s"
-                done
-                log "Recorded as done without running: ${forget[*]:-nothing}"
-                exit 0 ;;
-            --forget)
-                shift
-                while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
-                    step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
-                    forget+=("$1"); shift
-                done
-                [ ${#forget[@]} -gt 0 ] || forget=("${STEPS[@]}")
-                for s in "${forget[@]}"; do step_stamp_clear "$s"; done
-                log "Forgot ${#forget[@]} run record(s) — the next run does those steps again."
-                exit 0 ;;
             --profile)
                 [ -n "${2:-}" ] || die "--profile needs a name (${!PROFILES[*]})"
                 [ -n "${PROFILES[$2]:-}" ] || die "unknown profile: $2 (have: ${!PROFILES[*]})"
@@ -350,19 +307,11 @@ main() {
         *)       requested=("${STEPS[@]}") ;;
     esac
 
-    if [ "$pick" != "1" ]; then
-        local optkept=() s2
-        for s2 in "${requested[@]}"; do
-            step_auto_excluded "$s2" || optkept+=("$s2")
-        done
-        requested=("${optkept[@]}")
-    fi
-
-    if [ "$pick" = "1" ] && [ "$yes" != "1" ]; then
-        [ -t 0 ] || die "--pick needs a terminal to ask on."
-        pick_steps "${requested[@]}" || { log "Nothing to do."; exit 0; }
-        requested=("${PICKED[@]}")
-    fi
+    local optkept=() s2
+    for s2 in "${requested[@]}"; do
+        step_auto_excluded "$s2" || optkept+=("$s2")
+    done
+    requested=("${optkept[@]}")
 
     [ ${#requested[@]} -gt 0 ] || { log "Nothing selected."; exit 0; }
 
@@ -373,11 +322,8 @@ main() {
     [ ${#SKIPPED[@]} -gt 0 ] && log "Already done, skipping: ${SKIPPED[*]}"
 
     for s in "${PENDING[@]}"; do
-        [ "${STEP_GROUP[$s]}" = "safety" ] && continue
-        keep+=("$s")
         step_is_always "$s" || real=1
     done
-    [ "$real" = "1" ] || PENDING=("${keep[@]}")
 
     plan=("${PENDING[@]}")
     [ ${#plan[@]} -gt 0 ] || { log "Everything is already done. Redo it all with --force."; exit 0; }
