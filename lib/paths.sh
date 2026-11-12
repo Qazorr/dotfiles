@@ -1,22 +1,20 @@
 DOTFILES_PATH_DIRS=(
     "$HOME/.local/share/dms/bin"
-    "$HOME/.local/share/uv/bin"
-    "$HOME/.local/share/krk-commute/bin"
     "$HOME/.local/share/mise/shims"
     "$HOME/.local/bin"
 )
 # shellcheck disable=SC2034  # read by bootstrap.sh
 DOTFILES_PATH_PREFIX="$(IFS=:; printf '%s' "${DOTFILES_PATH_DIRS[*]}")"
 
-# These repeat DOTFILES_PATH_DIRS and can't source this file; --doctor and CI
-# compare them against it.
-# shellcheck disable=SC2034
-DOTFILES_PATH_FILES=(zsh/.zprofile zsh/.zshrc hypr/.config/hypr/conf.d/environment.conf)
+# home/zsh/.zprofile, home/zsh/.zshrc and hypr's conf.d/environment.conf repeat
+# this list and can't source this file.
 
-# Every top-level directory holding a dotfile (hypr/.config, zsh/.zshrc).
-# shellcheck disable=SC2034  # read by step_stow, --doctor and dotfiles-backup
+# Every directory under home/ is a stow package.
+# shellcheck disable=SC2034  # read by step_stow and dotfiles
+STOW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../home" && pwd)"
+# shellcheck disable=SC2034
 STOW_PACKAGES=()
-for _d in "$(dirname "${BASH_SOURCE[0]}")"/../*/; do
-    compgen -G "$_d.[!.]*" >/dev/null && STOW_PACKAGES+=("$(basename "$_d")")
+for _d in "$STOW_DIR"/*/; do
+    [ -d "$_d" ] && STOW_PACKAGES+=("$(basename "$_d")")
 done
 unset _d

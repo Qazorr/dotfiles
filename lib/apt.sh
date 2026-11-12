@@ -6,8 +6,27 @@ ensure_nala() {
 _nala() { ensure_nala; sudo nala "$@"; }
 
 apt_update() { _nala update; }
+
+# What the steps install is the repo's own, so `dotfiles status` doesn't report
+# it as installed by hand.
+_apt_record() {
+    local a skip=0
+    mkdir -p "$DOTFILES_STATE_DIR" 2>/dev/null || return 0
+    for a in "$@"; do
+        if [ "$skip" = "1" ]; then skip=0; continue; fi
+        case "$a" in
+            -t) skip=1 ;;
+            -*) ;;
+            *)  printf '%s\n' "$a" ;;
+        esac
+    done >> "$PACKAGES_KNOWN"
+}
+
 # nala autoremoves on install by default; only apt_purge should remove.
-apt_install() { _nala install "${APT_OPTS[@]}" --no-autoremove "$@"; }
+apt_install() {
+    _nala install "${APT_OPTS[@]}" --no-autoremove "$@"
+    _apt_record "$@"
+}
 apt_install_backports() { apt_install -t trixie-backports "$@"; }
 
 # nala refuses an unauthenticated .deb URL under --yes, so verify a pinned hash
@@ -19,6 +38,7 @@ apt_install_deb() {   # apt_install_deb <url> <sha256>
     echo "$2  $deb" | sha256sum -c --quiet - || { warn "${1##*/}: checksum mismatch"; return 1; }
     chmod 755 "$dir"   # apt's _apt user has to read it
     sudo /usr/bin/apt-get install "${APT_OPTS[@]}" "$deb"
+    _apt_record "$(dpkg-deb -f "$deb" Package)"
 }
 
 apt_purge() {

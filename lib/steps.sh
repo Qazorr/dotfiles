@@ -1,7 +1,7 @@
-# shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
+# shellcheck disable=SC2034  # read by options/bootstrap
 declare -A STEP_DESC=() STEP_GROUP=() STEP_NEEDS=() STEP_ROOT=() STEP_PROVIDES=() \
            STEP_ALWAYS=() STEP_OPTIONAL=() STEP_FILE=()
-STEPS=()         # run order: the filename order of setup/steps/
+STEPS=()         # run order: the filename order of steps/
 GROUP_ORDER=()   # first appearance in STEPS
 
 # register_step <name> --desc "..." [--group g] [--root] [--always]
@@ -9,10 +9,10 @@ GROUP_ORDER=()   # first appearance in STEPS
 #
 #   --root      calls sudo, so a run containing it asks for a password
 #   --always    never recorded, runs every time (stow, summary)
-#   --optional  only runs when named, or ticked in --pick
+#   --optional  only runs when named
 #   --needs     must already be done for this step's INSTALL to succeed;
 #               install-time only, so `bootstrap.sh dms` can't pull in nvidia
-#   --provides  exists once the step has run; drives --list/--missing/--doctor
+#   --provides  exists once the step has run; drives --list/--missing
 register_step() {
     local name="$1"; shift
     local desc="" group=core root=0 always=0 optional=0 needs="" provides=""
@@ -44,22 +44,22 @@ register_step() {
     STEP_PROVIDES[$name]="$provides"
 }
 
-# setup/steps/<NNN>-<name>.sh, each registering <name>. The prefix is the run
+# steps/<NNN>-<name>.sh, each registering <name>. The prefix is the run
 # order; a step's --needs must sort before it.
 steps_load() {
     # Underscored: the step files are sourced in this scope.
     local _f _base _name _n
-    for _f in "$REPO"/setup/steps/*.sh; do
+    for _f in "$REPO"/steps/*.sh; do
         _base="${_f##*/}"
         [[ "$_base" =~ ^[0-9]+-(.+)\.sh$ ]] \
-            || die "setup/steps/$_base: name it <NNN>-<step>.sh — the number is its place in the run order"
+            || die "steps/$_base: name it <NNN>-<step>.sh — the number is its place in the run order"
         _name="${BASH_REMATCH[1]}"
         _n=${#STEPS[@]}
         # shellcheck source=/dev/null
         source "$_f"
         [ ${#STEPS[@]} -eq $((_n + 1)) ] && [ "${STEPS[$_n]}" = "$_name" ] \
-            || die "setup/steps/$_base must register exactly one step, named '$_name'"
-        STEP_FILE[$_name]="setup/steps/$_base"
+            || die "steps/$_base must register exactly one step, named '$_name'"
+        STEP_FILE[$_name]="steps/$_base"
     done
     for _name in "${STEPS[@]}"; do
         [[ " ${GROUP_ORDER[*]} " == *" ${STEP_GROUP[$_name]} "* ]] \
@@ -73,7 +73,7 @@ step_is_always() { [ "${STEP_ALWAYS[$1]:-0}" = "1" ]; }
 step_is_optional() { [ "${STEP_OPTIONAL[$1]:-0}" = "1" ]; }
 step_auto_excluded() { step_is_optional "$1" && [ -z "${NAMED[$1]+x}" ]; }
 
-# shellcheck disable=SC2034  # read by picker/options/doctor/bootstrap
+# shellcheck disable=SC2034  # read by options/bootstrap
 declare -A OPTION_STEP=() OPTION_PROMPT=() OPTION_CHOICES=() OPTION_DEFAULT=()
 OPTION_VARS=()   # registration order, so prompts come out in a stable order
 

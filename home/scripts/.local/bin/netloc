@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# netloc              the name of the network this machine is on, or "unknown"
+# netloc add <name>   call the current network <name>
+#
+# Networks are told apart by the MAC address of their gateway, which is the
+# same over Wi-Fi and Ethernet. The names live in ~/.config/netloc, one
+# "<name> <mac>" per line, outside the repo.
+
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/netloc"
+
+gateway_mac() {
+    local gw dev mac
+    read -r gw dev < <(ip -4 route show default | awk '{ print $3, $5; exit }') || return 1
+    [ -n "${gw:-}" ] || return 1
+    lladdr() { ip neigh show "$gw" dev "$dev" | grep -o 'lladdr [0-9a-f:]*' | cut -d' ' -f2; }
+    mac="$(lladdr)"
+    # No neighbour entry until something has talked to the gateway.
+    [ -n "$mac" ] || { ping -c1 -W1 "$gw" >/dev/null 2>&1 || true; mac="$(lladdr)"; }
+    [ -n "$mac" ] && printf '%s\n' "$mac"
+}
+
+case "${1:-}" in
+    "")
+        mac="$(gateway_mac)" || { echo unknown; exit 0; }
+        name="$(awk -v mac="$mac" '$2 == mac { print $1; exit }' "$CONF" 2>/dev/null || true)"
+        echo "${name:-unknown}"
+        ;;
+    add)
+        [ -n "${2:-}" ] || { echo "usage: netloc add <name>" >&2; exit 1; }
+        mac="$(gateway_mac)" || { echo "netloc: no gateway — not connected?" >&2; exit 1; }
+        grep -qsx "$2 $mac" "$CONF" || printf '%s %s\n' "$2" "$mac" >> "$CONF"
+        echo "This network is now '$2'."
+        ;;
+    *)
+        sed -n '4,9p' "$0" | sed 's/^# \{0,1\}//'
+        ;;
+esac

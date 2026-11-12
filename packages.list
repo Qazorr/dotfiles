@@ -1,0 +1,2 @@
+# apt packages added by hand since the install, one per line.
+# `dotfiles sync` appends to this; the packages step installs it.

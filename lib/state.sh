@@ -33,8 +33,6 @@ step_stamp_write() {
         > "$STAMP_DIR/$1"
 }
 
-step_stamp_clear() { rm -f "$STAMP_DIR/$1"; }
-
 # For a step returning 0 without finishing: don't record it, so the next run
 # retries. A file because steps run in a subshell; run_steps sets the path.
 stamp_skip() { : > "$STAMP_SKIP_FILE"; }
