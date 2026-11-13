@@ -5,5 +5,8 @@
   "dankKDEConnect": {
     "enabled": true,
     "selectedDeviceId": "59b039491dda409ab803ef4331d47464"
+  },
+  "galaxyBuds": {
+    "enabled": true
   }
 }

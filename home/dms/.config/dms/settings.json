@@ -89,14 +89,6 @@
       "row": 0
     },
     {
-      "id": "volumeSlider",
-      "enabled": true,
-      "w": 4.5,
-      "h": 1,
-      "col": 0,
-      "row": 2
-    },
-    {
       "id": "brightnessSlider",
       "enabled": true,
       "w": 4.5,
@@ -160,15 +152,6 @@
       "w": 2,
       "h": 1,
       "col": 2.5,
-      "row": 3
-    },
-    {
-      "id": "inputVolumeSlider",
-      "enabled": true,
-      "w": 4.5,
-      "h": 1,
-      "small": false,
-      "col": 4.5,
       "row": 3
     },
     {
@@ -533,6 +516,10 @@
       "rightWidgets": [
         {
           "id": "dankKDEConnect",
+          "enabled": true
+        },
+        {
+          "id": "galaxyBuds",
           "enabled": true
         },
         {
