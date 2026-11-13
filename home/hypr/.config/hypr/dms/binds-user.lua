@@ -1,0 +1,2 @@
+-- Your keybinds, written by the DMS keybind editor.
+-- Loaded after conf/keybindings.lua: binding a key here replaces it, hl.unbind("SUPER + X") frees it.

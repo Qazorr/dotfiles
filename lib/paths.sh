@@ -6,7 +6,7 @@ DOTFILES_PATH_DIRS=(
 # shellcheck disable=SC2034  # read by bootstrap.sh
 DOTFILES_PATH_PREFIX="$(IFS=:; printf '%s' "${DOTFILES_PATH_DIRS[*]}")"
 
-# home/zsh/.zprofile, home/zsh/.zshrc and hypr's conf.d/environment.conf repeat
+# home/zsh/.zprofile, home/zsh/.zshrc and hypr's conf/environment.lua repeat
 # this list and can't source this file.
 
 # Every directory under home/ is a stow package.

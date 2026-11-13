@@ -6,6 +6,14 @@ step_stow() {
     log "Stowing dotfiles"
     cd "$STOW_DIR" || die "can't cd to $STOW_DIR"
 
+    # DMS renames this dir itself on its first 2.x start. Done here first, the
+    # stow links land in the dir it will read.
+    local legacy="$HOME/.config/DankMaterialShell"
+    if [ -d "$legacy" ] && [ ! -L "$legacy" ] && [ ! -e "$HOME/.config/dms" ]; then
+        mv "$legacy" "$HOME/.config/dms"
+        ln -s dms "$legacy"
+    fi
+
     # stow aborts on a target that's already a real file (oh-my-zsh's .zshrc).
     # Move those aside; `stow --adopt` would pull them INTO the repo instead.
     local pkg rel target moved=0
@@ -31,29 +39,33 @@ step_stow() {
 
     # A missing target dir gets folded into one symlink to the repo, and every
     # app that later adds a launcher there would write into git.
-    mkdir -p "$HOME/.local/share/applications" "$HOME/.config/DankMaterialShell"
+    mkdir -p "$HOME/.local/share/applications" "$HOME/.config/dms"
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || { warn "no such stow package: $pkg (skipping)"; continue; }
         stow --target="$HOME" --restow "$pkg"
     done
 
-    # hyprland.conf sources these two unconditionally, so they must exist even
+    # hyprland.lua loads these three unconditionally, so they must exist even
     # when empty. -e rather than -f below: a dangling link (profile deleted)
-    # fails the source the same way a missing file does.
-    local local_conf="$HOME/.config/hypr/conf.d/local.conf"
-    if [ ! -f "$local_conf" ]; then
+    # fails the load the same way a missing file does.
+    local local_lua="$HOME/.config/hypr/conf/local.lua"
+    if [ ! -f "$local_lua" ]; then
         printf '%s\n' \
-            "# Machine-local Hyprland config. Not tracked in the dotfiles repo." \
-            "# bootstrap.sh writes the NVIDIA env block here when it finds a card." \
-            > "$local_conf"
+            "-- Machine-local Hyprland config. Not tracked in the dotfiles repo." \
+            "-- bootstrap.sh writes the NVIDIA env block here when it finds a card." \
+            > "$local_lua"
     fi
 
-    local active="$HOME/.config/monitor-profiles/active.conf"
-    if [ ! -e "$active" ]; then
-        mkdir -p "$(dirname "$active")"
-        rm -f "$active"
+    # DMS writes the theme's colours here on its first start.
+    local colors="$HOME/.config/hypr/dms/colors.lua"
+    [ -f "$colors" ] || printf '%s\n' "-- Written by DMS on every theme change." > "$colors"
+
+    local profiles="$HOME/.config/monitor-profiles"
+    if [ ! -e "$profiles/active.lua" ]; then
+        mkdir -p "$profiles"
         printf '%s\n' \
-            "# No monitor profile matches the connected monitors — Hyprland defaults." \
-            > "$active"
+            "-- No monitor profile matches the connected monitors — Hyprland defaults." \
+            > "$profiles/hyprmon.lua"
+        ln -sfn hyprmon.lua "$profiles/active.lua"
     fi
 }

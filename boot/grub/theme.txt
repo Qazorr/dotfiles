@@ -1,0 +1,77 @@
+title-text: ""
+desktop-image: "background.png"
+desktop-color: "@BG@"
+terminal-font: "DejaVu Sans Mono Regular 16"
+terminal-left: "64"
+terminal-top: "48"
+terminal-width: "100%-128"
+terminal-height: "100%-96"
+terminal-border: "0"
+
++ image {
+    left = 50%-36
+    top = 26%
+    width = 72
+    height = 72
+    file = "logo.png"
+}
+
++ boot_menu {
+    left = 50%-260
+    top = 26%+120
+    width = 520
+    height = 40%
+    item_font = "DejaVu Sans Regular 18"
+    item_color = "@SUB@"
+    selected_item_color = "@FG@"
+    item_height = 32
+    item_padding = 0
+    item_spacing = 8
+    item_pixmap_style = "item_*.png"
+    selected_item_pixmap_style = "select_*.png"
+    icon_width = 0
+    icon_height = 0
+    item_icon_space = 0
+    scrollbar = false
+}
+
++ label {
+    left = 64
+    top = 100%-88
+    width = 50%
+    align = "left"
+    text = "@HOST@"
+    font = "DejaVu Sans Regular 14"
+    color = "@FG@"
+}
+
++ label {
+    left = 64
+    top = 100%-64
+    width = 50%
+    align = "left"
+    text = "@OS@"
+    font = "DejaVu Sans Regular 14"
+    color = "@MUTED@"
+}
+
++ label {
+    left = 50%
+    top = 100%-88
+    width = 50%-64
+    align = "right"
+    text = "↑↓ select   enter boot   e edit"
+    font = "DejaVu Sans Regular 14"
+    color = "@MUTED@"
+}
+
++ label {
+    id = "__timeout__"
+    left = 50%
+    top = 100%-64
+    width = 50%-64
+    align = "right"
+    text = "booting in %d s"
+    font = "DejaVu Sans Regular 14"
+    color = "@ACCENT@"
+}

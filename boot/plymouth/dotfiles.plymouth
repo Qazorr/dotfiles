@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=dotfiles
+Description=Wallpaper backdrop, logo and a live log of what systemd starts
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/dotfiles
+ScriptFile=/usr/share/plymouth/themes/dotfiles/dotfiles.script

@@ -3,7 +3,7 @@
 [![ci](https://github.com/Qazorr/dotfiles/actions/workflows/ci.yml/badge.svg)](https://github.com/Qazorr/dotfiles/actions/workflows/ci.yml)
 
 Hyprland on Debian 13 (trixie) with
-[DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell), built
+[Dux Modular Shell](https://github.com/duxlabs-dev/dux-shell) (DMS), built
 into an installer ISO. Heavily inspired by
 [JaKooLit's Hyprland-Dots](https://github.com/JaKooLit/Hyprland-Dots) (now
 LinuxBeginnings).
@@ -97,6 +97,12 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
   its gateway, so Wi-Fi and Ethernet count as the same place. `netloc` then
   prints `office`, for scripts to branch on. Personal shell config goes in an
   untracked `~/.zshrc.local`.
+- **Boot screens:** the GRUB menu and Plymouth splash live in `boot/`.
+  `boot/preview grub` opens the menu in a QEMU window, `boot/preview plymouth`
+  (or `plymouth shutdown`) plays the splash in a window. `./bootstrap.sh grub`
+  installs them; both use a blurred copy of the current wallpaper and DMS's
+  colours, and re-theme themselves whenever the wallpaper changes
+  (`journalctl -u dotfiles-boot-theme` shows each run).
 - **DMS versions** are pinned in `steps/200-dms.sh`; bump them together.
 
 ## License

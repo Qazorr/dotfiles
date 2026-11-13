@@ -12,8 +12,11 @@ home/cava/.config/cava/shaders/
 
 # matugen regenerates these on every theme change, and the config dirs are
 # stow symlinks into this repo, so the writes land here. Scoped to the
-# generated files only: dms/binds.conf next to colors.lua IS ours.
+# generated files only: binds-user.lua and windowrules.lua next to colors.lua
+# ARE ours.
 home/hypr/.config/hypr/dms/colors.lua
+home/hypr/.config/hypr/dms/input.lua
+home/hypr/.config/hypr/dms/layout.lua
 home/kitty/.config/kitty/dank-*.conf
 
 # Claude Code's self-updater rewrites this symlink to point at the version it
@@ -22,7 +25,7 @@ home/scripts/.local/bin/claude
 
 # Machine-local Hyprland config: the NVIDIA env block and anything else
 # specific to one box. Created by step_stow, written by step_nvidia.
-home/hypr/.config/hypr/conf.d/local.conf
+home/hypr/.config/hypr/conf/local.lua
 
 # keybind-help is Python, and running it writes __pycache__ next to itself,
 # which is inside a stow package.

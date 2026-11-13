@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Keyboard shortcut cheat sheet, read live from `hyprctl binds -j` — never
-parses keybindings.conf, so it can't drift from what Hyprland is actually
-doing. Descriptions come from `bindd`/`binded`/`bindeld` lines; anything
-bound with plain `bind` shows its dispatcher instead.
+parses keybindings.lua, so it can't drift from what Hyprland is actually
+doing. Descriptions come from each bind's `description` option.
 
     keybind-help            interactive fuzzy search (needs fzf)
     keybind-help --list     plain grouped list, no interaction
@@ -11,9 +10,6 @@ bound with plain `bind` shows its dispatcher instead.
 In interactive mode, Enter runs the selected binding. JaKooLit's rofi version
 deliberately disables that ("pressing ENTER will have NO function"); running
 it is more useful, so destructive dispatchers ask first instead.
-
-DMS ships its own keybind viewer, but it only parses Hyprland's Lua config
-format; on a hyprlang config it reports readOnly and lists nothing.
 """
 import json
 import os
@@ -69,8 +65,7 @@ def combo(bind):
 def label(bind):
     if bind.get("description"):
         return bind["description"]
-    d, a = bind.get("dispatcher", ""), bind.get("arg", "")
-    return f"{d} {a}".strip() or "(no description)"
+    return "(no description)"
 
 _HEAD_TABLE = sorted(
     ((head, name) for name, heads in CATEGORIES for head in heads),
@@ -88,22 +83,20 @@ def categorise(desc):
             return name
     return "Other"
 
-DESTRUCTIVE = {"exit"}
-DESTRUCTIVE_ARGS = ("poweroff", "reboot", "suspend", "lock lock")
+DESTRUCTIVE = ("exit", "suspend", "lock screen", "power")
 
 def run_bind(bind):
     """Execute a binding through hyprctl, confirming the dangerous ones."""
-    disp, arg = bind.get("dispatcher", ""), bind.get("arg", "")
-    risky = disp in DESTRUCTIVE or any(t in arg for t in DESTRUCTIVE_ARGS)
-    if risky:
+    if any(t in label(bind).lower() for t in DESTRUCTIVE):
         try:
-            reply = input(f"\n  '{label(bind)}' ({disp} {arg})\n  Really run this? [y/N] ")
+            reply = input(f"\n  '{label(bind)}'\n  Really run this? [y/N] ")
         except (EOFError, KeyboardInterrupt):
             return
         if reply.strip().lower() not in ("y", "yes"):
             print("  cancelled")
             return
-    subprocess.run(["hyprctl", "dispatch", disp] + ([arg] if arg else []),
+    # A Lua bind's arg is the registry reference of its dispatcher.
+    subprocess.run(["hyprctl", "eval", f"hl.dispatch(debug.getregistry()[{int(bind['arg'])}])"],
                    capture_output=True)
 
 def interactive(binds, query=""):
@@ -114,11 +107,7 @@ def interactive(binds, query=""):
     keyw = max((len(combo(b)) for b in binds), default=20) + 2
     lines = []
     for i, b in enumerate(binds):
-        d, a = b.get("dispatcher", ""), b.get("arg", "")
-        cmd = f"{d} {a}".strip()
-        lines.append(
-            f"{i}\t{KEYC}{combo(b):<{keyw}}{RESET}{DESCC}{label(b):<34}{RESET}{DIM}{cmd}{RESET}"
-        )
+        lines.append(f"{i}\t{KEYC}{combo(b):<{keyw}}{RESET}{DESCC}{label(b)}{RESET}")
 
     try:
         proc = subprocess.run(

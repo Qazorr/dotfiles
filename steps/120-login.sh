@@ -1,15 +1,7 @@
-# --needs covers both greeters: the option is chosen after the plan resolves.
 register_step login \
-    --desc "greetd + a greeter (dms-greeter or tuigreet)" \
-    --group desktop --root --needs hyprland danklinux quickshell \
+    --desc "greetd + dms-greeter, the login screen that matches the lock screen" \
+    --group desktop --root --needs hyprland duxrepo quickshell \
     --provides /etc/greetd/config.toml
-
-register_option login DOTFILES_GREETER \
-    --prompt "Which login screen?" \
-    --choices \
-        "dms:dms-greeter — themed to match the shell (needs Quickshell + DankLinux repo)" \
-        "tuigreet:tuigreet — plain terminal greeter from Debian, nothing to break" \
-    --default dms
 
 register_option login DOTFILES_SESSION_ENTRIES \
     --prompt "Which sessions should the login screen offer?" \
@@ -110,13 +102,13 @@ _login_secure_vt() {
 }
 
 _login_dms() {
-    log "Installing greetd + dms-greeter"
-    if ! apt_install dms-greeter; then
+    log "Installing greetd + dux-greeter"
+    if ! apt_install dux-greeter; then
         # OBS rebuilds the .deb under the same version; an index older than the
         # rebuild fails the size/hash check, and a refresh fixes it.
-        warn "dms-greeter wouldn't download — refreshing the package index and retrying once"
+        warn "dux-greeter wouldn't download — refreshing the package index and retrying once"
         apt_update
-        apt_install dms-greeter
+        apt_install dux-greeter
     fi
     _login_ensure_greeter_user
 
@@ -126,30 +118,10 @@ _login_dms() {
         || warn "dms-greeter sync failed — the greeter works, it just won't match your theme. Re-run 'dms-greeter sync' once DMS is set up."
 }
 
-_login_tuigreet() {
-    log "Installing greetd + tuigreet"
-    apt_install greetd tuigreet
-    _login_ensure_greeter_user
-
-    log "Writing /etc/greetd/config.toml"
-    sudo tee /etc/greetd/config.toml >/dev/null <<'EOF'
-[terminal]
-vt = 1
-
-[default_session]
-command = "tuigreet --time --remember --remember-session --sessions /usr/share/wayland-sessions"
-user = "greeter"
-EOF
-}
-
 step_login() {
     _login_free_display_manager
 
-    case "${DOTFILES_GREETER:-dms}" in
-        dms)      _login_dms ;;
-        tuigreet) _login_tuigreet ;;
-        *) die "DOTFILES_GREETER must be dms or tuigreet (got '${DOTFILES_GREETER}')" ;;
-    esac
+    _login_dms
 
     log "Adding the greeter user to video/render/input"
     sudo usermod -aG video,render,input greeter

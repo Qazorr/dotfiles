@@ -2,8 +2,10 @@
 set -euo pipefail
 
 DIR="${MONITOR_PROFILES_DIR:-$HOME/.config/monitor-profiles}"
-ACTIVE="$DIR/active.conf"
-PLACEHOLDER="# No monitor profile matches the connected monitors — Hyprland defaults."
+ACTIVE="$DIR/active.lua"
+# Where hyprmon saves, and what active.lua points at when no profile matches.
+UNSAVED="$DIR/hyprmon.lua"
+PLACEHOLDER="-- No monitor profile matches the connected monitors — Hyprland defaults."
 
 die() { echo "monitor-profile: $*" >&2; exit 1; }
 
@@ -18,13 +20,14 @@ notify() {
 connected() { hyprctl monitors all -j | jq -r '.[].description'; }
 
 descs_in() {
-    sed -nE 's/^[[:space:]]*monitor[[:space:]]*=[[:space:]]*desc:([^,]*[^,[:space:]])[[:space:]]*,.*/\1/p' "$1"
+    sed -nE 's/^[[:space:]]*hl\.monitor\(.*output[[:space:]]*=[[:space:]]*"desc:([^"]*)".*/\1/p' "$1"
 }
 
 profiles() {
     local f
-    for f in "$DIR"/*.conf; do
-        [ -f "$f" ] && [ "$f" != "$ACTIVE" ] && basename "$f" .conf
+    for f in "$DIR"/*.lua; do
+        case "$(basename "$f" .lua)" in active|hyprmon|hyprmon-entry) continue ;; esac
+        [ -f "$f" ] && basename "$f" .lua
     done
     return 0
 }
@@ -36,7 +39,7 @@ match_count() {
     while IFS= read -r d; do
         grep -qxF -- "$d" <<< "$have" || return 0
         n=$((n + 1))
-    done < <(descs_in "$DIR/$2.conf")
+    done < <(descs_in "$DIR/$2.lua")
     [ "$n" -gt 0 ] && echo "$n"
     return 0
 }
@@ -52,19 +55,17 @@ pick() {
 }
 
 current() {
-    [ -L "$ACTIVE" ] && basename "$(readlink "$ACTIVE")" .conf
-    return 0
+    local name
+    name="$(basename "$(readlink "$ACTIVE" 2>/dev/null)" .lua)"
+    [ "$name" = hyprmon ] || printf '%s\n' "$name"
 }
 
-# One rename, so an autoreload mid-swap never finds active.conf missing: a
-# missing source is a config error in Hyprland 0.55.
+# One rename, so an autoreload mid-swap never finds active.lua missing: a
+# missing file is a config error.
 set_active() {
     local tmp="$ACTIVE.tmp.$$"
-    if [ -n "$1" ]; then
-        ln -s "$1.conf" "$tmp"
-    else
-        printf '%s\n' "$PLACEHOLDER" > "$tmp"
-    fi
+    [ -n "$1" ] || printf '%s\n' "$PLACEHOLDER" > "$UNSAVED"
+    ln -s "${1:-hyprmon}.lua" "$tmp"
     mv -fT "$tmp" "$ACTIVE"
 }
 
@@ -82,7 +83,7 @@ move_workspaces() {
                else . end) as $target
           | select(any($mons[]; .name == $target))
           | $spaces[] | select(.name == $r.workspaceString and .monitor != $target)
-          | "dispatch moveworkspacetomonitor \(.id) \($target)" ]
+          | "dispatch hl.dsp.workspace.move({ workspace = \(.id), monitor = \"\($target)\" })" ]
         | join(" ; ")')"
     [ -n "$cmds" ] && hyprctl --batch "$cmds" >/dev/null
     return 0
@@ -158,15 +159,16 @@ status() {
 save() {
     local name="$1"
     [ -n "$name" ] || die "usage: monitor-profile --save <name>"
-    if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]] || [ "$name" = active ]; then
+    if [[ ! "$name" =~ ^[A-Za-z0-9_-]+$ ]] || [[ "$name" =~ ^(active|hyprmon|hyprmon-entry)$ ]]; then
         die "bad profile name: $name"
     fi
-    [ -e "$DIR/$name.conf" ] && die "$DIR/$name.conf already exists"
-    [ -L "$ACTIVE" ] && die "already on profile '$(current)' — edit $DIR/$(current).conf instead"
-    cp "$ACTIVE" "$DIR/$name.conf"
+    [ -e "$DIR/$name.lua" ] && die "$DIR/$name.lua already exists"
+    [ -n "$(current)" ] && die "already on profile '$(current)' — edit $DIR/$(current).lua instead"
+    cp "$UNSAVED" "$DIR/$name.lua"
     set_active "$name"
-    echo "saved $DIR/$name.conf"
-    [ -n "$(descs_in "$DIR/$name.conf")" ] || echo "warning: no 'monitor = desc:…' lines, so it will never match on its own." \
+    hyprctl reload >/dev/null
+    echo "saved $DIR/$name.lua"
+    [ -n "$(descs_in "$DIR/$name.lua")" ] || echo "warning: no hl.monitor rule with output = \"desc:…\", so it will never match on its own." \
         "In hyprmon, turn on 'Write as desc:' for each external monitor and save (S) again." >&2
 }
 

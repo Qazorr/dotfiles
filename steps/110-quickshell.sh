@@ -1,6 +1,6 @@
 register_step quickshell \
     --desc "Quickshell (DMS runs on it)" \
-    --group desktop --root --needs prereqs backports danklinux \
+    --group desktop --root --needs prereqs backports duxrepo \
     --provides qs /usr/lib/x86_64-linux-gnu/qt6/qml/QtQuick/Effects
 
 step_quickshell() {
