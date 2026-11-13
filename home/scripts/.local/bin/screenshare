@@ -34,7 +34,8 @@ trim() {
 # Multi-word values and gradients come back under "custom", not "str".
 get_option() {
     hyprctl -j getoption "$1" 2>/dev/null | jq -r '
-        if   .int    != null then .int
+        if   .bool   != null then .bool
+        elif .int    != null then .int
         elif .float  != null then .float
         elif .str    != null then .str
         elif .custom != null then .custom
@@ -43,6 +44,16 @@ get_option() {
 
 # hyprctl exits 0 even on error, so success is the literal "ok" it prints.
 hc() { [ "$(hyprctl "$@" 2>&1)" = ok ]; }
+
+# 0/1 on a boolean option stays valid; anything not a number or boolean is a string.
+set_option() {
+    local k="${1//:/.}" v="$2"
+    if [[ "$v" =~ ^(true|false|-?[0-9]+(\.[0-9]+)?)$ ]]; then
+        hc eval "hl.config({ [\"$k\"] = $v })"
+    else
+        hc eval "hl.config({ [\"$k\"] = \"$v\" })"
+    fi
+}
 
 declare -a OPT_K=() OPT_V=() HOOK_START=() HOOK_STOP=()
 
@@ -85,7 +96,7 @@ apply() {
         cur="$(get_option "$k")" || true
         [ -n "$cur" ] || { warn "unknown option, skipping: $k"; continue; }
         printf '%s\t%s\t%s\n' "$k" "$cur" "$v" >> "$SNAP"
-        hc keyword "$k" "$v" || warn "could not set $k to $v"
+        set_option "$k" "$v" || warn "could not set $k to $v"
     done
 }
 
@@ -95,7 +106,7 @@ revert() {
     if [ -s "$SNAP" ]; then
         while IFS=$'\t' read -r k v _; do
             [ -n "${k:-}" ] || continue
-            hc keyword "$k" "$v" || warn "could not restore $k to $v"
+            set_option "$k" "$v" || warn "could not restore $k to $v"
         done < "$SNAP"
     fi
     rm -f "$SNAP"
@@ -209,7 +220,7 @@ watch() {
                     fi
                     write_state "$count" "$kind" ;;
                 configreloaded*)
-                    # A reload drops every runtime keyword; apply re-snapshots.
+                    # A reload drops every runtime change; apply re-snapshots.
                     [ "$applied" -eq 1 ] && apply ;;
             esac
             continue

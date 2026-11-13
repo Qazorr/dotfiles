@@ -1,0 +1,9 @@
+{
+  "quickCapture": {
+    "enabled": true
+  },
+  "dankKDEConnect": {
+    "enabled": true,
+    "selectedDeviceId": ""
+  }
+}

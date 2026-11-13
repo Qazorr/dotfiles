@@ -9,7 +9,7 @@ INSTALL_PASSWORD_HASH=""
 
 INSTALL_LOCALE="en_US.UTF-8"
 # The console and the installer. The desktop takes kb_layout from
-# home/hypr/.config/hypr/conf.d/input.conf.
+# home/hypr/.config/hypr/conf/input.lua.
 INSTALL_KEYMAP="pl"
 INSTALL_TIMEZONE="Europe/Warsaw"
 

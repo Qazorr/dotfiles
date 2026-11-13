@@ -125,26 +125,26 @@ _nvidia_grub_cmdline() {
     return 0
 }
 
-# local.conf is untracked: GBM_BACKEND=nvidia-drm on a card-less machine breaks
+# local.lua is untracked: GBM_BACKEND=nvidia-drm on a card-less machine breaks
 # rendering outright. Rewritten between markers so re-runs do not stack.
 _nvidia_write_hypr_env() {
-    local conf="$HOME/.config/hypr/conf.d/local.conf"
-    local begin="# >>> nvidia (bootstrap.sh) >>>"
-    local end="# <<< nvidia (bootstrap.sh) <<<"
-    [ -f "$conf" ] || printf '%s\n' "# Machine-local Hyprland config. Not tracked in the dotfiles repo." > "$conf"
+    local conf="$HOME/.config/hypr/conf/local.lua"
+    local begin="-- >>> nvidia (bootstrap.sh) >>>"
+    local end="-- <<< nvidia (bootstrap.sh) <<<"
+    [ -f "$conf" ] || printf '%s\n' "-- Machine-local Hyprland config. Not tracked in the dotfiles repo." > "$conf"
 
     local body
     if _nvidia_discrete_only; then
         body="$(cat <<'EOF'
-env = LIBVA_DRIVER_NAME,nvidia
-env = __GLX_VENDOR_LIBRARY_NAME,nvidia
-env = NVD_BACKEND,direct
-env = GBM_BACKEND,nvidia-drm
+hl.env("LIBVA_DRIVER_NAME", "nvidia")
+hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
+hl.env("NVD_BACKEND", "direct")
+hl.env("GBM_BACKEND", "nvidia-drm")
 EOF
 )"
     else
-        body="# Hybrid graphics: session renders on the integrated GPU on purpose.
-# Put one app on the NVIDIA card with: prime-run <app>"
+        body="-- Hybrid graphics: session renders on the integrated GPU on purpose.
+-- Put one app on the NVIDIA card with: prime-run <app>"
     fi
 
     local tmp; tmp="$(mktemp)"
@@ -157,13 +157,13 @@ EOF
 }
 
 _nvidia_remove_hypr_env() {
-    local conf="$HOME/.config/hypr/conf.d/local.conf"
+    local conf="$HOME/.config/hypr/conf/local.lua"
     [ -f "$conf" ] || return 0
     local tmp; tmp="$(mktemp)"
     awk '
-        /^# >>> nvidia \(bootstrap\.sh\) >>>$/ { skip = 1 }
+        /^-- >>> nvidia \(bootstrap\.sh\) >>>$/ { skip = 1 }
         !skip { print }
-        /^# <<< nvidia \(bootstrap\.sh\) <<<$/ { skip = 0 }
+        /^-- <<< nvidia \(bootstrap\.sh\) <<<$/ { skip = 0 }
     ' "$conf" > "$tmp"
     mv "$tmp" "$conf"
 }

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# boot/preview grub [qemu args]     the boot menu in a QEMU window, no root
+# boot/preview plymouth [shutdown]  the splash in a window, fed this machine's units
+set -euo pipefail
+
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORK="${XDG_RUNTIME_DIR:-/tmp}/boot-preview"
+rm -rf "$WORK"
+"$SRC/build.sh" "$WORK/theme"
+
+preview_grub() {
+    local root="$WORK/root" esp="$WORK/esp" kernel
+    kernel="$(uname -r)"
+    mkdir -p "$root/boot/grub/themes" "$esp/EFI/BOOT"
+    cp -r "$WORK/theme/grub" "$root/boot/grub/themes/dotfiles"
+    cat > "$root/boot/grub/grub.cfg" <<EOF
+insmod all_video
+insmod gfxterm
+insmod png
+set gfxmode=1920x1080,auto
+terminal_output gfxterm
+insmod regexp
+for f in \$prefix/themes/dotfiles/*.pf2; do loadfont \$f; done
+background_image \$prefix/themes/dotfiles/background.png
+set theme=\$prefix/themes/dotfiles/theme.txt
+export theme
+set timeout=15
+menuentry 'Debian GNU/Linux' {
+    echo 'Loading Linux $kernel ...'
+    echo 'Loading initial ramdisk ...'
+    sleep 4
+}
+submenu 'Advanced options for Debian GNU/Linux' {
+    menuentry 'Debian GNU/Linux, with Linux $kernel' { true }
+    menuentry 'Debian GNU/Linux, with Linux $kernel (recovery mode)' { true }
+}
+menuentry 'UEFI Firmware Settings' { fwsetup }
+EOF
+    grub-mkstandalone -O x86_64-efi -o "$esp/EFI/BOOT/BOOTX64.EFI" \
+        --modules="part_gpt fat" "boot/grub=$root/boot/grub" 2>/dev/null
+    qemu-system-x86_64 -m 512 -enable-kvm -bios /usr/share/ovmf/OVMF.fd \
+        -drive "if=virtio,file=fat:$esp,format=raw,readonly=on" -net none \
+        -device VGA,xres=1920,yres=1080 -name "GRUB preview" "$@"
+}
+
+preview_plymouth() {
+    local mode="${1:-boot}" dir=/usr/share/plymouth/themes/dotfiles unit
+    dpkg -s plymouth-x11 >/dev/null 2>&1 || sudo apt-get install -y plymouth-x11
+    xhost +si:localuser:root >/dev/null
+    sudo rm -rf "$dir"
+    sudo install -d "$dir"
+    sudo install -m644 "$WORK"/theme/plymouth/* "$dir/"
+
+    sudo env DISPLAY="$DISPLAY" plymouthd --mode="$mode" --no-boot-log \
+        --pid-file="$WORK/plymouthd.pid" \
+        --kernel-command-line="quiet splash plymouth.splash=dotfiles"
+    trap 'sudo plymouth quit' EXIT
+    sudo plymouth --ping || { echo "plymouthd isn't running"; exit 1; }
+    sudo plymouth show-splash
+    sleep 1
+    sudo plymouth message --text="Preview, fed this machine's units"
+    while read -r unit _; do
+        sudo plymouth update --status="$unit"
+        sleep 0.15
+    done < <(systemctl list-units --type=service,mount --state=active --no-legend --plain | head -60)
+    sleep 2
+}
+
+case "${1:-}" in
+    grub)     shift; preview_grub "$@" ;;
+    plymouth) preview_plymouth "${2:-boot}" ;;
+    *) sed -n '2,3s/^# //p' "$0"; exit 1 ;;
+esac
