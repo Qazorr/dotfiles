@@ -35,6 +35,7 @@ hl.config({
 
 	misc = {
 		middle_click_paste = false,
+		focus_on_activate = true,
 
 		allow_session_lock_restore = true,
 	},

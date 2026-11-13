@@ -1,7 +1,7 @@
 register_step desktop \
     --desc "Terminal, shell, screenshot/clipboard, network, Qt runtime, cursor" \
     --group desktop --root --needs backports \
-    --provides kitty zsh stow grim slurp wl-copy fastfetch cava \
+    --provides kitty zsh stow grim slurp wl-copy notify-send fastfetch cava \
                /usr/share/icons/Bibata-Modern-Classic
 
 step_desktop() {
@@ -9,7 +9,7 @@ step_desktop() {
     apt_install_backports \
         kitty zsh stow \
         grim slurp wl-clipboard \
-        playerctl brightnessctl \
+        playerctl brightnessctl libnotify-bin \
         fontconfig unzip curl git jq socat gnupg ca-certificates \
         imagemagick img2pdf tesseract-ocr zbar-tools \
         fastfetch cava \

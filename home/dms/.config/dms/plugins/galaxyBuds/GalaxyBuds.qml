@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.Common
 import qs.DCommon.Widgets
@@ -16,6 +17,9 @@ PluginComponent {
     property bool appRunning: false
     property bool connected: false
     property var device: ({})
+    // GalaxyBudsClient doesn't publish this over D-Bus; its battery history
+    // logs it with every status change. 0 off, 1 ANC, 2 ambient, 3 adaptive.
+    property int noiseMode: -1
 
     // A bud that isn't connected reports 0, and so does the case with no bud in it.
     readonly property int batteryLeft: device.WearStateLeft === "Disconnected" ? -1 : (device.BatteryLeft ?? -1)
@@ -42,6 +46,18 @@ PluginComponent {
     function execute(action) {
         actionProc.command = ["busctl", "--user", "call", service, appPath, appIface, "ExecuteAction", "s", action];
         actionProc.running = true;
+    }
+
+    // Only toggles exist: AncToggle lands on ANC from off or ambient, and
+    // turns ANC off; AmbientToggle mirrors that.
+    function setNoiseMode(mode) {
+        if (mode === noiseMode || noiseMode < 0)
+            return;
+        if (mode === 0)
+            execute(noiseMode === 2 ? "AmbientToggle" : "AncToggle");
+        else
+            execute(mode === 1 ? "AncToggle" : "AmbientToggle");
+        noiseMode = mode;
     }
 
     function activateApp() {
@@ -72,12 +88,14 @@ PluginComponent {
                 device = Array.isArray(data) ? data[0] : data;
                 appRunning = true;
                 connected = true;
+                modeProc.running = true;
                 return;
             } catch (e) {}
         }
         appRunning = !/not provided|ServiceUnknown|NameHasNoOwner/i.test(err);
         connected = false;
         device = {};
+        noiseMode = -1;
     }
 
     function batteryColor(level) {
@@ -120,6 +138,17 @@ PluginComponent {
             onStreamFinished: statusProc.err = text
         }
         onExited: code => root.parseStatus(out, err, code)
+    }
+
+    Process {
+        id: modeProc
+        command: ["python3", "-I", "-c", "import sqlite3,sys\nc=sqlite3.connect(f'file:{sys.argv[1]}?mode=ro',uri=True)\nr=c.execute('select NoiseControlMode from Records order by Id desc limit 1').fetchone()\nprint(r[0] if r and r[0] is not None else -1)", Quickshell.env("HOME") + "/.local/share/GalaxyBudsClient/battery_stats_" + (root.device.Address || "").replace(/:/g, "") + ".db"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = parseInt(text);
+                root.noiseMode = isNaN(n) ? -1 : n;
+            }
+        }
     }
 
     Process {
@@ -185,12 +214,11 @@ PluginComponent {
     component BatteryTile: StyledRect {
         id: tile
         property string label
-        property string icon
         property int level: -1
         property string detail: ""
 
         width: (parent.width - Theme.spacingS * 2) / 3
-        height: 104
+        height: 108
         radius: Theme.cornerRadius
         color: Theme.cardSurface
 
@@ -199,8 +227,8 @@ PluginComponent {
             spacing: Theme.spacingXS
 
             DRingGauge {
-                width: 52
-                height: 52
+                width: 54
+                height: 54
                 value: tile.level >= 0 ? tile.level / 100 : -1
                 ringColor: root.batteryColor(tile.level)
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -210,20 +238,20 @@ PluginComponent {
                     text: tile.level >= 0 ? tile.level : "—"
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
-                    color: Theme.surfaceText
+                    color: tile.level >= 0 ? Theme.surfaceText : Theme.surfaceVariantText
                 }
             }
 
             StyledText {
                 text: tile.label
                 font.pixelSize: Theme.fontSizeSmall
+                font.weight: Font.Medium
                 color: Theme.surfaceText
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
             StyledText {
-                visible: tile.detail.length > 0
-                text: tile.detail
+                text: tile.detail || " "
                 font.pixelSize: Theme.fontSizeSmall - 1
                 color: Theme.surfaceVariantText
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -231,43 +259,11 @@ PluginComponent {
         }
     }
 
-    component ActionTile: StyledRect {
-        id: action
-        property string icon
-        property string label
-        property string actionId
-
-        width: (parent.width - Theme.spacingS * 2) / 3
-        height: 64
-        radius: Theme.cornerRadius
-        color: mouse.containsMouse ? Theme.withAlpha(Theme.primary, 0.14) : Theme.cardSurface
-
-        Column {
-            anchors.centerIn: parent
-            spacing: Theme.spacingXS
-
-            DIcon {
-                name: action.icon
-                size: Theme.iconSize
-                color: Theme.primary
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-
-            StyledText {
-                text: action.label
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceText
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-        }
-
-        MouseArea {
-            id: mouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.execute(action.actionId)
-        }
+    component SectionLabel: StyledText {
+        font.pixelSize: Theme.fontSizeSmall
+        font.weight: Font.Medium
+        color: Theme.surfaceVariantText
+        leftPadding: Theme.spacingXS
     }
 
     popoutContent: Component {
@@ -281,7 +277,7 @@ PluginComponent {
 
             Column {
                 width: parent.width
-                spacing: Theme.spacingM
+                spacing: Theme.spacingS
 
                 Row {
                     width: parent.width
@@ -303,73 +299,133 @@ PluginComponent {
                     }
                 }
 
-                Row {
-                    width: parent.width
-                    spacing: Theme.spacingS
+                Item {
+                    width: 1
+                    height: Theme.spacingXS
+                }
 
-                    ActionTile {
-                        icon: "noise_control_off"
-                        label: "ANC"
-                        actionId: "AncToggle"
+                SectionLabel {
+                    text: "Noise control"
+                }
+
+                StyledRect {
+                    id: modes
+                    readonly property var options: [
+                        { mode: 0, icon: "volume_off", label: "Off" },
+                        { mode: 1, icon: "noise_control_off", label: "ANC" },
+                        { mode: 2, icon: "hearing", label: "Ambient" }
+                    ]
+                    readonly property real segWidth: (width - 8) / options.length
+                    readonly property int index: options.findIndex(o => o.mode === root.noiseMode)
+
+                    width: parent.width
+                    height: 48
+                    radius: Theme.cornerRadius
+                    color: Theme.cardSurface
+
+                    StyledRect {
+                        visible: modes.index >= 0
+                        x: 4 + modes.index * modes.segWidth
+                        y: 4
+                        width: modes.segWidth
+                        height: parent.height - 8
+                        radius: Theme.cornerRadius - 4
+                        color: Theme.primary
+
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                        }
                     }
-                    ActionTile {
-                        icon: "hearing"
-                        label: "Ambient"
-                        actionId: "AmbientToggle"
-                    }
-                    ActionTile {
-                        icon: "touch_app"
-                        label: "Touch lock"
-                        actionId: "LockTouchpadToggle"
+
+                    Row {
+                        x: 4
+                        y: 4
+
+                        Repeater {
+                            model: modes.options
+
+                            Item {
+                                id: seg
+                                required property var modelData
+                                required property int index
+                                readonly property bool active: modes.index === index
+
+                                width: modes.segWidth
+                                height: modes.height - 8
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: Theme.spacingXS
+
+                                    DIcon {
+                                        name: seg.modelData.icon
+                                        size: Theme.iconSize - 4
+                                        filled: seg.active
+                                        color: seg.active ? Theme.primaryText : segMouse.containsMouse ? Theme.primary : Theme.surfaceText
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    StyledText {
+                                        text: seg.modelData.label
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        font.weight: seg.active ? Font.Medium : Font.Normal
+                                        color: seg.active ? Theme.primaryText : Theme.surfaceText
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: segMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: seg.active ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                    onClicked: root.setNoiseMode(seg.modelData.mode)
+                                }
+                            }
+                        }
                     }
                 }
 
-                Row {
+                StyledRect {
                     width: parent.width
-                    spacing: Theme.spacingS
+                    height: 44
+                    radius: Theme.cornerRadius
+                    color: managerMouse.containsMouse ? Theme.withAlpha(Theme.primary, 0.12) : Theme.cardSurface
 
-                    ActionTile {
-                        icon: "graphic_eq"
-                        label: "Next EQ"
-                        actionId: "EqualizerNextPreset"
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 120
+                        }
                     }
-                    ActionTile {
-                        icon: "location_searching"
-                        label: "Find"
-                        actionId: "StartStopFind"
-                    }
-                    StyledRect {
-                        width: (parent.width - Theme.spacingS * 2) / 3
-                        height: 64
-                        radius: Theme.cornerRadius
-                        color: openMouse.containsMouse ? Theme.withAlpha(Theme.primary, 0.14) : Theme.cardSurface
 
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: Theme.spacingXS
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: Theme.spacingS
 
-                            DIcon {
-                                name: "open_in_new"
-                                size: Theme.iconSize
-                                color: Theme.primary
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
-
-                            StyledText {
-                                text: "Manager"
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceText
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
+                        DIcon {
+                            name: "open_in_new"
+                            size: Theme.iconSize - 4
+                            color: managerMouse.containsMouse ? Theme.primary : Theme.surfaceText
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        MouseArea {
-                            id: openMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.activateApp()
+                        StyledText {
+                            text: "Open manager"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            anchors.verticalCenter: parent.verticalCenter
                         }
+                    }
+
+                    MouseArea {
+                        id: managerMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.activateApp()
                     }
                 }
             }
