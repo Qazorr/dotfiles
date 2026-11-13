@@ -31,8 +31,10 @@ PY
 
 # The DMS wallpaper, so boot leads into the login screen; a flat colour without one.
 wallpaper() {
-    local session="$HOME/.local/state/DankMaterialShell/session.json" path
-    path="$(sed -n 's/.*"wallpaperPath": *"\([^"]*\)".*/\1/p' "$session" 2>/dev/null | head -1)"
+    local path
+    path="$(sed -n 's/.*"wallpaperPath": *"\([^"]*\)".*/\1/p' \
+        "$HOME/.local/state/dms/session.json" \
+        "$HOME/.local/state/DankMaterialShell/session.json" 2>/dev/null | head -1)"
     [ -f "$path" ] && printf '%s' "$path"
 }
 

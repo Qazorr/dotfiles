@@ -674,7 +674,7 @@
           "all"
         ],
         "syncPositionAcrossScreens": true,
-        "style": "expressive",
+        "style": "overlap",
         "transparency": 0,
         "weight": 0,
         "twoTone": true,
@@ -684,7 +684,8 @@
         "showAnalogSeconds": true,
         "autoPosition": true,
         "colorMode": "default",
-        "customColor": "#ffffff"
+        "customColor": "#ffffff",
+        "fontFamily": "JetBrainsMonoNL Nerd Font Mono"
       }
     },
     {
@@ -754,21 +755,6 @@
       }
     },
     {
-      "id": "lw_1794588185236_5ht25bprk",
-      "widgetType": "lockStatus",
-      "name": "Status",
-      "enabled": true,
-      "config": {
-        "syncPositionAcrossScreens": true,
-        "displayPreferences": [
-          "all"
-        ],
-        "showMediaPlayer": true,
-        "showWeather": true,
-        "background": false
-      }
-    },
-    {
       "id": "lw_1794588210305_0zatrc60y",
       "widgetType": "systemMonitor",
       "name": "System Monitor",
@@ -810,7 +796,7 @@
           "all"
         ],
         "syncPositionAcrossScreens": true,
-        "style": "expressive",
+        "style": "overlap",
         "transparency": 0,
         "weight": 0,
         "twoTone": true,
@@ -820,7 +806,8 @@
         "showAnalogSeconds": true,
         "autoPosition": true,
         "colorMode": "default",
-        "customColor": "#ffffff"
+        "customColor": "#ffffff",
+        "fontFamily": "JetBrainsMonoNL Nerd Font Mono"
       }
     },
     {
@@ -875,21 +862,6 @@
         ],
         "syncPositionAcrossScreens": true,
         "shape": "round"
-      }
-    },
-    {
-      "id": "lw_1794588185236_5ht25bprk",
-      "widgetType": "lockStatus",
-      "name": "Status",
-      "enabled": true,
-      "config": {
-        "syncPositionAcrossScreens": true,
-        "displayPreferences": [
-          "all"
-        ],
-        "showMediaPlayer": true,
-        "showWeather": true,
-        "background": false
       }
     },
     {
