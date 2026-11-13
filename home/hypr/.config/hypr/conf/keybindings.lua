@@ -41,7 +41,7 @@ hl.bind("SUPER + ALT + B", hl.dsp.exec_cmd("exec blueman-manager", { float = tru
 
 hl.bind("SUPER + Q", hl.dsp.window.close(), { description = "Close active window" })
 hl.bind("SUPER + SHIFT + Q", hl.dsp.exit(), { description = "Exit Hyprland" })
-hl.bind("SUPER + Escape", hl.dsp.exec_cmd("dms ipc call lock lock"), { description = "Lock screen" })
+hl.bind("CTRL + ALT + L", hl.dsp.exec_cmd("dms ipc call lock lock"), { description = "Lock screen" })
 hl.bind("SUPER + V", hl.dsp.exec_cmd("dms ipc call powermenu toggle"), { description = "Power menu" })
 
 hl.bind("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }), { description = "Fullscreen" })
