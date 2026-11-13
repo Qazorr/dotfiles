@@ -20,3 +20,5 @@ require("dms.windowrules")
 -- Machine-local, last so it wins.
 require("conf.local")
 require("dms.outputs")
+require("dms.input")
+require("dms.cursor")

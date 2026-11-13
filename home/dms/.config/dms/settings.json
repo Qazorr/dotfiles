@@ -36,7 +36,7 @@
   "windSpeedUnit": "kmh",
   "syncComponentAnimationSpeeds": true,
   "enableRippleEffects": true,
-  "motionEffect": 0,
+  "motionEffect": 3,
   "m3ElevationEnabled": true,
   "m3ElevationIntensity": 12,
   "m3ElevationOpacity": 30,
@@ -188,7 +188,7 @@
   "appDrawerSectionViewModes": {},
   "niriOverviewOverlayEnabled": true,
   "niriOverviewLauncherStyle": "full",
-  "dankLauncherV2Size": "compact",
+  "dankLauncherV2Size": "medium",
   "dankLauncherV2ShowSourceBadges": true,
   "dankLauncherV2BorderEnabled": false,
   "dankLauncherV2BorderThickness": 2,
@@ -222,15 +222,23 @@
     },
     {
       "id": "settings",
-      "enabled": true
+      "enabled": false
+    },
+    {
+      "id": "wellbeing",
+      "enabled": false
+    },
+    {
+      "id": "notifications",
+      "enabled": false
     }
   ],
-  "networkPreference": "wifi",
+  "networkPreference": "auto",
   "iconThemeDark": "System Default",
   "iconThemeLight": "System Default",
   "iconThemePerMode": false,
   "cursorSettings": {
-    "theme": "System Default",
+    "theme": "Bibata-Modern-Classic",
     "size": 24,
     "niri": {
       "hideWhenTyping": false,
@@ -341,7 +349,7 @@
     }
   },
   "matugenTemplateNeovimSetBackground": true,
-  "notificationOverlayEnabled": false,
+  "notificationOverlayEnabled": true,
   "notificationPopupShadowEnabled": true,
   "notificationPopupPrivacyMode": false,
   "notificationForegroundLayers": true,
@@ -369,8 +377,8 @@
   "notificationTimeoutLow": 5000,
   "notificationTimeoutNormal": 5000,
   "notificationTimeoutCritical": 0,
-  "notificationCompactMode": false,
-  "notificationShowTimeoutBar": false,
+  "notificationCompactMode": true,
+  "notificationShowTimeoutBar": true,
   "notificationDedupeEnabled": true,
   "notificationPopupPosition": 0,
   "notificationHistoryEnabled": true,
@@ -396,14 +404,11 @@
   "powerActionHoldDuration": 0.5,
   "powerMenuActions": [
     "reboot",
-    "logout",
     "poweroff",
-    "lock",
-    "suspend",
     "restart"
   ],
-  "powerMenuDefaultAction": "logout",
-  "powerMenuGridLayout": false,
+  "powerMenuDefaultAction": "poweroff",
+  "powerMenuGridLayout": true,
   "customPowerActionLock": "",
   "customPowerActionLogout": "",
   "customPowerActionSuspend": "",
@@ -437,16 +442,6 @@
       ],
       "showOnLastDisplay": true,
       "leftWidgets": [
-        {
-          "id": "launcherButton",
-          "enabled": true,
-          "launcherLogoMode": "os",
-          "launcherLogoCustomPath": "",
-          "launcherLogoColorOverride": "primary",
-          "launcherLogoBrightness": 0.5,
-          "launcherLogoContrast": 1,
-          "launcherLogoSizeOffset": 0
-        },
         {
           "id": "workspaceSwitcher",
           "enabled": true,
@@ -528,6 +523,10 @@
         {
           "id": "notificationButton",
           "enabled": true
+        },
+        {
+          "id": "privacyIndicator",
+          "enabled": true
         }
       ],
       "rightWidgets": [
@@ -586,7 +585,7 @@
       "innerPadding": 2,
       "barInsetPadding": -1,
       "bottomGap": 0,
-      "transparency": 0.4,
+      "transparency": 0.3,
       "widgetTransparency": 0.6,
       "squareCorners": false,
       "noBackground": false,
@@ -826,7 +825,10 @@
       "island": false,
       "dot": true,
       "barLengthMode": "full",
-      "widgetStyle": "pills"
+      "widgetStyle": "pills",
+      "islandFreeIconMode": "os",
+      "islandFreeEdgeMargin": 2,
+      "islandHighContrast": false
     }
   ],
   "desktopWidgetInstances": [],
@@ -929,7 +931,7 @@
     {
       "id": "lock_notifications",
       "widgetType": "lockNotifications",
-      "enabled": false,
+      "enabled": true,
       "config": {
         "displayPreferences": [
           "all"
@@ -1162,7 +1164,11 @@
   ],
   "dashOptions": {
     "media": {
-      "albumArtAccent": false
+      "artStyle": "squircle",
+      "playerStyle": "material"
+    },
+    "wallpaper": {
+      "layout": "carousel"
     }
   },
   "dmsWindowsFloatingSeeded": [
@@ -1173,8 +1179,13 @@
   "radiusMode": "scale",
   "springBounce": 0,
   "animationDuration": 400,
-  "avatarRing": "secondary",
+  "avatarRing": "primary",
   "controlCenterColumns": 9,
   "bluetoothMprisEnabled": false,
-  "showAmPm": false
+  "showAmPm": false,
+  "focusRingEnabled": true,
+  "floatingWindowTitleBars": true,
+  "notificationPopupBodyInvokesAction": false,
+  "matugenSpec": "2025",
+  "terminalPalette": "medium"
 }
