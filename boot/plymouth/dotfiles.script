@@ -151,9 +151,12 @@ fun add_line(text)
     }
 }
 
+# systemd only reports units as they start, so on the way down the one entry
+# would be the splash's own unit; the log is for boot only.
 fun status_callback(status)
 {
-    add_line(pretty(status));
+    if (global.mode == "boot")
+        add_line(pretty(status));
 }
 Plymouth.SetUpdateStatusFunction(status_callback);
 
