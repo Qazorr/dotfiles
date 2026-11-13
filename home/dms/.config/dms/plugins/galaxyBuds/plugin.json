@@ -1,0 +1,13 @@
+{
+    "id": "galaxyBuds",
+    "name": "Galaxy Buds",
+    "description": "Battery, wear state and controls for Galaxy Buds via GalaxyBudsClient",
+    "version": "1.0.0",
+    "author": "kacper",
+    "type": "widget",
+    "capabilities": ["dankbar-widget"],
+    "component": "./GalaxyBuds.qml",
+    "icon": "earbuds",
+    "requires_dms": ">=2.0.0",
+    "permissions": ["settings_read"]
+}

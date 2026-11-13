@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+# galaxybuds [args...]   run GalaxyBudsClient behind a session-bus filter
+#
+# GalaxyBudsClient 5.2.1 publishes a bud's empty SKU as a string of NUL bytes.
+# dbus-daemon disconnects any client that sends one, which takes the app's
+# D-Bus service (and the DMS galaxyBuds plugin) down with it. This proxies the
+# app's session-bus connections and blanks NULs inside string values, keeping
+# every message the same length.
+
+import os
+import selectors
+import signal
+import socket
+import struct
+import subprocess
+import sys
+
+APP = os.path.expanduser("~/.local/share/galaxybudsclient/GalaxyBudsClient")
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+REAL_BUS = os.environ.get("DBUS_SESSION_BUS_ADDRESS", f"unix:path={RUNTIME}/bus")
+LISTEN = os.path.join(RUNTIME, f"galaxybuds-bus-{os.getpid()}.sock")
+MAX_FDS = 64
+
+
+def real_bus_path():
+    for part in REAL_BUS.split(";")[0].split(":", 1)[1].split(","):
+        key, _, val = part.partition("=")
+        if key == "path":
+            return val
+    sys.exit(f"galaxybuds: unsupported bus address {REAL_BUS}")
+
+
+def align(n, a):
+    return (n + a - 1) // a * a
+
+
+def split_sig(sig):
+    out, i = [], 0
+    while i < len(sig):
+        j = sig_end(sig, i)
+        out.append(sig[i:j])
+        i = j
+    return out
+
+
+def sig_end(sig, i):
+    c = sig[i]
+    if c == "a":
+        return sig_end(sig, i + 1)
+    if c in "({":
+        close = ")" if c == "(" else "}"
+        i += 1
+        while sig[i] != close:
+            i = sig_end(sig, i)
+        return i + 1
+    return i + 1
+
+
+FIXED = {"y": 1, "b": 4, "n": 2, "q": 2, "i": 4, "u": 4, "x": 8, "t": 8, "d": 8, "h": 4}
+ALIGN = {**FIXED, "s": 4, "o": 4, "a": 4, "g": 1, "v": 1, "(": 8, "{": 8}
+
+
+def walk(buf, pos, sig, e):
+    """Blank NULs inside strings of one value; return position after it."""
+    c = sig[0]
+    if c in FIXED:
+        pos = align(pos, FIXED[c])
+        return pos + FIXED[c]
+    if c in "so":
+        pos = align(pos, 4)
+        (n,) = struct.unpack_from(e + "I", buf, pos)
+        start = pos + 4
+        if b"\0" in buf[start:start + n]:
+            buf[start:start + n] = buf[start:start + n].replace(b"\0", b" ")
+        return start + n + 1
+    if c == "g":
+        return pos + 1 + buf[pos] + 1
+    if c == "v":
+        n = buf[pos]
+        inner = buf[pos + 1:pos + 1 + n].decode()
+        return walk(buf, pos + 1 + n + 1, inner, e)
+    if c == "a":
+        pos = align(pos, 4)
+        (n,) = struct.unpack_from(e + "I", buf, pos)
+        elem = sig[1:]
+        pos = align(pos + 4, ALIGN.get(elem[0], 4))
+        end = pos + n
+        while pos < end:
+            pos = walk(buf, pos, elem, e)
+        return end
+    if c in "({":
+        pos = align(pos, 8)
+        for part in split_sig(sig[1:-1]):
+            pos = walk(buf, pos, part, e)
+        return pos
+    raise ValueError(sig)
+
+
+def body_signature(msg, e, flen):
+    pos, end = 16, 16 + flen
+    while pos < end:
+        pos = align(pos, 8)
+        code, n = msg[pos], msg[pos + 1]
+        vsig = msg[pos + 2:pos + 2 + n].decode()
+        pos += 3 + n
+        if vsig == "g":
+            l = msg[pos]
+            if code == 8:
+                return msg[pos + 1:pos + 1 + l].decode()
+            pos += l + 2
+        elif vsig in "so":
+            pos = align(pos, 4)
+            (l,) = struct.unpack_from(e + "I", msg, pos)
+            pos += 4 + l + 1
+        elif vsig == "u":
+            pos = align(pos, 4) + 4
+        else:
+            return ""
+    return ""
+
+
+def sanitize(msg):
+    e = "<" if msg[0:1] == b"l" else ">"
+    blen, _, flen = struct.unpack_from(e + "III", msg, 4)
+    sig = body_signature(msg, e, flen)
+    if not sig or b"\0" not in msg[align(16 + flen, 8):]:
+        return msg
+    body = bytearray(msg[align(16 + flen, 8):])
+    try:
+        pos = 0
+        for part in split_sig(sig):
+            pos = walk(body, pos, part, e)
+    except Exception:
+        return msg
+    return msg[:align(16 + flen, 8)] + bytes(body)
+
+
+class Upstream:
+    """App -> bus: pass the auth handshake through, then whole messages."""
+
+    def __init__(self):
+        self.buf = b""
+        self.authed = False
+        self.fds = []
+
+    def feed(self, data, fds):
+        self.buf += data
+        self.fds += fds
+        out = []
+        if not self.authed:
+            i = self.buf.find(b"BEGIN\r\n")
+            if i < 0:
+                out.append((self.buf, []))
+                self.buf = b""
+                return out
+            out.append((self.buf[:i + 7], []))
+            self.buf = self.buf[i + 7:]
+            self.authed = True
+        while len(self.buf) >= 16:
+            e = "<" if self.buf[0:1] == b"l" else ">"
+            blen, _, flen = struct.unpack_from(e + "III", self.buf, 4)
+            total = align(16 + flen, 8) + blen
+            if len(self.buf) < total:
+                break
+            msg, self.buf = self.buf[:total], self.buf[total:]
+            out.append((sanitize(msg), self.fds))
+            self.fds = []
+        return out
+
+
+def send(sock, data, fds):
+    if fds:
+        sent = socket.send_fds(sock, [data], fds)
+        for fd in fds:
+            os.close(fd)
+        data = data[sent:]
+    if data:
+        sock.sendall(data)
+
+
+def main():
+    if not os.access(APP, os.X_OK):
+        sys.exit(f"galaxybuds: {APP} not installed (./bootstrap.sh galaxybuds)")
+    bus_path = real_bus_path()
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    srv.bind(LISTEN)
+    srv.listen(16)
+
+    env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=f"unix:path={LISTEN}")
+    app = subprocess.Popen([APP, *sys.argv[1:]], env=env)
+
+    sel = selectors.DefaultSelector()
+    sel.register(srv, selectors.EVENT_READ)
+    rfd, wfd = os.pipe()
+    signal.signal(signal.SIGCHLD, lambda *_: os.write(wfd, b"x"))
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: app.terminate())
+    sel.register(rfd, selectors.EVENT_READ)
+
+    def drop(a, b):
+        for s in (a, b):
+            try:
+                sel.unregister(s)
+            except (KeyError, ValueError):
+                pass
+            s.close()
+
+    while app.poll() is None:
+        for key, _ in sel.select():
+            if key.fileobj == rfd:
+                os.read(rfd, 64)
+                continue
+            if key.fileobj is srv:
+                client, _ = srv.accept()
+                bus = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                bus.connect(bus_path)
+                sel.register(client, selectors.EVENT_READ, (bus, Upstream()))
+                sel.register(bus, selectors.EVENT_READ, (client, None))
+                continue
+            src = key.fileobj
+            dst, upstream = key.data
+            try:
+                data, fds, _, _ = socket.recv_fds(src, 65536, MAX_FDS)
+            except OSError:
+                data, fds = b"", []
+            if not data:
+                drop(src, dst)
+                continue
+            chunks = upstream.feed(data, fds) if upstream else [(data, fds)]
+            try:
+                for chunk, cfds in chunks:
+                    send(dst, chunk, cfds)
+            except OSError:
+                drop(src, dst)
+
+    os.unlink(LISTEN)
+    sys.exit(app.returncode)
+
+
+if __name__ == "__main__":
+    main()
