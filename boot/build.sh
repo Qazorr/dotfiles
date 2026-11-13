@@ -41,7 +41,7 @@ wallpaper() {
 backdrop() {
     local src; src="$(wallpaper || true)"
     if [ -n "$src" ]; then
-        magick "$src[0]" -resize 1920x1080^ -gravity center -extent 1920x1080 \
+        magick "${src}[0]" -resize 1920x1080^ -gravity center -extent 1920x1080 \
             -blur 0x24 -fill "$BG" -colorize 50% -depth 8 "PNG24:$1"
     else
         magick -size 1920x1080 "xc:$BG" -depth 8 "PNG24:$1"
