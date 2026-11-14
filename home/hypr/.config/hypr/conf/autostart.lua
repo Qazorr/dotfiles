@@ -1,7 +1,6 @@
 hl.on("hyprland.start", function()
-	-- Absolute path: this doesn't source ~/.zshrc, and the binaries live
-	-- outside ~/.local/bin.
-	hl.exec_cmd(os.getenv("HOME") .. "/.local/share/dms/bin/dms run -c " .. os.getenv("HOME") .. "/.local/share/dms/shell")
+	-- Absolute path: this doesn't source ~/.zshrc.
+	hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/dms-start")
 
 	hl.exec_cmd("monitor-profile --watch")
 

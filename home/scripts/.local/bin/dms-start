@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Runs DMS on the patched UI from steps/200-dms.sh, but only while it matches the
+# installed binary; after a `dms update` it falls back to the built-in UI.
+# Exported here so `dms restart` from the power menu inherits it.
+shell="$HOME/.local/share/dms/shell"
+dms="$HOME/.local/share/dms/bin/dms"
+
+if [ "dms $(cat "$shell/VERSION" 2>/dev/null)" = "$("$dms" version 2>/dev/null | head -1)" ]; then
+    export DMS_SHELL_DIR="$shell"
+else
+    notify-send -a dms-start "DMS UI overlay skipped" \
+        "The patched UI doesn't match the installed DMS; run ./bootstrap.sh dms"
+fi
+exec "$dms" run "$@"
