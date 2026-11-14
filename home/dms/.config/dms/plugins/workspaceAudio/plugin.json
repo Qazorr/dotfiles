@@ -1,0 +1,13 @@
+{
+    "id": "workspaceAudio",
+    "name": "Workspace Audio",
+    "description": "Workspace lines with a pulsing outline on workspaces that are playing sound",
+    "version": "0.1.0",
+    "author": "kacper",
+    "type": "widget",
+    "capabilities": ["dankbar-widget"],
+    "component": "./WorkspaceAudio.qml",
+    "icon": "graphic_eq",
+    "requires_dms": ">=2.0.0",
+    "permissions": ["settings_read"]
+}
