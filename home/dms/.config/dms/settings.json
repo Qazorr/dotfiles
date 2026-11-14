@@ -504,7 +504,7 @@
           "clockCompactMode": false
         },
         {
-          "id": "music",
+          "id": "mediaGlow",
           "enabled": true,
           "mediaSize": 3,
           "mediaAdaptiveWidthEnabled": true,
@@ -707,7 +707,7 @@
       ],
       "centerWidgets": [
         {
-          "id": "music",
+          "id": "mediaGlow",
           "enabled": true,
           "mediaSize": 2,
           "mediaAdaptiveWidthEnabled": true,

@@ -9,6 +9,9 @@
   "galaxyBuds": {
     "enabled": true
   },
+  "mediaGlow": {
+    "enabled": true
+  },
   "workspaceAudio": {
     "enabled": true
   },

@@ -12,9 +12,17 @@ register_step dms \
     --group desktop --needs prereqs quickshell \
     --provides "$HOME/.local/share/dms/bin/dms"
 
+# MediaBody.qml in the mediaGlow plugin is a patched copy of this version's Media widget.
+MEDIA_BODY="$REPO/home/dms/.config/dms/plugins/mediaGlow/MediaBody.qml"
+check_media_body() {
+    grep -q "DMS $DMS_VERSION" "$MEDIA_BODY" \
+        || warn "mediaGlow/MediaBody.qml is a copy of another DMS version; re-copy the stock Media.qml and reapply its changes"
+}
+
 step_dms() {
     if [ -x "$DMS_BIN/dms" ] && [ "$("$DMS_BIN/dms" version 2>/dev/null | head -1)" = "dms $DMS_VERSION" ]; then
         log "DMS $DMS_VERSION already installed, skipping"
+        check_media_body
         return 0
     fi
 
@@ -38,4 +46,6 @@ step_dms() {
         dsearch-linux-amd64.tar.gz dsearch-linux-amd64 "$DMS_BIN/dsearch" "$tmp"
     install_github_release_binary InioX/matugen "$MATUGEN_VERSION" \
         "matugen-${MATUGEN_VERSION#v}-x86_64.tar.gz" matugen "$DMS_BIN/matugen" "$tmp"
+
+    check_media_body
 }
