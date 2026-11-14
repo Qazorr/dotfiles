@@ -1,0 +1,14 @@
+[config]
+
+[templates.whatsapp]
+input_path = '~/.config/matugen/templates/whatsapp.css'
+output_path = '~/.local/share/pwa-theme/whatsapp.css'
+
+[templates.teams]
+input_path = '~/.config/matugen/templates/teams.css'
+output_path = '~/.local/share/pwa-theme/teams.css'
+
+[templates.sonora]
+input_path = '~/.config/matugen/templates/sonora.json'
+output_path = '~/.local/state/sonora-theme.json'
+post_hook = '$HOME/.local/bin/sonora-theme'

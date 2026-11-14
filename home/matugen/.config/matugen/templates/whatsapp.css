@@ -1,0 +1,35 @@
+html, html body, html.dark, html.light, body.dark, body.light, .dark, .light {
+  --WDS-surface-default: {{colors.surface.default.hex}} !important;
+  --WDS-surface-highlight: {{colors.surface_container_high.default.hex}} !important;
+  --WDS-surface-elevated: {{colors.surface_container.default.hex}} !important;
+  --WDS-content-default: {{colors.on_surface.default.hex}} !important;
+  --WDS-content-deemphasized: {{colors.on_surface_variant.default.hex}} !important;
+  --WDS-accent: {{colors.primary.default.hex}} !important;
+  --WDS-systems-bubble-surface-outgoing: {{colors.primary_container.default.hex}} !important;
+  --WDS-systems-bubble-surface-incoming: {{colors.surface_container_high.default.hex}} !important;
+  --WDS-systems-bubble-content-outgoing: {{colors.on_primary_container.default.hex}} !important;
+
+  --app-background: {{colors.surface_container_lowest.default.hex}} !important;
+  --app-background-stripe: {{colors.surface_container_lowest.default.hex}} !important;
+  --startup-background: {{colors.surface.default.hex}} !important;
+  --background-default: {{colors.surface.default.hex}} !important;
+  --background-default-hover: {{colors.surface_container.default.hex}} !important;
+  --background-default-active: {{colors.surface_container_high.default.hex}} !important;
+  --panel-background: {{colors.surface_container.default.hex}} !important;
+  --panel-header-background: {{colors.surface_container_high.default.hex}} !important;
+  --drawer-background: {{colors.surface.default.hex}} !important;
+  --conversation-panel-background: {{colors.surface.default.hex}} !important;
+  --rich-text-panel-background: {{colors.surface_container_high.default.hex}} !important;
+  --compose-input-background: {{colors.surface_container_highest.default.hex}} !important;
+  --search-input-background: {{colors.surface_container_highest.default.hex}} !important;
+  --incoming-background: {{colors.surface_container_high.default.hex}} !important;
+  --outgoing-background: {{colors.primary_container.default.hex}} !important;
+  --primary: {{colors.on_surface.default.hex}} !important;
+  --primary-strong: {{colors.on_surface.default.hex}} !important;
+  --secondary: {{colors.on_surface_variant.default.hex}} !important;
+  --icon: {{colors.on_surface_variant.default.hex}} !important;
+  --icon-lighter: {{colors.outline.default.hex}} !important;
+  --border-list: {{colors.outline_variant.default.hex}} !important;
+  --teal: {{colors.primary.default.hex}} !important;
+  --unread-marker-background: {{colors.primary.default.hex}} !important;
+}

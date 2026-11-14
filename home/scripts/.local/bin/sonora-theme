@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Merges the matugen palette into Sonora's appearance.theme_overrides.
+# Sonora has to be restarted to pick it up.
+
+src="${XDG_STATE_HOME:-$HOME/.local/state}/sonora-theme.json"
+dst="${XDG_CONFIG_HOME:-$HOME/.config}/sonora/settings.json"
+[ -f "$src" ] && [ -f "$dst" ] || exit 0
+
+tmp="$(mktemp "$dst.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+jq --slurpfile theme "$src" '.appearance.theme_overrides += $theme[0]' "$dst" > "$tmp"
+chmod --reference="$dst" "$tmp"
+mv "$tmp" "$dst"

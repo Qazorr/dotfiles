@@ -103,6 +103,11 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
   installs them; both use a blurred copy of the current wallpaper and DMS's
   colours, and re-theme themselves whenever the wallpaper changes
   (`journalctl -u dotfiles-boot-theme` shows each run).
+- **PWA and app colours:** `~/.config/matugen/` holds user templates that DMS
+  runs on every theme change. They colour WhatsApp Web and Teams through the
+  extension in `~/.local/share/pwa-theme` (load it once per browser from
+  `brave://extensions` with Developer mode on, "Load unpacked"), and Sonora
+  through `sonora-theme`, which needs a Sonora restart.
 - **DMS versions** are pinned in `steps/200-dms.sh`; bump them together.
 
 ## License
