@@ -106,7 +106,7 @@ PluginComponent {
         readonly property real perimeter: 2 * (w - 2 * r) + 2 * (h - 2 * r) + 2 * Math.PI * r
 
         anchors.centerIn: media
-        width: media.width - media.leftMargin - media.rightMargin
+        width: media.width
         height: media.widgetThickness
         opacity: root.playing ? 1 : 0
         visible: opacity > 0
