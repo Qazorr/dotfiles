@@ -8,5 +8,12 @@
   },
   "galaxyBuds": {
     "enabled": true
+  },
+  "wallpaperCarousel": {
+    "enabled": true,
+    "carouselMode": "wrap",
+    "cornerRadius": 12,
+    "itemWidth": 350,
+    "itemHeight": 450
   }
 }
