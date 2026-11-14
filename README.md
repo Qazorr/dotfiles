@@ -109,6 +109,10 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
   `brave://extensions` with Developer mode on, "Load unpacked"), and Sonora
   through `sonora-theme`, which needs a Sonora restart.
 - **DMS versions** are pinned in `steps/200-dms.sh`; bump them together.
+- **`dms-shell/`** holds the DMS UI files this repo changes (the lock screen
+  password widget: layout, input size, image size). The dms step lays them over
+  the stock UI in `~/.local/share/dms/shell`, which autostart runs with
+  `dms run -c`. After editing, re-run `./bootstrap.sh dms` and restart DMS.
 
 ## License
 
