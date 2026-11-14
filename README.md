@@ -111,8 +111,8 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
 - **DMS versions** are pinned in `steps/200-dms.sh`; bump them together.
 - **`dms-shell/`** holds the DMS UI files this repo changes (the lock screen
   password widget: layout, input size, image size). The dms step lays them over
-  the stock UI in `~/.local/share/dms/shell`, which autostart runs with
-  `dms run -c`. After editing, re-run `./bootstrap.sh dms` and restart DMS.
+  the stock UI in `~/.local/share/dms/shell`, which `dms-start` points DMS at
+  while its version matches the installed binary. After editing, re-run `./bootstrap.sh dms` and restart DMS.
 
 ## License
 
