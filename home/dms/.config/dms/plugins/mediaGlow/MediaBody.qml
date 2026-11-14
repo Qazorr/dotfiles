@@ -397,7 +397,7 @@ BasePill {
                 }
 
                 Row {
-                    spacing: Theme.spacingXS
+                    spacing: 0
                     anchors.verticalCenter: parent.verticalCenter
 
                     Rectangle {
