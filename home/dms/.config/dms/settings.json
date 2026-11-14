@@ -1157,5 +1157,7 @@
   "notificationPopupBodyInvokesAction": false,
   "matugenSpec": "2025",
   "terminalPalette": "medium",
-  "matugenSmartMode": false
+  "matugenSmartMode": false,
+  "focusRingWidth": 1.5,
+  "scrollbarsEnabled": true
 }
