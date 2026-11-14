@@ -214,7 +214,7 @@
     },
     {
       "id": "wallpaper",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "weather",
