@@ -39,7 +39,7 @@ step_stow() {
 
     # A missing target dir gets folded into one symlink to the repo, and every
     # app that later adds a launcher there would write into git.
-    mkdir -p "$HOME/.local/share/applications" "$HOME/.config/dms"
+    mkdir -p "$HOME/.local/share/applications" "$HOME/.config/dms" "$HOME/.config/systemd/user/xdg-desktop-portal-hyprland.service.d"
     for pkg in "${STOW_PACKAGES[@]}"; do
         [ -d "$pkg" ] || { warn "no such stow package: $pkg (skipping)"; continue; }
         stow --target="$HOME" --restow "$pkg"
@@ -59,6 +59,14 @@ step_stow() {
     # DMS writes the theme's colours here on its first start.
     local colors="$HOME/.config/hypr/dms/colors.lua"
     [ -f "$colors" ] || printf '%s\n' "-- Written by DMS on every theme change." > "$colors"
+
+    # DMS points qt6ct at its KDE-format DankMatugen.colors, which qt6ct can't
+    # read. colors/matugen.conf is the qt6ct-format palette it writes too.
+    local qt6ct="$HOME/.config/qt6ct/qt6ct.conf"
+    mkdir -p "${qt6ct%/*}"
+    [ -f "$qt6ct" ] && grep -q '^\[Appearance\]' "$qt6ct" || printf '[Appearance]\n' >> "$qt6ct"
+    sed -i -e '/^custom_palette=/d' -e '/^color_scheme_path=/d' -e '/^style=/d' "$qt6ct"
+    sed -i "/^\[Appearance\]/a custom_palette=true\ncolor_scheme_path=$HOME/.config/qt6ct/colors/matugen.conf\nstyle=Fusion" "$qt6ct"
 
     local profiles="$HOME/.config/monitor-profiles"
     if [ ! -e "$profiles/active.lua" ]; then

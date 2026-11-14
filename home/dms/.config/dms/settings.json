@@ -1187,5 +1187,6 @@
   "floatingWindowTitleBars": true,
   "notificationPopupBodyInvokesAction": false,
   "matugenSpec": "2025",
-  "terminalPalette": "medium"
+  "terminalPalette": "medium",
+  "matugenSmartMode": false
 }
