@@ -9,6 +9,9 @@
   "galaxyBuds": {
     "enabled": true
   },
+  "workspaceAudio": {
+    "enabled": true
+  },
   "wallpaperCarousel": {
     "enabled": true,
     "carouselMode": "wrap",

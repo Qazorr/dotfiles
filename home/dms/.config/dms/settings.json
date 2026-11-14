@@ -443,8 +443,7 @@
       "showOnLastDisplay": true,
       "leftWidgets": [
         {
-          "id": "workspaceSwitcher",
-          "enabled": true,
+          "id": "workspaceAudio",
           "showWorkspaceIndex": true,
           "showWorkspaceName": false,
           "showWorkspacePadding": false,
@@ -487,7 +486,8 @@
           "workspaceIndicatorStyle": "lines",
           "workspaceIndicatorCompact": true,
           "workspaceIndicatorRoundness": -1,
-          "showSpecialWorkspaces": false
+          "showSpecialWorkspaces": false,
+          "enabled": true
         },
         {
           "id": "focusedWindow",
