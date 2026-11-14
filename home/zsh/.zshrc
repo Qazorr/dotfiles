@@ -38,6 +38,13 @@ command -v direnv >/dev/null && eval "$(direnv hook zsh)"
 typeset -U path
 export PATH="$HOME/.local/share/dms/bin:$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH"
 
+if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+    export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+    export REQUESTS_CA_BUNDLE=$SSL_CERT_FILE
+    export NODE_EXTRA_CA_CERTS=$SSL_CERT_FILE
+    export GIT_SSL_CAINFO=$SSL_CERT_FILE
+fi
+
 # Anything personal or per-machine: proxies, tokens, work aliases.
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 
