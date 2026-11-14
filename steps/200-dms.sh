@@ -6,6 +6,9 @@ MATUGEN_VERSION=v4.2.0
 
 # Outside ~/.local/bin, which is a stow symlink into this repo.
 DMS_BIN="$HOME/.local/share/dms/bin"
+# The stock UI with dms-shell/ laid over it; autostart.lua runs `dms run -c` on it.
+DMS_SHELL="$HOME/.local/share/dms/shell"
+DMS_OVERLAY="$REPO/dms-shell"
 
 register_step dms \
     --desc "Dux Modular Shell (DMS) + dgop, dsearch, matugen" \
@@ -19,8 +22,27 @@ check_media_body() {
         || warn "mediaGlow/MediaBody.qml is a copy of another DMS version; re-copy the stock Media.qml and reapply its changes"
 }
 
+# Changes whenever the pinned version or any overlay file does.
+shell_stamp() {
+    { echo "$DMS_VERSION"; find "$DMS_OVERLAY" -type f -exec sha256sum {} + | sort -k2; } | sha256sum | cut -d' ' -f1
+}
+
+build_shell() {
+    local stock="$1"
+    [ "$(cat "$DMS_OVERLAY/BASE")" = "$DMS_VERSION" ] \
+        || warn "dms-shell/ is based on DMS $(cat "$DMS_OVERLAY/BASE"), not $DMS_VERSION; re-copy the stock files and reapply its changes"
+    rm -rf "$DMS_SHELL"
+    cp -r "$stock" "$DMS_SHELL"
+    cp -r "$DMS_OVERLAY"/. "$DMS_SHELL"/
+    rm -f "$DMS_SHELL/BASE"
+    shell_stamp > "$DMS_SHELL/.overlay-stamp"
+}
+
 step_dms() {
-    if [ -x "$DMS_BIN/dms" ] && [ "$("$DMS_BIN/dms" version 2>/dev/null | head -1)" = "dms $DMS_VERSION" ]; then
+    local have_bin=0 have_shell=0
+    [ -x "$DMS_BIN/dms" ] && [ "$("$DMS_BIN/dms" version 2>/dev/null | head -1)" = "dms $DMS_VERSION" ] && have_bin=1
+    [ "$(cat "$DMS_SHELL/.overlay-stamp" 2>/dev/null)" = "$(shell_stamp)" ] && have_shell=1
+    if [ $have_bin = 1 ] && [ $have_shell = 1 ]; then
         log "DMS $DMS_VERSION already installed, skipping"
         check_media_body
         return 0
@@ -31,10 +53,11 @@ step_dms() {
     mkdir -p "$DMS_BIN"
     local tmp; scratch_dir tmp
 
-    # The UI is embedded in the binary.
     curl -fsSL -o "$tmp/dms.tar.gz" \
         "https://github.com/duxlabs-dev/dux-shell/releases/download/$DMS_VERSION/dms-full-amd64.tar.gz"
     mkdir -p "$tmp/dms" && tar xzf "$tmp/dms.tar.gz" -C "$tmp/dms"
+    build_shell "$tmp/dms/dms"
+    [ $have_bin = 1 ] && { check_media_body; return 0; }
     install -m755 "$tmp/dms/bin/dms" "$DMS_BIN/dms"
     # `dms doctor` reports the version of a QML tree it finds here.
     rm -rf "$HOME/.config/quickshell/dms"

@@ -924,8 +924,11 @@
         ],
         "syncPositionAcrossScreens": true,
         "style": "dots",
-        "profileVisibility": "typing",
-        "passwordVisibility": "typing"
+        "profileVisibility": "always",
+        "passwordVisibility": "typing",
+        "sizePercent": 150,
+        "layout": "stacked",
+        "imagePercent": 300
       }
     },
     {
@@ -1015,8 +1018,11 @@
         ],
         "syncPositionAcrossScreens": true,
         "style": "dots",
-        "profileVisibility": "typing",
-        "passwordVisibility": "typing"
+        "profileVisibility": "always",
+        "passwordVisibility": "typing",
+        "sizePercent": 150,
+        "layout": "stacked",
+        "imagePercent": 300
       }
     },
     {
