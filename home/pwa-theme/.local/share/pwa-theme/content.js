@@ -3,6 +3,10 @@ const SHEETS = {
   "teams.microsoft.com": "teams.css",
   "teams.cloud.microsoft": "teams.css",
   "teams.live.com": "teams.css",
+  "outlook.cloud.microsoft": "outlook.css",
+  "outlook.office.com": "outlook.css",
+  "outlook.office365.com": "outlook.css",
+  "outlook.live.com": "outlook.css",
 };
 
 const sheet = SHEETS[location.hostname];

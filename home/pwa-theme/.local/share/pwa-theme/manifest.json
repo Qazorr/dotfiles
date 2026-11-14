@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Matugen PWA themes",
-  "description": "Recolours WhatsApp Web and Microsoft Teams with the matugen palette DMS generates.",
+  "description": "Recolours WhatsApp Web, Microsoft Teams and Outlook with the matugen palette DMS generates.",
   "version": "1.0.0",
   "minimum_chrome_version": "102",
   "homepage_url": "https://github.com/Qazorr/dotfiles",
@@ -17,20 +17,32 @@
         "https://web.whatsapp.com/*",
         "https://teams.microsoft.com/*",
         "https://teams.cloud.microsoft/*",
-        "https://teams.live.com/*"
+        "https://teams.live.com/*",
+        "https://outlook.cloud.microsoft/*",
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*",
+        "https://outlook.live.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["whatsapp.css", "teams.css"],
+      "resources": [
+        "*.css"
+      ],
       "matches": [
         "https://web.whatsapp.com/*",
         "https://teams.microsoft.com/*",
         "https://teams.cloud.microsoft/*",
-        "https://teams.live.com/*"
+        "https://teams.live.com/*",
+        "https://outlook.cloud.microsoft/*",
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*",
+        "https://outlook.live.com/*"
       ]
     }
   ]
