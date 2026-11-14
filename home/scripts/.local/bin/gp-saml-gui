@@ -1,0 +1,9 @@
+#!/bin/sh
+# DMS passes --allow-insecure-crypto, which makes the Debian gp-saml-gui skip
+# the system CA store and fail TLS verification. Drop it and report as Windows
+# so the portal offers SAML.
+for a; do
+    shift
+    [ "$a" = "--allow-insecure-crypto" ] || set -- "$@" "$a"
+done
+exec /usr/bin/gp-saml-gui --clientos=Windows "$@"

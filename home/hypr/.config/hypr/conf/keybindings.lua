@@ -20,7 +20,7 @@ hl.bind("SUPER + D", hl.dsp.exec_cmd("dms ipc call spotlight toggle"), { descrip
 hl.bind("SUPER + A", hl.dsp.exec_cmd("dms ipc call dash toggle overview"), { description = "Dashboard overview" })
 hl.bind("SUPER + C", hl.dsp.exec_cmd("code"), { description = "VS Code" })
 
-hl.bind("SUPER + H", hl.dsp.exec_cmd("exec kitty --class keybind-help -e keybind-help", { float = true, size = "monitor_w*0.7 monitor_h*0.85", center = true }), { description = "Help / cheat sheet" })
+hl.bind("SUPER + H", hl.dsp.exec_cmd("dms ipc call keybinds toggle hyprland"), { description = "Help / cheat sheet" })
 hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("dms ipc call control-center toggle"), { description = "Control centre" })
 hl.bind("SUPER + S", hl.dsp.exec_cmd("dms ipc call settings toggle"), { description = "Settings" })
 hl.bind("SUPER + T", hl.dsp.exec_cmd("dms ipc call settings toggleWith theme"), { description = "Theme switcher" })

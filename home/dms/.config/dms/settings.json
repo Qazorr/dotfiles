@@ -94,15 +94,15 @@
       "w": 4.5,
       "h": 1,
       "col": 4.5,
-      "row": 4
+      "row": 3
     },
     {
       "id": "wifi",
       "enabled": true,
-      "w": 2.5,
+      "w": 3.5,
       "h": 1,
       "col": 0,
-      "row": 3
+      "row": 2
     },
     {
       "id": "bluetooth",
@@ -144,15 +144,15 @@
       "h": 1,
       "small": true,
       "col": 0,
-      "row": 5
+      "row": 4
     },
     {
       "id": "builtin_vpn",
       "enabled": true,
-      "w": 2,
+      "w": 1,
       "h": 1,
-      "col": 2.5,
-      "row": 3
+      "col": 3.5,
+      "row": 2
     },
     {
       "id": "doNotDisturb",
@@ -160,7 +160,7 @@
       "w": 4.5,
       "h": 1,
       "col": 0,
-      "row": 4
+      "row": 3
     }
   ],
   "workspaceNameIcons": {},
