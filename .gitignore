@@ -35,3 +35,6 @@ home/scripts/.local/bin/__pycache__/
 # (the walls step, opt-in, ~3.7GB) lands physically in the repo. Refetched by
 # the step's `git pull`.
 home/wallpaper/.local/share/wallpapers/walls/
+
+# Symlink farm over walls/ built by the walls step.
+home/wallpaper/.local/share/wallpapers/all/
