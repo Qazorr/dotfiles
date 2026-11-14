@@ -34,3 +34,10 @@ home/wallpaper/.local/share/wallpapers/walls/
 
 # Symlink farm over walls/ built by the walls step.
 home/wallpaper/.local/share/wallpapers/all/
+
+# uv tool installs (animation step) link their executables into ~/.local/bin,
+# which is a stow symlink into this repo.
+home/scripts/.local/bin/manim
+home/scripts/.local/bin/manimce
+home/scripts/.local/bin/manim-slides
+home/scripts/.local/bin/marimo
