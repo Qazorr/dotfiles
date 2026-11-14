@@ -894,7 +894,7 @@
         "showDigitalSeconds": false,
         "showAnalogNumbers": false,
         "showAnalogSeconds": true,
-        "autoPosition": true,
+        "autoPosition": false,
         "colorMode": "default",
         "customColor": "#ffffff",
         "fontFamily": "JetBrainsMonoNL Nerd Font Mono"
@@ -965,37 +965,6 @@
         "syncPositionAcrossScreens": true,
         "shape": "round"
       }
-    },
-    {
-      "id": "lw_1794588210305_0zatrc60y",
-      "widgetType": "systemMonitor",
-      "name": "System Monitor",
-      "enabled": true,
-      "config": {
-        "syncPositionAcrossScreens": true,
-        "showHeader": true,
-        "transparency": 0.8,
-        "colorMode": "primary",
-        "customColor": "#ffffff",
-        "showCpu": true,
-        "showCpuGraph": true,
-        "showCpuTemp": true,
-        "showGpuTemp": false,
-        "gpuPciId": "",
-        "showMemory": true,
-        "showMemoryGraph": true,
-        "showNetwork": true,
-        "showNetworkGraph": true,
-        "showDisk": true,
-        "showTopProcesses": false,
-        "topProcessCount": 3,
-        "topProcessSortBy": "cpu",
-        "layoutMode": "auto",
-        "graphInterval": 60,
-        "displayPreferences": [
-          "all"
-        ]
-      }
     }
   ],
   "greeterWidgetInstances": [
@@ -1016,7 +985,7 @@
         "showDigitalSeconds": false,
         "showAnalogNumbers": false,
         "showAnalogSeconds": true,
-        "autoPosition": true,
+        "autoPosition": false,
         "colorMode": "default",
         "customColor": "#ffffff",
         "fontFamily": "JetBrainsMonoNL Nerd Font Mono"
