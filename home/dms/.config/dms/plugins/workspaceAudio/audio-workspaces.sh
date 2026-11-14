@@ -30,9 +30,9 @@ while IFS=$'\t' read -r pid name; do
 done < <(jq -r '.[] | [.pid, .name] | @tsv' <<<"$streams")
 
 # Browsers name every stream "Playback" and share one process across windows, so
-# MPRIS (the playing tab's title) picks the window; with no match nothing is marked.
-titles=$(playerctl -a -f '{{status}}|{{title}}' metadata 2>/dev/null \
-    | sed -n 's/^Playing|\(.\+\)$/\1/p' | jq -R . | jq -sc .)
+# MPRIS (the playing tab's title or artist) picks the window; with no match nothing is marked.
+titles=$(playerctl -a -f '{{status}}'$'\t''{{title}}'$'\t''{{artist}}' metadata 2>/dev/null \
+    | awk -F'\t' '$1 == "Playing" {if ($2 != "") print $2; if ($3 != "") print $3}' | jq -R . | jq -sc .)
 
 jq -c --argjson clients "$clients" --argjson titles "${titles:-[]}" '
   [.[] as $s
