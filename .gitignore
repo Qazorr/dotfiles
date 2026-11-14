@@ -27,10 +27,6 @@ home/scripts/.local/bin/claude
 # specific to one box. Created by step_stow, written by step_nvidia.
 home/hypr/.config/hypr/conf/local.lua
 
-# keybind-help is Python, and running it writes __pycache__ next to itself,
-# which is inside a stow package.
-home/scripts/.local/bin/__pycache__/
-
 # ~/.local/share/wallpapers is a whole-directory stow symlink, so dharmx/walls
 # (the walls step, opt-in, ~3.7GB) lands physically in the repo. Refetched by
 # the step's `git pull`.

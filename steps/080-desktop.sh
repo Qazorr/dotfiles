@@ -15,6 +15,7 @@ step_desktop() {
         fastfetch cava \
         accountsservice qt6ct mesa-utils \
         network-manager network-manager-gnome \
+        network-manager-openconnect network-manager-openconnect-gnome gp-saml-gui \
         blueman bluez \
         bibata-cursor-theme
 

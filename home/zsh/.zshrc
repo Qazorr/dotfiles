@@ -23,7 +23,6 @@ command -v batcat >/dev/null && alias bat='batcat'
 command -v eza    >/dev/null && alias ll='eza -lah --group-directories-first --icons'
 command -v btop   >/dev/null && alias top='btop'
 
-alias keys='keybind-help'
 
 export EDITOR=vi
 command -v code >/dev/null && export VISUAL='code --wait'
