@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Matugen PWA themes",
+  "description": "Recolours WhatsApp Web and Microsoft Teams with the matugen palette DMS generates.",
+  "version": "1.0.0",
+  "minimum_chrome_version": "102",
+  "homepage_url": "https://github.com/Qazorr/dotfiles",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.cloud.microsoft/*",
+        "https://teams.live.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["whatsapp.css", "teams.css"],
+      "matches": [
+        "https://web.whatsapp.com/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.cloud.microsoft/*",
+        "https://teams.live.com/*"
+      ]
+    }
+  ]
+}
