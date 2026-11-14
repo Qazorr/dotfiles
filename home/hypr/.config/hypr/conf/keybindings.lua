@@ -34,7 +34,7 @@ hl.bind("SUPER + W", hl.dsp.exec_cmd("dms ipc call dankdash wallpaper"), { descr
 hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("dms ipc call processlist toggle"), { description = "Process list" })
 hl.bind("SUPER + CTRL + ALT + B", hl.dsp.exec_cmd("dms ipc call bar toggle"), { description = "Toggle bar" })
 hl.bind("SUPER + I", hl.dsp.exec_cmd("dms ipc call inhibit toggle"), { description = "Toggle idle inhibit" })
-hl.bind("SUPER + M", hl.dsp.exec_cmd("exec kitty --hold -e monitor-profile --status", { float = true, size = "760 420", center = true }), { description = "Monitor profile status" })
+hl.bind("SUPER + M", hl.dsp.exec_cmd("dms ipc call dash toggle media"), { description = "Media dashboard" })
 hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("exec kitty -e env HYPRLAND_CONFIG=$HOME/.config/monitor-profiles/hyprmon-entry.lua hyprmon", { float = true, size = "900 600", center = true }), { description = "Monitor layout editor" })
 hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("exec kitty --class cava -e cava", { float = true, size = "640 360", center = true }), { description = "Audio visualizer (cava)" })
 hl.bind("SUPER + ALT + N", hl.dsp.exec_cmd("exec nm-connection-editor", { float = true, center = true }), { description = "Network manager" })

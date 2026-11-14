@@ -28,6 +28,14 @@ hl.window_rule({
 })
 
 hl.window_rule({
+	name = "calendar",
+	match = { class = "^dev.duxlabs.calendar$" },
+	float = true,
+	size = "monitor_w*0.6 monitor_h*0.7",
+	center = true,
+})
+
+hl.window_rule({
 	name = "vlc",
 	match = { class = "^vlc$" },
 	float = true,

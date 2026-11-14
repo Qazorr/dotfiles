@@ -71,7 +71,7 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
 | `SUPER+1-0` | Workspace — `SHIFT` moves the window there |
 | `SUPER+SHIFT+S` | Screenshot a region |
 | `SUPER+W` / `SUPER+T` | Wallpaper / theme |
-| `SUPER+M` / `SUPER+SHIFT+M` | Monitor profile status / layout editor |
+| `SUPER+M` / `SUPER+SHIFT+M` | Media dashboard / monitor layout editor |
 | `SUPER+ALT+I` | Install packages |
 
 ## Extending
