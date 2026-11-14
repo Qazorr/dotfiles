@@ -21,8 +21,10 @@ hl.window_rule({
 
 hl.window_rule({
 	name = "file-managers",
-	match = { class = "^(org.gnome.Nautilus|[Tt]hunar)$" },
+	match = { class = "^(dev.duxlabs.files|org.gnome.Nautilus|[Tt]hunar)$" },
 	float = true,
+	size = "monitor_w*0.6 monitor_h*0.7",
+	center = true,
 })
 
 hl.window_rule({

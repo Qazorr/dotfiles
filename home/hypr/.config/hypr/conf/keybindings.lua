@@ -14,7 +14,8 @@ local function cycle_to_top()
 end
 
 hl.bind("SUPER + Return", hl.dsp.exec_cmd("kitty"), { description = "Open terminal" })
-hl.bind("SUPER + E", hl.dsp.exec_cmd("nautilus"), { description = "File manager" })
+hl.bind("SUPER + E", hl.dsp.exec_cmd("dfiles"), { description = "File manager" })
+hl.bind("SUPER + K", hl.dsp.exec_cmd("dcal toggle"), { description = "Calendar" })
 hl.bind("SUPER + B", hl.dsp.exec_cmd("xdg-open https://"), { description = "Open browser" })
 hl.bind("SUPER + D", hl.dsp.exec_cmd("dms ipc call spotlight toggle"), { description = "App launcher" })
 hl.bind("SUPER + A", hl.dsp.exec_cmd("dms ipc call dash toggle overview"), { description = "Dashboard overview" })
