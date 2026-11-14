@@ -44,5 +44,4 @@ home/scripts/.local/bin/marimo
 
 # matugen writes the per-site CSS into the extension dir, which is a stow
 # symlink into this repo.
-home/pwa-theme/.local/share/pwa-theme/whatsapp.css
-home/pwa-theme/.local/share/pwa-theme/teams.css
+home/pwa-theme/.local/share/pwa-theme/*.css

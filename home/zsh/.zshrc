@@ -9,7 +9,7 @@ ZSH_THEME="robbyrussell"
 # anything after it is ignored. oh-my-zsh is installed with --keep-zshrc, so
 # it never rewrites this file.
 plugins=(git sudo colored-man-pages docker fzf extract command-not-found
-         zsh-autosuggestions zsh-syntax-highlighting)
+	zsh-autosuggestions zsh-syntax-highlighting)
 [ -d "$ZSH" ] && source "$ZSH/oh-my-zsh.sh"
 
 alias ls='ls --color=auto'
@@ -20,9 +20,8 @@ alias code='code --ozone-platform=wayland --enable-features=WaylandWindowDecorat
 # Debian renames these (fd-find -> fdfind, bat -> batcat).
 command -v fdfind >/dev/null && alias fd='fdfind'
 command -v batcat >/dev/null && alias bat='batcat'
-command -v eza    >/dev/null && alias ll='eza -lah --group-directories-first --icons'
-command -v btop   >/dev/null && alias top='btop'
-
+command -v eza >/dev/null && alias ll='eza -lah --group-directories-first --icons'
+command -v btop >/dev/null && alias top='btop'
 
 export EDITOR=vi
 command -v code >/dev/null && export VISUAL='code --wait'
@@ -39,13 +38,11 @@ typeset -U path
 export PATH="$HOME/.local/share/dms/bin:$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH"
 
 if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
-    export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-    export REQUESTS_CA_BUNDLE=$SSL_CERT_FILE
-    export NODE_EXTRA_CA_CERTS=$SSL_CERT_FILE
-    export GIT_SSL_CAINFO=$SSL_CERT_FILE
+	export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+	export REQUESTS_CA_BUNDLE=$SSL_CERT_FILE
+	export NODE_EXTRA_CA_CERTS=$SSL_CERT_FILE
+	export GIT_SSL_CAINFO=$SSL_CERT_FILE
 fi
 
 # Anything personal or per-machine: proxies, tokens, work aliases.
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
-
-command -v fastfetch >/dev/null && fastfetch
