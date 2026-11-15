@@ -15,8 +15,11 @@ PluginComponent {
     property var widgetData: null
     readonly property bool playing: media.activePlayer?.playbackState === 1
 
-    width: media.width
-    height: media.height
+    // Hidden once nothing has played for a while; playing again brings it back.
+    property bool idleHidden: false
+    visible: media.playerAvailable && !idleHidden
+    width: visible ? media.width : 0
+    height: visible ? media.height : 0
 
     MediaBody {
         id: media
@@ -42,6 +45,12 @@ PluginComponent {
         widgetData: root.widgetData
 
         onClicked: dash.running = true
+    }
+
+    Timer {
+        interval: 5 * 60 * 1000
+        running: media.playerAvailable && !root.playing
+        onTriggered: root.idleHidden = true
     }
 
     Process {
@@ -81,9 +90,13 @@ PluginComponent {
         }
     }
 
-    onPlayingChanged: if (!playing) {
-        level = 0;
-        slowLevel = 0;
+    onPlayingChanged: {
+        if (playing) {
+            idleHidden = false;
+        } else {
+            level = 0;
+            slowLevel = 0;
+        }
     }
 
     NumberAnimation on phase {
