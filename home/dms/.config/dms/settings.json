@@ -516,15 +516,6 @@
         },
         "weather",
         {
-          "id": "idleInhibitor",
-          "enabled": true,
-          "overflowMode": "section"
-        },
-        {
-          "id": "notificationButton",
-          "enabled": true
-        },
-        {
           "id": "privacyIndicator",
           "enabled": true
         }
