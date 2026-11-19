@@ -1,0 +1,18 @@
+{
+  "lockfileVersion": 1,
+  "plugins": {
+    "dankKDEConnect": {
+      "repo": "https://github.com/duxlabs-dev/dux-plugins",
+      "path": "DankKDEConnect",
+      "commit": "7a964dad725964550734e43dbbcf88c72829d847"
+    },
+    "quickCapture": {
+      "repo": "https://github.com/hthienloc/dms-quick-capture",
+      "commit": "68dceed2c85987de1aab123c2af80cc7fa7df156"
+    },
+    "wallpaperCarousel": {
+      "repo": "https://github.com/motor-dev/wallpaperCarousel",
+      "commit": "0ed803b40736359d3b32aa9cd3aaf342b3695759"
+    }
+  }
+}

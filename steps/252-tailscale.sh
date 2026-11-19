@@ -1,7 +1,7 @@
 register_step tailscale \
-    --desc "Tailscale, from its own apt repo; 'sudo tailscale up' to log in (opt-in: ./bootstrap.sh tailscale)" \
-    --group apps --root --optional --needs prereqs \
-    --provides tailscale
+    --desc "Tailscale and the Dankscale DMS plugin; 'tailscale up' to log in (opt-in: ./bootstrap.sh tailscale)" \
+    --group apps --root --optional --needs prereqs dms \
+    --provides tailscale "$HOME/.config/dms/plugins/dankscale"
 
 step_tailscale() {
     local key=/usr/share/keyrings/tailscale-archive-keyring.gpg codename
@@ -16,4 +16,15 @@ step_tailscale() {
     log "Installing Tailscale"
     apt_install tailscale
     sudo systemctl enable --now tailscaled
+
+    # Lets the user, and Dankscale, log in and switch accounts without sudo.
+    sudo tailscale set --operator="$USER" \
+        || warn "couldn't make $USER the Tailscale operator; run: sudo tailscale set --operator=$USER"
+
+    # Installed here, not via dms-plugins.lock.json, so it only lands where Tailscale is.
+    if [ ! -d "$HOME/.config/dms/plugins/dankscale" ]; then
+        log "Installing the Dankscale DMS plugin"
+        dms plugins install dankscale
+    fi
+    dms_enable_plugin dankscale
 }
