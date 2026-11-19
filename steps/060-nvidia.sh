@@ -9,13 +9,13 @@ NVIDIA_APT_LIST=/etc/apt/sources.list.d/debian-nonfree.list
 NVIDIA_CUDA_SUITE=debian13
 NVIDIA_CUDA_KEYRING_VERSION=1.1-1
 NVIDIA_CUDA_KEYRING_SHA256=d0d4ef986a44400f9db33c600ef33a985175e7cc63d805a10e1839c7a1e78f5f
-NVIDIA_MODE_DEFAULT=debian
+NVIDIA_MODE_DEFAULT=open
 
 register_option nvidia DOTFILES_NVIDIA_MODE \
     --prompt "Which NVIDIA driver?" \
     --choices \
-    "debian:Debian repo (nvidia-driver) — trails upstream, but what this machine already uses" \
-    "open:NVIDIA's own repo, open kernel modules — required on RTX 5000-series+" \
+    "debian:Debian repo (nvidia-driver) — trails upstream" \
+    "open:NVIDIA's own repo, open kernel modules — what this machine uses; required on RTX 5000-series+" \
     "nvidia:NVIDIA's own repo, proprietary (cuda-drivers)" \
     "nouveau:Uninstall and revert to the in-kernel driver" \
     --default "$NVIDIA_MODE_DEFAULT"
@@ -125,7 +125,7 @@ _nvidia_initramfs_modules() {
 # nvidia-driver blacklists nouveau in modprobe.d already; also on the kernel
 # command line, so it can't win the race from the initramfs.
 _nvidia_grub_cmdline() {
-    local add="modprobe.blacklist=nouveau nvidia-drm.modeset=1"
+    local add="rd.driver.blacklist=nouveau modprobe.blacklist=nouveau nvidia-drm.modeset=1"
     [ -f /etc/default/grub ] || {
         warn "no /etc/default/grub — skipping the nouveau blacklist on the kernel command line"
         return 1
@@ -204,7 +204,7 @@ _nvidia_revert_to_nouveau() {
 
     if [ -f /etc/default/grub ] && grep -q 'modprobe.blacklist=nouveau' /etc/default/grub; then
         log "Un-blacklisting nouveau on the kernel command line"
-        sudo sed -i -E 's/ ?modprobe\.blacklist=nouveau nvidia-drm\.modeset=1//' /etc/default/grub
+        sudo sed -i -E 's/ ?(rd\.driver\.blacklist=nouveau )?modprobe\.blacklist=nouveau nvidia-drm\.modeset=1//' /etc/default/grub
         command -v update-grub >/dev/null 2>&1 && sudo update-grub
     fi
 
