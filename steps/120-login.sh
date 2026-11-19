@@ -6,8 +6,8 @@ register_step login \
 register_option login DOTFILES_SESSION_ENTRIES \
     --prompt "Which sessions should the login screen offer?" \
     --choices \
-        "hyprland:Hyprland only - hides GNOME and the uwsm variant" \
-        "all:Everything installed, GNOME included" \
+    "hyprland:Hyprland only - hides GNOME and the uwsm variant" \
+    "all:Everything installed, GNOME included" \
     --default hyprland
 
 # greetd's postinst aborts while display-manager.service points at gdm3. No

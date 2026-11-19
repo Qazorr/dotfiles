@@ -9,7 +9,8 @@ register_step grub \
 # A system unit, since the splash lives in the initramfs; it watches the file
 # DMS rewrites whenever the wallpaper's palette changes.
 _grub_watch_colours() {
-    local home; home="$(getent passwd "$USER" | cut -d: -f6)"
+    local home
+    home="$(getent passwd "$USER" | cut -d: -f6)"
     sudo tee "/etc/systemd/system/$BOOT_THEME_UNIT.path" >/dev/null <<EOF
 [Unit]
 Description=Re-theme the boot screens when the DMS colours change
@@ -36,7 +37,11 @@ EOF
 
 step_grub() {
     command -v update-grub >/dev/null 2>&1 \
-        || { warn "no GRUB on this machine, skipping its theme"; stamp_skip; return 0; }
+        || {
+            warn "no GRUB on this machine, skipping its theme"
+            stamp_skip
+            return 0
+        }
     apt_install fonts-dejavu-core imagemagick desktop-base plymouth plymouth-themes plymouth-label
 
     log "Rendering and installing the boot themes"

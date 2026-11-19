@@ -8,6 +8,9 @@ hl.on("hyprland.start", function()
 	-- is what lets `screenshare status` answer at all.
 	hl.exec_cmd("screenshare watch")
 
+	-- Prompts for the password when an app asks for polkit authorization.
+	hl.exec_cmd("/usr/libexec/hyprpolkitagent")
+
 	-- GalaxyBudsClient behind the bus filter that keeps its D-Bus service (and
 	-- the DMS galaxyBuds plugin) alive; exits quietly when it isn't installed.
 	hl.exec_cmd("galaxybuds /StartMinimized")

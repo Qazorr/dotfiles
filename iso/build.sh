@@ -95,7 +95,7 @@ EOF
         printf 'd-i netcfg/hostname string %s\n' "$INSTALL_HOSTNAME"
     fi
     [ -z "$INSTALL_FULLNAME" ] || printf 'd-i passwd/user-fullname string %s\n' "$INSTALL_FULLNAME"
-    [ -z "$INSTALL_USER" ]     || printf 'd-i passwd/username string %s\n' "$INSTALL_USER"
+    [ -z "$INSTALL_USER" ] || printf 'd-i passwd/username string %s\n' "$INSTALL_USER"
     [ -z "$INSTALL_PASSWORD_HASH" ] \
         || printf 'd-i passwd/user-password-crypted password %s\n' "$INSTALL_PASSWORD_HASH"
     if [ -n "$INSTALL_DISK" ]; then
@@ -163,30 +163,30 @@ chmod u+w "$WORK/initrd.gz" "$WORK/md5sum.txt"
 # The kernel unpacks concatenated archives in order, so appending is enough
 # to put /preseed.cfg in the installer's root.
 mkdir "$WORK/initrd-add"
-write_preseed > "$WORK/initrd-add/preseed.cfg"
-( cd "$WORK/initrd-add" && echo preseed.cfg | cpio --quiet -H newc -o | gzip -9 ) >> "$WORK/initrd.gz"
+write_preseed >"$WORK/initrd-add/preseed.cfg"
+(cd "$WORK/initrd-add" && echo preseed.cfg | cpio --quiet -H newc -o | gzip -9) >>"$WORK/initrd.gz"
 
 log "Bundling $BRANCH at $(git -C "$REPO" rev-parse --short HEAD)"
 mkdir "$WORK/dotfiles"
 git -C "$REPO" bundle create --quiet "$WORK/dotfiles/repo.bundle" HEAD "$BRANCH"
 cp "$HERE/late.sh" "$HERE/firstboot.sh" "$HERE/dotfiles-firstboot.service" "$WORK/dotfiles/"
 {
-    printf 'BRANCH=%q\n'    "$BRANCH"
-    printf 'REPO_URL=%q\n'  "$REPO_URL"
-    printf 'GIT_NAME=%q\n'  "$GIT_NAME"
+    printf 'BRANCH=%q\n' "$BRANCH"
+    printf 'REPO_URL=%q\n' "$REPO_URL"
+    printf 'GIT_NAME=%q\n' "$GIT_NAME"
     printf 'GIT_EMAIL=%q\n' "$GIT_EMAIL"
-    printf 'PROFILE=%q\n'   "$INSTALL_PROFILE"
-    printf 'STEPS=%q\n'     "$INSTALL_STEPS"
-} > "$WORK/dotfiles/firstboot.conf"
+    printf 'PROFILE=%q\n' "$INSTALL_PROFILE"
+    printf 'STEPS=%q\n' "$INSTALL_STEPS"
+} >"$WORK/dotfiles/firstboot.conf"
 
-write_grub_cfg     > "$WORK/grub.cfg"
-write_isolinux_cfg > "$WORK/isolinux.cfg"
+write_grub_cfg >"$WORK/grub.cfg"
+write_isolinux_cfg >"$WORK/isolinux.cfg"
 
 # md5sum.txt is what the installer's "verify the media" checks.
 maps=(
-    "$WORK/initrd.gz"     /install.amd/initrd.gz
-    "$WORK/grub.cfg"      /boot/grub/grub.cfg
-    "$WORK/isolinux.cfg"  /isolinux/isolinux.cfg
+    "$WORK/initrd.gz" /install.amd/initrd.gz
+    "$WORK/grub.cfg" /boot/grub/grub.cfg
+    "$WORK/isolinux.cfg" /isolinux/isolinux.cfg
 )
 for f in "$WORK"/dotfiles/*; do
     maps+=("$f" "/dotfiles/${f##*/}")
@@ -195,8 +195,8 @@ map_args=()
 for ((i = 0; i < ${#maps[@]}; i += 2)); do
     src="${maps[i]}" dst="${maps[i + 1]}"
     map_args+=(-map "$src" "$dst")
-    grep -vF "  .$dst" "$WORK/md5sum.txt" > "$WORK/md5sum.new" || true
-    printf '%s  .%s\n' "$(md5sum < "$src" | cut -d' ' -f1)" "$dst" >> "$WORK/md5sum.new"
+    grep -vF "  .$dst" "$WORK/md5sum.txt" >"$WORK/md5sum.new" || true
+    printf '%s  .%s\n' "$(md5sum <"$src" | cut -d' ' -f1)" "$dst" >>"$WORK/md5sum.new"
     mv "$WORK/md5sum.new" "$WORK/md5sum.txt"
 done
 
@@ -211,14 +211,17 @@ xorriso -indev "$BASE" -outdev "$OUT" \
     -map "$WORK/md5sum.txt" /md5sum.txt \
     -chown_r 0 /dotfiles -- -chgrp_r 0 /dotfiles -- \
     >"$WORK/xorriso.log" 2>&1 \
-    || { cat "$WORK/xorriso.log" >&2; die "xorriso failed"; }
+    || {
+        cat "$WORK/xorriso.log" >&2
+        die "xorriso failed"
+    }
 
 log "Built $OUT ($(du -h "$OUT" | cut -f1))"
 asked=()
-[ -n "$INSTALL_HOSTNAME" ]      || asked+=(hostname)
-[ -n "$INSTALL_USER" ]          || asked+=(user)
+[ -n "$INSTALL_HOSTNAME" ] || asked+=(hostname)
+[ -n "$INSTALL_USER" ] || asked+=(user)
 [ -n "$INSTALL_PASSWORD_HASH" ] || asked+=(password)
-[ -n "$INSTALL_DISK" ]          || asked+=(partitioning)
+[ -n "$INSTALL_DISK" ] || asked+=(partitioning)
 if [ ${#asked[@]} -gt 0 ]; then
     log "The installer will ask for: ${asked[*]}"
 else

@@ -45,3 +45,6 @@ home/scripts/.local/bin/marimo
 # matugen writes the per-site CSS into the extension dir, which is a stow
 # symlink into this repo.
 home/pwa-theme/.local/share/pwa-theme/*.css
+
+# Backups DMS and hyprland-config tools write next to hyprland.lua.
+home/hypr/.config/hypr/hyprland.lua.*backup*

@@ -3,8 +3,8 @@ set -euo pipefail
 
 CONF="${SCREENSHARE_CONF:-$HOME/.config/hypr/screenshare.conf}"
 RUN="${XDG_RUNTIME_DIR:-/tmp}"
-STATE="$RUN/screenshare.state"        # "<count> <kind>", written by watch
-SNAP="$RUN/screenshare.snapshot"      # option<TAB>original<TAB>applied
+STATE="$RUN/screenshare.state"   # "<count> <kind>", written by watch
+SNAP="$RUN/screenshare.snapshot" # option<TAB>original<TAB>applied
 LOCK="$RUN/screenshare.lock"
 SOCKET="${SCREENSHARE_SOCKET:-$RUN/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket2.sock}"
 
@@ -14,7 +14,10 @@ SETTLE="${SCREENSHARE_SETTLE:-1}"
 OPT_RE='^[a-zA-Z0-9_]+(:[a-zA-Z0-9_.]+)+$'
 VAL_RE='^[A-Za-z0-9_.,()%#[:space:]-]+$'
 
-die()  { echo "screenshare: $*" >&2; exit 1; }
+die() {
+    echo "screenshare: $*" >&2
+    exit 1
+}
 warn() { echo "screenshare: $*" >&2; }
 
 notify() {
@@ -60,42 +63,63 @@ declare -a OPT_K=() OPT_V=() HOOK_START=() HOOK_STOP=()
 # Re-read before every apply, and committed only on success, so a typo leaves
 # the last good config in place instead of taking the watcher down.
 load_conf() {
-    [ -f "$CONF" ] || { warn "no $CONF, nothing to apply"; return 0; }
+    [ -f "$CONF" ] || {
+        warn "no $CONF, nothing to apply"
+        return 0
+    }
     local line key val n=0
     local -a k=() v=() hstart=() hstop=()
     while IFS= read -r line || [ -n "$line" ]; do
         n=$((n + 1))
         [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
-        [[ "$line" == *=* ]] || { warn "$CONF:$n: expected 'name = value', got: $line"; return 1; }
+        [[ "$line" == *=* ]] || {
+            warn "$CONF:$n: expected 'name = value', got: $line"
+            return 1
+        }
         key="$(trim "${line%%=*}")"
         val="$(trim "${line#*=}")"
         case "$key" in
-            exec-start) [ -n "$val" ] && hstart+=("$val") ;;
-            exec-stop)  [ -n "$val" ] && hstop+=("$val") ;;
-            *)
-                [[ "$key" =~ $OPT_RE ]] || { warn "$CONF:$n: bad option name: $key"; return 1; }
-                [[ "$val" =~ $VAL_RE ]] || { warn "$CONF:$n: bad value for $key: $val"; return 1; }
-                k+=("$key"); v+=("$val") ;;
+        exec-start) [ -n "$val" ] && hstart+=("$val") ;;
+        exec-stop) [ -n "$val" ] && hstop+=("$val") ;;
+        *)
+            [[ "$key" =~ $OPT_RE ]] || {
+                warn "$CONF:$n: bad option name: $key"
+                return 1
+            }
+            [[ "$val" =~ $VAL_RE ]] || {
+                warn "$CONF:$n: bad value for $key: $val"
+                return 1
+            }
+            k+=("$key")
+            v+=("$val")
+            ;;
         esac
-    done < "$CONF"
+    done <"$CONF"
     # Element-wise: a value like "5 5 5 5" has to stay one element.
-    OPT_K=(); OPT_V=(); HOOK_START=(); HOOK_STOP=()
-    [ ${#k[@]}      -gt 0 ] && OPT_K=("${k[@]}")
-    [ ${#v[@]}      -gt 0 ] && OPT_V=("${v[@]}")
+    OPT_K=()
+    OPT_V=()
+    HOOK_START=()
+    HOOK_STOP=()
+    [ ${#k[@]} -gt 0 ] && OPT_K=("${k[@]}")
+    [ ${#v[@]} -gt 0 ] && OPT_V=("${v[@]}")
     [ ${#hstart[@]} -gt 0 ] && HOOK_START=("${hstart[@]}")
-    [ ${#hstop[@]}  -gt 0 ] && HOOK_STOP=("${hstop[@]}")
+    [ ${#hstop[@]} -gt 0 ] && HOOK_STOP=("${hstop[@]}")
     return 0
 }
 
 apply() {
     local i k v cur
     # Rebuilt each time, so re-applying after a reload snapshots what it restored.
-    : > "$SNAP"
+    : >"$SNAP"
     for ((i = 0; i < ${#OPT_K[@]}; i++)); do
-        k="${OPT_K[i]}"; v="${OPT_V[i]}"
+        k="${OPT_K[i]}"
+        v="${OPT_V[i]}"
         cur="$(get_option "$k")" || true
-        [ -n "$cur" ] || { warn "unknown option, skipping: $k"; continue; }
-        printf '%s\t%s\t%s\n' "$k" "$cur" "$v" >> "$SNAP"
+        [ -n "$cur" ] || {
+            warn "unknown option, skipping: $k"
+            continue
+        }
+        printf '%s\t%s\t%s\n' "$k" "$cur" "$v" >>"$SNAP"
         set_option "$k" "$v" || warn "could not set $k to $v"
     done
 }
@@ -107,7 +131,7 @@ revert() {
         while IFS=$'\t' read -r k v _; do
             [ -n "${k:-}" ] || continue
             set_option "$k" "$v" || warn "could not restore $k to $v"
-        done < "$SNAP"
+        done <"$SNAP"
     fi
     rm -f "$SNAP"
 }
@@ -120,13 +144,16 @@ hooks() {
     done
 }
 
-write_state() { printf '%s %s\n' "$1" "${2:-}" > "$STATE"; }
+write_state() { printf '%s %s\n' "$1" "${2:-}" >"$STATE"; }
 
 # Hyprland only announces transitions, so a watcher started mid-share would sit
 # idle until the next one. The portal keeps a PipeWire node open for the cast.
 portal_casts() {
     local n
-    command -v pw-dump >/dev/null 2>&1 || { echo 0; return 0; }
+    command -v pw-dump >/dev/null 2>&1 || {
+        echo 0
+        return 0
+    }
     n="$(pw-dump 2>/dev/null | jq '[.[]
         | select(.type == "PipeWire:Interface:Node")
         | .info.props // {}
@@ -138,12 +165,15 @@ portal_casts() {
 }
 
 # A free lock means no watcher, and then the state is genuinely unknown.
-watching() { ! ( exec 8> "$LOCK"; flock -n 8 ); }
+watching() { ! (
+    exec 8>"$LOCK"
+    flock -n 8
+); }
 
 status() {
     local count=0 kind="" active=false
     if [ -r "$STATE" ]; then
-        read -r count kind < "$STATE" || true
+        read -r count kind <"$STATE" || true
     fi
     [ "${count:-0}" -gt 0 ] 2>/dev/null && active=true
     if [ "${1:-}" = --json ]; then
@@ -154,17 +184,20 @@ status() {
         local applied="[]"
         if [ -s "$SNAP" ]; then
             applied="$(jq -R -s 'split("\n") | map(select(length > 0) | split("\t")
-                                 | {option: .[0], from: .[1], to: .[2]})' < "$SNAP")" || applied="[]"
+                                 | {option: .[0], from: .[1], to: .[2]})' <"$SNAP")" || applied="[]"
         fi
         jq -cn --argjson active "$active" \
-               --arg     kind   "$kind" \
-               --argjson count  "${count:-0}" \
-               --argjson applied "$applied" \
+            --arg kind "$kind" \
+            --argjson count "${count:-0}" \
+            --argjson applied "$applied" \
             '{active: $active, kind: (if $kind == "" then null else $kind end),
               count: $count, watching: true, applied: $applied}'
         return 0
     fi
-    watching || { echo unknown; return 0; }
+    watching || {
+        echo unknown
+        return 0
+    }
     $active && echo on || echo off
 }
 
@@ -183,10 +216,16 @@ test_run() {
 }
 
 watch() {
-    exec 9> "$LOCK"
-    flock -n 9 || { echo "already watching" >&2; exit 0; }
+    exec 9>"$LOCK"
+    flock -n 9 || {
+        echo "already watching" >&2
+        exit 0
+    }
     load_conf || die "$CONF has errors"
-    [ -s "$SNAP" ] && { warn "restoring state from a previous session"; revert; }
+    [ -s "$SNAP" ] && {
+        warn "restoring state from a previous session"
+        revert
+    }
     write_state 0 ""
     # Cleanup hangs off EXIT; a signal trap that only reverted left bash resuming
     # the read loop, which made the watcher survive its own SIGTERM.
@@ -205,30 +244,34 @@ watch() {
         IFS= read -r -t "$SETTLE" ev || rc=$?
         if [ "$rc" -eq 0 ]; then
             case "$ev" in
-                screencast\>\>*)
-                    payload="${ev#screencast>>}"
-                    state="${payload%%,*}"
-                    owner="${payload#*,}"
-                    # No aggregation: every client sends its own start and stop, so
-                    # count. OWNER is the word "monitor"/"window", not a flag.
-                    if [ "$state" = 1 ]; then
-                        count=$((count + 1)); kind="$owner"
-                    else
-                        count=$((count - 1))
-                        [ "$count" -lt 0 ] && count=0
-                        [ "$count" -eq 0 ] && kind=""
-                    fi
-                    write_state "$count" "$kind" ;;
-                configreloaded*)
-                    # A reload drops every runtime change; apply re-snapshots.
-                    [ "$applied" -eq 1 ] && apply ;;
+            screencast\>\>*)
+                payload="${ev#screencast>>}"
+                state="${payload%%,*}"
+                owner="${payload#*,}"
+                # No aggregation: every client sends its own start and stop, so
+                # count. OWNER is the word "monitor"/"window", not a flag.
+                if [ "$state" = 1 ]; then
+                    count=$((count + 1))
+                    kind="$owner"
+                else
+                    count=$((count - 1))
+                    [ "$count" -lt 0 ] && count=0
+                    [ "$count" -eq 0 ] && kind=""
+                fi
+                write_state "$count" "$kind"
+                ;;
+            configreloaded*)
+                # A reload drops every runtime change; apply re-snapshots.
+                [ "$applied" -eq 1 ] && apply
+                ;;
             esac
             continue
         fi
-        [ "$rc" -gt 128 ] || break     # not a timeout: socket closed, stop
+        [ "$rc" -gt 128 ] || break # not a timeout: socket closed, stop
         if [ "$count" -gt 0 ] && [ "$applied" -eq 0 ]; then
             load_conf || warn "keeping the last good config"
-            apply; applied=1
+            apply
+            applied=1
             hooks ${HOOK_START[@]+"${HOOK_START[@]}"}
             if [ "$kind" = window ]; then
                 notify "Sharing a window"
@@ -236,19 +279,23 @@ watch() {
                 notify "Sharing your screen"
             fi
         elif [ "$count" -eq 0 ] && [ "$applied" -eq 1 ]; then
-            revert; applied=0
+            revert
+            applied=0
             hooks ${HOOK_STOP[@]+"${HOOK_STOP[@]}"}
             notify "Sharing stopped, settings restored"
         fi
-    # 9>&-: socat must not inherit the lock, or killing the watcher leaves it held.
+        # 9>&-: socat must not inherit the lock, or killing the watcher leaves it held.
     done < <(socat -U - "UNIX-CONNECT:$SOCKET" 9>&-)
 }
 
 [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || die "not inside a Hyprland session"
 
 case "${1:-status}" in
-    status) status "${2:-}" ;;
-    watch)  watch ;;
-    test)   test_run "${2:-5}" ;;
-    *) echo "usage: screenshare {status [--json] | watch | test [seconds]}" >&2; exit 1 ;;
+status) status "${2:-}" ;;
+watch) watch ;;
+test) test_run "${2:-5}" ;;
+*)
+    echo "usage: screenshare {status [--json] | watch | test [seconds]}" >&2
+    exit 1
+    ;;
 esac

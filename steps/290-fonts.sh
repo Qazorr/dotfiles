@@ -11,7 +11,8 @@ step_fonts() {
     fi
     log "Installing JetBrainsMono Nerd Font"
     mkdir -p "$dir"
-    local zip; zip="$(mktemp --suffix=.zip)"
+    local zip
+    zip="$(mktemp --suffix=.zip)"
     curl -L -o "$zip" \
         https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip
     unzip -oq "$zip" -d "$dir"

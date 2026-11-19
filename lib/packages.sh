@@ -10,14 +10,14 @@ packages_listed() {
     sed 's/#.*//' "$PACKAGES_LIST" | awk 'NF { print $1 }' | LC_ALL=C sort -u
 }
 
-packages_installed() {   # packages_installed <name>
+packages_installed() { # packages_installed <name>
     [[ "$(dpkg-query -W -f='${db:Status-Abbrev}' "$1" 2>/dev/null)" == ii* ]]
 }
 
 packages_baseline_init() {
     [ -f "$PACKAGES_BASELINE" ] && return 0
     mkdir -p "$DOTFILES_STATE_DIR"
-    apt-mark showmanual | LC_ALL=C sort -u > "$PACKAGES_BASELINE"
+    apt-mark showmanual | LC_ALL=C sort -u >"$PACKAGES_BASELINE"
 }
 
 # Marked manual, and in none of the three sets.
@@ -25,7 +25,10 @@ packages_new() {
     packages_baseline_init
     LC_ALL=C comm -23 \
         <(apt-mark showmanual | LC_ALL=C sort -u) \
-        <({ cat "$PACKAGES_BASELINE" "$PACKAGES_KNOWN" 2>/dev/null || true; packages_listed; } | LC_ALL=C sort -u)
+        <({
+            cat "$PACKAGES_BASELINE" "$PACKAGES_KNOWN" 2>/dev/null || true
+            packages_listed
+        } | LC_ALL=C sort -u)
 }
 
 # Listed, but not on this machine.
@@ -36,6 +39,6 @@ packages_missing() {
     done < <(packages_listed)
 }
 
-packages_add() {   # packages_add <name>...
-    printf '%s\n' "$@" >> "$PACKAGES_LIST"
+packages_add() { # packages_add <name>...
+    printf '%s\n' "$@" >>"$PACKAGES_LIST"
 }

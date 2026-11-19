@@ -14,7 +14,7 @@ BUILT=/var/lib/dotfiles-boot-theme.built
 # them. The splash keeps that font list after it moves onto the real root,
 # where the names don't exist, and text drawn from then on comes out as boxes.
 # Fontconfig on the root must not see them, or the hook copies a link to itself.
-cat > /etc/fonts/conf.d/99-dotfiles-plymouth.conf <<'EOF'
+cat >/etc/fonts/conf.d/99-dotfiles-plymouth.conf <<'EOF'
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
 <fontconfig>

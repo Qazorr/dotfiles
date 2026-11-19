@@ -4,7 +4,10 @@ DOTFILES_PATH_DIRS=(
     "$HOME/.local/bin"
 )
 # shellcheck disable=SC2034  # read by bootstrap.sh
-DOTFILES_PATH_PREFIX="$(IFS=:; printf '%s' "${DOTFILES_PATH_DIRS[*]}")"
+DOTFILES_PATH_PREFIX="$(
+    IFS=:
+    printf '%s' "${DOTFILES_PATH_DIRS[*]}"
+)"
 
 # home/zsh/.zprofile, home/zsh/.zshrc and hypr's conf/environment.lua repeat
 # this list and can't source this file.

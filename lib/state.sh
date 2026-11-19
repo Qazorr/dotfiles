@@ -12,7 +12,7 @@ _stamp_hash() {
 step_stamp_state() {
     local f="$STAMP_DIR/$1" first
     [ -f "$f" ] || return 1
-    read -r first < "$f" || return 1
+    read -r first <"$f" || return 1
     [ "$first" = "$(_stamp_hash "$1")" ] || return 2
     return 0
 }
@@ -20,7 +20,10 @@ step_stamp_state() {
 step_stamp_when() {
     local f="$STAMP_DIR/$1" when
     [ -f "$f" ] || return 0
-    { read -r _; read -r when; } < "$f" || return 0
+    {
+        read -r _
+        read -r when
+    } <"$f" || return 0
     printf '%s' "${when%%T*}"
 }
 
@@ -30,9 +33,9 @@ step_stamp_write() {
         "$(_stamp_hash "$1")" \
         "$(date -Iseconds)" \
         "$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
-        > "$STAMP_DIR/$1"
+        >"$STAMP_DIR/$1"
 }
 
 # For a step returning 0 without finishing: don't record it, so the next run
 # retries. A file because steps run in a subshell; run_steps sets the path.
-stamp_skip() { : > "$STAMP_SKIP_FILE"; }
+stamp_skip() { : >"$STAMP_SKIP_FILE"; }

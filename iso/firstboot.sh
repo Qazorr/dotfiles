@@ -26,7 +26,7 @@ for _ in $(seq 60); do
 done
 
 # bootstrap.sh runs as the user and calls sudo itself.
-printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$user" > "$sudoers"
+printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$user" >"$sudoers"
 chmod 0440 "$sudoers"
 
 # A user manager, for the steps that call systemctl --user.

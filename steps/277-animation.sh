@@ -23,7 +23,7 @@ step_animation() {
     # manim-physics pins manim<0.19, which it doesn't need; override the pin
     # shellcheck disable=SC2155
     local pins="$(mktemp)"
-    echo 'manim>=0.22' > "$pins"
+    echo 'manim>=0.22' >"$pins"
     uv tool install manim --overrides "$pins" --with manim-dsa --with manim-physics
     rm -f "$pins"
     uv tool install manim-slides

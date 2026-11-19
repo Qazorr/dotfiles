@@ -4,13 +4,19 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
 fail=0
-ok()   { printf '  \033[1;32mok\033[0m    %s\n' "$*"; }
-bad()  { printf '  \033[1;31mbad\033[0m   %s\n' "$*"; fail=1; }
+ok() { printf '  \033[1;32mok\033[0m    %s\n' "$*"; }
+bad() {
+    printf '  \033[1;31mbad\033[0m   %s\n' "$*"
+    fail=1
+}
 skip() { printf '  \033[1;33mskip\033[0m  %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 mapfile -t scripts < <(git ls-files home/scripts/.local/bin)
-mapfile -t shell < <(git ls-files '*.sh'; grep -lE '^#!.*sh' "${scripts[@]}")
+mapfile -t shell < <(
+    git ls-files '*.sh'
+    grep -lE '^#!.*sh' "${scripts[@]}"
+)
 
 if have shellcheck; then
     if shellcheck --severity=warning --external-sources "${shell[@]}"; then
@@ -20,6 +26,17 @@ if have shellcheck; then
     fi
 else
     skip "shellcheck not installed"
+fi
+
+if have shfmt; then
+    # Style comes from .editorconfig.
+    if shfmt -d "${shell[@]}"; then
+        ok "shfmt (${#shell[@]} files)"
+    else
+        bad "shfmt — run: shfmt -w \$(git ls-files '*.sh') home/scripts/.local/bin/*"
+    fi
+else
+    skip "shfmt not installed"
 fi
 
 for f in "${shell[@]}"; do

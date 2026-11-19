@@ -24,7 +24,10 @@ check_media_body() {
 
 # Changes whenever the pinned version or any overlay file does.
 shell_stamp() {
-    { echo "$DMS_VERSION"; find "$DMS_OVERLAY" -type f -exec sha256sum {} + | sort -k2; } | sha256sum | cut -d' ' -f1
+    {
+        echo "$DMS_VERSION"
+        find "$DMS_OVERLAY" -type f -exec sha256sum {} + | sort -k2
+    } | sha256sum | cut -d' ' -f1
 }
 
 build_shell() {
@@ -35,7 +38,7 @@ build_shell() {
     cp -r "$stock" "$DMS_SHELL"
     cp -r "$DMS_OVERLAY"/. "$DMS_SHELL"/
     rm -f "$DMS_SHELL/BASE"
-    shell_stamp > "$DMS_SHELL/.overlay-stamp"
+    shell_stamp >"$DMS_SHELL/.overlay-stamp"
 }
 
 step_dms() {
@@ -51,13 +54,17 @@ step_dms() {
     require_disk_space 2
     log "Installing DMS $DMS_VERSION"
     mkdir -p "$DMS_BIN"
-    local tmp; scratch_dir tmp
+    local tmp
+    scratch_dir tmp
 
     curl -fsSL -o "$tmp/dms.tar.gz" \
         "https://github.com/duxlabs-dev/dux-shell/releases/download/$DMS_VERSION/dms-full-amd64.tar.gz"
     mkdir -p "$tmp/dms" && tar xzf "$tmp/dms.tar.gz" -C "$tmp/dms"
     build_shell "$tmp/dms/dms"
-    [ $have_bin = 1 ] && { check_media_body; return 0; }
+    [ $have_bin = 1 ] && {
+        check_media_body
+        return 0
+    }
     install -m755 "$tmp/dms/bin/dms" "$DMS_BIN/dms"
     # `dms doctor` reports the version of a QML tree it finds here.
     rm -rf "$HOME/.config/quickshell/dms"

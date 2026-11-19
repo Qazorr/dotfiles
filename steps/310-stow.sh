@@ -25,7 +25,10 @@ step_stow() {
             [ -e "$target" ] || [ -L "$target" ] || continue
             # A dangling link holds nothing worth keeping; a package that moved
             # inside the repo leaves these behind.
-            [ -L "$target" ] && [ ! -e "$target" ] && { rm -f "$target"; continue; }
+            [ -L "$target" ] && [ ! -e "$target" ] && {
+                rm -f "$target"
+                continue
+            }
             [[ "$(readlink -f "$target" 2>/dev/null)" == "$REPO"/* ]] && continue
             # A link inside a package pointing outside the repo is also ours;
             # without this, restow renames our own file aside.
@@ -41,7 +44,10 @@ step_stow() {
     # app that later adds a launcher there would write into git.
     mkdir -p "$HOME/.local/share/applications" "$HOME/.config/dms" "$HOME/.config/systemd/user/xdg-desktop-portal-hyprland.service.d"
     for pkg in "${STOW_PACKAGES[@]}"; do
-        [ -d "$pkg" ] || { warn "no such stow package: $pkg (skipping)"; continue; }
+        [ -d "$pkg" ] || {
+            warn "no such stow package: $pkg (skipping)"
+            continue
+        }
         stow --target="$HOME" --restow "$pkg"
     done
 
@@ -53,18 +59,18 @@ step_stow() {
         printf '%s\n' \
             "-- Machine-local Hyprland config. Not tracked in the dotfiles repo." \
             "-- bootstrap.sh writes the NVIDIA env block here when it finds a card." \
-            > "$local_lua"
+            >"$local_lua"
     fi
 
     # DMS writes the theme's colours here on its first start.
     local colors="$HOME/.config/hypr/dms/colors.lua"
-    [ -f "$colors" ] || printf '%s\n' "-- Written by DMS on every theme change." > "$colors"
+    [ -f "$colors" ] || printf '%s\n' "-- Written by DMS on every theme change." >"$colors"
 
     # DMS points qt6ct at its KDE-format DankMatugen.colors, which qt6ct can't
     # read. colors/matugen.conf is the qt6ct-format palette it writes too.
     local qt6ct="$HOME/.config/qt6ct/qt6ct.conf"
     mkdir -p "${qt6ct%/*}"
-    [ -f "$qt6ct" ] && grep -q '^\[Appearance\]' "$qt6ct" || printf '[Appearance]\n' >> "$qt6ct"
+    [ -f "$qt6ct" ] && grep -q '^\[Appearance\]' "$qt6ct" || printf '[Appearance]\n' >>"$qt6ct"
     sed -i -e '/^custom_palette=/d' -e '/^color_scheme_path=/d' -e '/^style=/d' "$qt6ct"
     sed -i "/^\[Appearance\]/a custom_palette=true\ncolor_scheme_path=$HOME/.config/qt6ct/colors/matugen.conf\nstyle=Fusion" "$qt6ct"
 
@@ -73,7 +79,7 @@ step_stow() {
         mkdir -p "$profiles"
         printf '%s\n' \
             "-- No monitor profile matches the connected monitors — Hyprland defaults." \
-            > "$profiles/hyprmon.lua"
+            >"$profiles/hyprmon.lua"
         ln -sfn hyprmon.lua "$profiles/active.lua"
     fi
 }

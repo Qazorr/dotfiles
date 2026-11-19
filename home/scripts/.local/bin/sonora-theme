@@ -10,6 +10,6 @@ dst="${XDG_CONFIG_HOME:-$HOME/.config}/sonora/settings.json"
 
 tmp="$(mktemp "$dst.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
-jq --slurpfile theme "$src" '.appearance.theme_overrides += $theme[0]' "$dst" > "$tmp"
+jq --slurpfile theme "$src" '.appearance.theme_overrides += $theme[0]' "$dst" >"$tmp"
 chmod --reference="$dst" "$tmp"
 mv "$tmp" "$dst"

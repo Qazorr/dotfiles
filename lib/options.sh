@@ -1,7 +1,8 @@
 # Prompts for step options (register_option, lib/steps.sh) once, up front, for
 # whatever's in the plan, so the run itself never stops to ask again.
 resolve_step_options() {
-    local yes="$1"; shift
+    local yes="$1"
+    shift
     local plan=("$@") var step default tok
     for var in "${OPTION_VARS[@]}"; do
         step="${OPTION_STEP[$var]}"
@@ -25,18 +26,25 @@ resolve_step_options() {
         local i=0 c val lbl mark
         for c in "${choices[@]}"; do
             i=$((i + 1))
-            val="${c%%:*}"; lbl="${c#*:}"
-            mark=""; [ "$val" = "$default" ] && mark=$'  \033[2m(default)\033[0m'
+            val="${c%%:*}"
+            lbl="${c#*:}"
+            mark=""
+            [ "$val" = "$default" ] && mark=$'  \033[2m(default)\033[0m'
             printf '  %d) %s%s\n' "$i" "$lbl" "$mark"
         done
 
         local sel=""
         while true; do
-            read -r -p "> " tok || { printf '\n'; tok=""; }
+            read -r -p "> " tok || {
+                printf '\n'
+                tok=""
+            }
             if [ -z "$tok" ]; then
-                sel="$default"; break
+                sel="$default"
+                break
             elif [[ "$tok" =~ ^[0-9]+$ ]] && [ "$tok" -ge 1 ] && [ "$tok" -le "${#choices[@]}" ]; then
-                sel="${choices[$((tok - 1))]%%:*}"; break
+                sel="${choices[$((tok - 1))]%%:*}"
+                break
             fi
             warn "enter a number 1-${#choices[@]}, or press Enter for the default ($default)"
         done

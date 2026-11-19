@@ -15,11 +15,11 @@ usage() {
 mode=install popup=0 query=""
 while [ $# -gt 0 ]; do
     case "$1" in
-        remove)    mode=remove ;;
-        --popup)   popup=1 ;;
-        -h|--help) usage 0 ;;
-        -*)        die "unknown option '$1' — see pkgs --help" ;;
-        *)         query="${query:+$query }$1" ;;
+    remove) mode=remove ;;
+    --popup) popup=1 ;;
+    -h | --help) usage 0 ;;
+    -*) die "unknown option '$1' — see pkgs --help" ;;
+    *) query="${query:+$query }$1" ;;
     esac
     shift
 done

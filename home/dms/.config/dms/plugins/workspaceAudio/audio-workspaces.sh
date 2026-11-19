@@ -14,7 +14,8 @@ resolve() {
     local pid=$1
     while [ "$pid" -gt 1 ]; do
         if jq -e --argjson p "$pid" 'any(.[]; .pid == $p)' <<<"$clients" >/dev/null; then
-            echo "$pid"; return
+            echo "$pid"
+            return
         fi
         pid=$(awk '{print $4}' "/proc/$pid/stat" 2>/dev/null || echo 0)
     done
