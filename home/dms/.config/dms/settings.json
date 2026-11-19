@@ -522,6 +522,10 @@
       ],
       "rightWidgets": [
         {
+          "id": "dankscale",
+          "enabled": true
+        },
+        {
           "id": "dankKDEConnect",
           "enabled": true
         },

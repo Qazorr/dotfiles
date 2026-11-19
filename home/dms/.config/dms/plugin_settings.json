@@ -21,5 +21,8 @@
     "cornerRadius": 12,
     "itemWidth": 350,
     "itemHeight": 450
+  },
+  "dankscale": {
+    "enabled": true
   }
 }
