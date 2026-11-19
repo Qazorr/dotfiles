@@ -4,8 +4,8 @@ register_step python \
     --desc "Python $PYTHON_VERSION, uv and ruff via mise" \
     --group dev --root --needs web \
     --provides "$HOME/.local/share/mise/shims/python" \
-               "$HOME/.local/share/mise/shims/uv" \
-               "$HOME/.local/share/mise/shims/ruff"
+    "$HOME/.local/share/mise/shims/uv" \
+    "$HOME/.local/share/mise/shims/ruff"
 
 step_python() {
     log "Installing Python $PYTHON_VERSION, uv, ruff"

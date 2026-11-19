@@ -14,10 +14,10 @@ NVIDIA_MODE_DEFAULT=debian
 register_option nvidia DOTFILES_NVIDIA_MODE \
     --prompt "Which NVIDIA driver?" \
     --choices \
-        "debian:Debian repo (nvidia-driver) — trails upstream, but what this machine already uses" \
-        "open:NVIDIA's own repo, open kernel modules — required on RTX 5000-series+" \
-        "nvidia:NVIDIA's own repo, proprietary (cuda-drivers)" \
-        "nouveau:Uninstall and revert to the in-kernel driver" \
+    "debian:Debian repo (nvidia-driver) — trails upstream, but what this machine already uses" \
+    "open:NVIDIA's own repo, open kernel modules — required on RTX 5000-series+" \
+    "nvidia:NVIDIA's own repo, proprietary (cuda-drivers)" \
+    "nouveau:Uninstall and revert to the in-kernel driver" \
     --default "$NVIDIA_MODE_DEFAULT"
 
 _nvidia_present() {
@@ -28,24 +28,33 @@ _nvidia_present() {
 _nvidia_mode() {
     local m="${DOTFILES_NVIDIA_MODE:-$NVIDIA_MODE_DEFAULT}"
     case "$m" in
-        debian|open|nvidia|nouveau) printf '%s' "$m" ;;
-        *) die "DOTFILES_NVIDIA_MODE must be debian, open, nvidia or nouveau (got '$m')" ;;
+    debian | open | nvidia | nouveau) printf '%s' "$m" ;;
+    *) die "DOTFILES_NVIDIA_MODE must be debian, open, nvidia or nouveau (got '$m')" ;;
     esac
 }
 
 _nvidia_installed_variant() {
-    dpkg -s nvidia-open   >/dev/null 2>&1 && { echo open; return; }
-    dpkg -s cuda-drivers  >/dev/null 2>&1 && { echo nvidia; return; }
-    dpkg -s nvidia-driver >/dev/null 2>&1 && { echo debian; return; }
+    dpkg -s nvidia-open >/dev/null 2>&1 && {
+        echo open
+        return
+    }
+    dpkg -s cuda-drivers >/dev/null 2>&1 && {
+        echo nvidia
+        return
+    }
+    dpkg -s nvidia-driver >/dev/null 2>&1 && {
+        echo debian
+        return
+    }
     echo nouveau
 }
 
 _nvidia_purge_variant() {
     case "$1" in
-        debian) apt_purge nvidia-driver nvidia-kernel-dkms \
-                    libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver ;;
-        open)   apt_purge nvidia-open ;;
-        nvidia) apt_purge cuda-drivers ;;
+    debian) apt_purge nvidia-driver nvidia-kernel-dkms \
+        libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver ;;
+    open) apt_purge nvidia-open ;;
+    nvidia) apt_purge cuda-drivers ;;
     esac
 }
 
@@ -69,7 +78,8 @@ _nvidia_discrete_only() {
 _nvidia_enable_nonfree() {
     [ -f "$NVIDIA_APT_LIST" ] && return 0
     log "Enabling contrib + non-free (nvidia-driver lives in non-free)"
-    local codename; codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+    local codename
+    codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"
     sudo tee "$NVIDIA_APT_LIST" >/dev/null <<EOF
 deb http://deb.debian.org/debian $codename contrib non-free
 deb http://deb.debian.org/debian $codename-updates contrib non-free
@@ -89,11 +99,12 @@ _nvidia_enable_cuda_repo() {
 
 _nvidia_write_modprobe() {
     local want
-    want="$(cat <<'EOF'
+    want="$(
+        cat <<'EOF'
 options nvidia-drm modeset=1 fbdev=1
 options nvidia NVreg_PreserveVideoMemoryAllocations=1
 EOF
-)"
+    )"
     [ -f "$NVIDIA_MODPROBE_CONF" ] && [ "$(sudo cat "$NVIDIA_MODPROBE_CONF")" = "$want" ] && return 1
     log "Writing $NVIDIA_MODPROBE_CONF"
     printf '%s\n' "$want" | sudo tee "$NVIDIA_MODPROBE_CONF" >/dev/null
@@ -115,8 +126,14 @@ _nvidia_initramfs_modules() {
 # command line, so it can't win the race from the initramfs.
 _nvidia_grub_cmdline() {
     local add="modprobe.blacklist=nouveau nvidia-drm.modeset=1"
-    [ -f /etc/default/grub ] || { warn "no /etc/default/grub — skipping the nouveau blacklist on the kernel command line"; return 1; }
-    command -v update-grub >/dev/null 2>&1 || { warn "no update-grub — skipping the kernel command line change"; return 1; }
+    [ -f /etc/default/grub ] || {
+        warn "no /etc/default/grub — skipping the nouveau blacklist on the kernel command line"
+        return 1
+    }
+    command -v update-grub >/dev/null 2>&1 || {
+        warn "no update-grub — skipping the kernel command line change"
+        return 1
+    }
     grep -q 'modprobe.blacklist=nouveau' /etc/default/grub && return 1
     log "Blacklisting nouveau on the kernel command line"
     sudo sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"|GRUB_CMDLINE_LINUX_DEFAULT=\"\1 $add\"|" \
@@ -131,27 +148,29 @@ _nvidia_write_hypr_env() {
     local conf="$HOME/.config/hypr/conf/local.lua"
     local begin="-- >>> nvidia (bootstrap.sh) >>>"
     local end="-- <<< nvidia (bootstrap.sh) <<<"
-    [ -f "$conf" ] || printf '%s\n' "-- Machine-local Hyprland config. Not tracked in the dotfiles repo." > "$conf"
+    [ -f "$conf" ] || printf '%s\n' "-- Machine-local Hyprland config. Not tracked in the dotfiles repo." >"$conf"
 
     local body
     if _nvidia_discrete_only; then
-        body="$(cat <<'EOF'
+        body="$(
+            cat <<'EOF'
 hl.env("LIBVA_DRIVER_NAME", "nvidia")
 hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
 hl.env("NVD_BACKEND", "direct")
 hl.env("GBM_BACKEND", "nvidia-drm")
 EOF
-)"
+        )"
     else
         body="-- Hybrid graphics: session renders on the integrated GPU on purpose.
 -- Put one app on the NVIDIA card with: prime-run <app>"
     fi
 
-    local tmp; tmp="$(mktemp)"
+    local tmp
+    tmp="$(mktemp)"
     awk -v b="$begin" -v e="$end" '
         $0 == b { skip = 1 } { if (!skip) print } $0 == e { skip = 0 }
-    ' "$conf" > "$tmp"
-    printf '%s\n%s\n%s\n' "$begin" "$body" "$end" >> "$tmp"
+    ' "$conf" >"$tmp"
+    printf '%s\n%s\n%s\n' "$begin" "$body" "$end" >>"$tmp"
     mv "$tmp" "$conf"
     log "Wrote the NVIDIA env block to $conf"
 }
@@ -159,12 +178,13 @@ EOF
 _nvidia_remove_hypr_env() {
     local conf="$HOME/.config/hypr/conf/local.lua"
     [ -f "$conf" ] || return 0
-    local tmp; tmp="$(mktemp)"
+    local tmp
+    tmp="$(mktemp)"
     awk '
         /^-- >>> nvidia \(bootstrap\.sh\) >>>$/ { skip = 1 }
         !skip { print }
         /^-- <<< nvidia \(bootstrap\.sh\) <<<$/ { skip = 0 }
-    ' "$conf" > "$tmp"
+    ' "$conf" >"$tmp"
     mv "$tmp" "$conf"
 }
 
@@ -177,7 +197,10 @@ _nvidia_revert_to_nouveau() {
     log "Reverting to nouveau: removing the $current driver"
     _nvidia_purge_variant "$current"
 
-    [ -f "$NVIDIA_MODPROBE_CONF" ] && { log "Removing $NVIDIA_MODPROBE_CONF"; sudo rm -f "$NVIDIA_MODPROBE_CONF"; }
+    [ -f "$NVIDIA_MODPROBE_CONF" ] && {
+        log "Removing $NVIDIA_MODPROBE_CONF"
+        sudo rm -f "$NVIDIA_MODPROBE_CONF"
+    }
 
     if [ -f /etc/default/grub ] && grep -q 'modprobe.blacklist=nouveau' /etc/default/grub; then
         log "Un-blacklisting nouveau on the kernel command line"
@@ -202,8 +225,10 @@ step_nvidia() {
     fi
     log "NVIDIA GPU found: $(lspci -nn | grep -Ei 'vga compatible controller|3d controller' | grep '\[10de:' | sed 's/.*: //')"
 
-    local mode; mode="$(_nvidia_mode)"
-    local current; current="$(_nvidia_installed_variant)"
+    local mode
+    mode="$(_nvidia_mode)"
+    local current
+    current="$(_nvidia_installed_variant)"
 
     if [ "$mode" = "nouveau" ]; then
         _nvidia_revert_to_nouveau "$current"
@@ -215,7 +240,7 @@ step_nvidia() {
         _nvidia_purge_variant "$current"
     fi
 
-    apt_install mokutil    # needed for the Secure Boot check
+    apt_install mokutil # needed for the Secure Boot check
     local sb_rc=0
     _nvidia_secureboot_enabled || sb_rc=$?
     if [ "$sb_rc" = "0" ]; then
@@ -227,22 +252,22 @@ step_nvidia() {
     apt_install linux-headers-amd64
 
     case "$mode" in
-        debian)
-            _nvidia_enable_nonfree
-            log "Installing the NVIDIA driver (Debian repo)"
-            apt_install nvidia-driver nvidia-kernel-dkms firmware-misc-nonfree \
-                libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver
-            ;;
-        open)
-            _nvidia_enable_cuda_repo
-            log "Installing the NVIDIA driver (open kernel modules, NVIDIA's CUDA repo)"
-            apt_install nvidia-open
-            ;;
-        nvidia)
-            _nvidia_enable_cuda_repo
-            log "Installing the NVIDIA driver (proprietary, NVIDIA's CUDA repo)"
-            apt_install cuda-drivers
-            ;;
+    debian)
+        _nvidia_enable_nonfree
+        log "Installing the NVIDIA driver (Debian repo)"
+        apt_install nvidia-driver nvidia-kernel-dkms firmware-misc-nonfree \
+            libnvidia-egl-wayland1 libva-wayland2 nvidia-vaapi-driver
+        ;;
+    open)
+        _nvidia_enable_cuda_repo
+        log "Installing the NVIDIA driver (open kernel modules, NVIDIA's CUDA repo)"
+        apt_install nvidia-open
+        ;;
+    nvidia)
+        _nvidia_enable_cuda_repo
+        log "Installing the NVIDIA driver (proprietary, NVIDIA's CUDA repo)"
+        apt_install cuda-drivers
+        ;;
     esac
 
     local need_initramfs=1

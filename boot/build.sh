@@ -13,7 +13,8 @@ magick() { command magick "${@:1:$#-1}" -define png:exclude-chunks=date,time "${
 LOGO=/usr/share/icons/desktop-base/scalable/emblems/emblem-debian-white.svg
 
 # DMS's palette, generated from the wallpaper; blue-grey without DMS.
-eval "$(python3 - "$HOME/.cache/dms/dms-colors.json" <<'PY'
+eval "$(
+    python3 - "$HOME/.cache/dms/dms-colors.json" <<'PY'
 import json, sys
 pal = dict(BG="#0e0f14", FG="#e6e7ef", SUB="#a3a5b2", MUTED="#80828f",
            ACCENT="#a8c7fa", TRACK="#2a2c36")
@@ -39,7 +40,8 @@ wallpaper() {
 }
 
 backdrop() {
-    local src; src="$(wallpaper || true)"
+    local src
+    src="$(wallpaper || true)"
     if [ -n "$src" ]; then
         magick "${src}[0]" -resize 1920x1080^ -gravity center -extent 1920x1080 \
             -blur 0x24 -fill "$BG" -colorize 50% -depth 8 "PNG24:$1"
@@ -56,8 +58,8 @@ pill() {
         -draw "roundrectangle 0.5,0.5 $((s - 1)).5,$((s - 1)).5 $r,$r" "PNG32:$out/pill.png"
     local part geo
     for part in nw:${r}x${r}+0+0 n:${m}x${r}+${r}+0 ne:${r}x${r}+$((r + m))+0 \
-                w:${r}x${m}+0+${r} c:${m}x${m}+${r}+${r} e:${r}x${m}+$((r + m))+${r} \
-                sw:${r}x${r}+0+$((r + m)) s:${m}x${r}+${r}+$((r + m)) se:${r}x${r}+$((r + m))+$((r + m)); do
+        w:${r}x${m}+0+${r} c:${m}x${m}+${r}+${r} e:${r}x${m}+$((r + m))+${r} \
+        sw:${r}x${r}+0+$((r + m)) s:${m}x${r}+${r}+$((r + m)) se:${r}x${r}+$((r + m))+$((r + m)); do
         geo="${part#*:}"
         magick "$out/pill.png" -crop "$geo" +repage "PNG32:$out/${name}_${part%%:*}.png"
     done
@@ -76,7 +78,7 @@ fill() {
         rgb="${k}_RGB"
         args+=(-e "s|@${k}_RGB@|${!rgb}|g" -e "s|@$k@|${!k}|g")
     done
-    sed "${args[@]}" "$1" > "$2"
+    sed "${args[@]}" "$1" >"$2"
 }
 
 mkdir -p "$OUT/grub" "$OUT/plymouth"

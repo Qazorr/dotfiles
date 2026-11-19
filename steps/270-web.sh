@@ -5,9 +5,9 @@ register_step web \
     --desc "Web dev: Bruno, mise + Node LTS, bun, prettier, cspell, mkcert, pgcli, litecli" \
     --group dev --root --needs prereqs \
     --provides bruno mise mkcert pgcli litecli "$HOME/.local/share/mise/shims/node" \
-               "$HOME/.local/share/mise/shims/prettier"
+    "$HOME/.local/share/mise/shims/prettier"
 
-_web_deb() {   # _web_deb <package> <version> <url> <sha256>
+_web_deb() { # _web_deb <package> <version> <url> <sha256>
     if [ "$(dpkg-query -W -f='${Version}' "$1" 2>/dev/null)" = "$2" ]; then
         log "$1 $2 already installed, skipping"
         return 0

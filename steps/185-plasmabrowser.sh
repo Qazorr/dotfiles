@@ -15,7 +15,7 @@ step_plasmabrowser() {
         "$hosts/org.kde.plasma.browser_integration.json"
 
     sudo mkdir -p /etc/brave/policies/managed
-    sudo tee /etc/brave/policies/managed/plasma-integration.json > /dev/null <<EOF
+    sudo tee /etc/brave/policies/managed/plasma-integration.json >/dev/null <<EOF
 {
   "ExtensionSettings": {
     "$PLASMA_EXT_ID": {

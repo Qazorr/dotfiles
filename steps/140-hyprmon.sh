@@ -22,9 +22,10 @@ step_hyprmon() {
     git clone --depth=1 --branch "$HYPRMON_VERSION" \
         https://github.com/erans/hyprmon "$src"
 
-    local commit; commit="$(git -C "$src" rev-parse --short HEAD)"
-    ( cd "$src" && go build \
+    local commit
+    commit="$(git -C "$src" rev-parse --short HEAD)"
+    (cd "$src" && go build \
         -ldflags="-s -w -X main.Version=$HYPRMON_VERSION -X main.GitCommit=$commit" \
-        -o hyprmon . )
+        -o hyprmon .)
     sudo install -m755 "$src/hyprmon" /usr/local/bin/hyprmon
 }

@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+"""Progress panel for rsync.
+
+    rsync -a --info=progress2,name1 src/ dst/ | rsync_progress
+
+Reads rsync's overall progress lines from stdin and draws a four-line panel on
+stderr (so stdout stays clean), then collapses it to one summary line.
+The `rsync` function in ~/.zshrc does the piping.
+
+     rsync  ·  20 / 40 files  ·  0:02 elapsed
+     ━━━━━━━━━━━━━━━━━━━━━━╸━━━━━━━━━━━━━━━━━━━━━  51%
+     948.6 MiB of 1.8 GiB   536.2 MiB/s   eta 0:01
+     ↳ photos/2024/IMG_3028.jpg
+"""
+import os
+import re
+import shutil
+import sys
+import time
+
+OUT = sys.stderr
+TTY = OUT.isatty()
+COLOR = TTY and "NO_COLOR" not in os.environ
+ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+# "  1,234,567  45%  12.3MB/s  0:00:01 (xfr#3, to-chk=10/20)"
+PROGRESS = re.compile(r"^\s*([\d,]+)\s+(\d+)%\s+\S+\s+\S+\s+\(xfr#(\d+), (?:to|ir)-chk=(\d+)/(\d+)\)")
+NOISE = ("sending ", "created ", "building ", "receiving ", "deleting ")
+REDRAW = 0.05      # seconds between redraws
+SPEED_WINDOW = 0.25
+
+
+def style(code, s):
+    return f"\x1b[{code}m{s}\x1b[0m" if COLOR else s
+
+
+def rgb(r, g, b, s):
+    return f"\x1b[38;2;{r};{g};{b}m{s}\x1b[0m" if COLOR else s
+
+
+def vis(s):
+    return len(ANSI.sub("", s))
+
+
+def clip(s, n):
+    """Cut s to n visible columns, keeping its colour codes intact."""
+    out, seen = [], 0
+    for tok in re.split(r"(\x1b\[[0-9;?]*[A-Za-z])", s):
+        if ANSI.fullmatch(tok):
+            out.append(tok)
+        else:
+            take = tok[: max(n - seen, 0)]
+            out.append(take)
+            seen += len(take)
+    return "".join(out) + ("\x1b[0m" if COLOR else "")
+
+
+def size(n):
+    if n < 1024:
+        return f"{n:.0f} B"
+    for unit in ("KiB", "MiB", "GiB"):
+        n /= 1024
+        if n < 1024:
+            return f"{n:.1f} {unit}"
+    return f"{n / 1024:.1f} TiB"
+
+
+def clock(s):
+    if s is None:
+        return "--:--"
+    s = int(s)
+    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}" if s >= 3600 else f"{s // 60}:{s % 60:02d}"
+
+
+def middle(s, n):
+    if len(s) <= n:
+        return s
+    keep = max(n - 1, 2)
+    return s[: keep // 2] + "…" + s[-(keep - keep // 2):]
+
+
+def bar(frac, width):
+    """Thin line, teal to green; the head is a half-line cell."""
+    n = min(int(frac * width), width)
+    head = n < width
+    cells = "".join(
+        rgb(int(40 + 90 * i / max(width - 1, 1)), int(190 + 30 * i / max(width - 1, 1)),
+            int(170 - 80 * i / max(width - 1, 1)), "━")
+        for i in range(n)
+    )
+    if head:
+        cells += rgb(130, 220, 90, "╸")
+    return cells + style(2, "━" * max(width - n - head, 0))
+
+
+class Progress:
+    def __init__(self):
+        self.t0 = time.time()
+        self.done = 0
+        self.total = 0
+        self.speed = 0.0
+        self.files_done = 0
+        self.files_total = 0
+        self.cur = ""
+        self.seen = False          # got at least one progress line
+        self._mark = (self.t0, 0)
+        self._drawn = 0            # lines of panel currently on screen
+        self._last_draw = 0.0
+
+    # -- input --
+    def feed(self, line):
+        m = PROGRESS.match(line)
+        if m:
+            self._update(int(m[1].replace(",", "")), int(m[2]), int(m[4]), int(m[5]))
+        elif line and not line.startswith(" ") and not line.endswith("/") and not line.startswith(NOISE):
+            self.cur = line
+
+    def _update(self, done, pct, remaining, files_total):
+        now = time.time()
+        self.seen = True
+        self.done = done
+        # rsync rounds pct to an integer, so the total is rough at the start;
+        # keep the old estimate until pct is big enough to trust.
+        if pct >= 2:
+            self.total = done * 100 / pct
+        else:
+            self.total = max(self.total, done)
+        # to-chk counts every entry (directories too), not just transferred
+        # files, but it is the one count that reaches its total at the end.
+        self.files_done, self.files_total = files_total - remaining, files_total
+        t, b = self._mark
+        if now - t >= SPEED_WINDOW:
+            inst = (done - b) / (now - t)
+            self.speed = inst if self.speed == 0 else 0.7 * self.speed + 0.3 * inst
+            self._mark = (now, done)
+
+    # -- output --
+    @property
+    def frac(self):
+        return min(self.done / self.total, 1.0) if self.total else 0.0
+
+    @property
+    def elapsed(self):
+        return time.time() - self.t0
+
+    def lines(self, cols):
+        w = max(min(cols - 4, 72), 10)
+        eta = (self.total - self.done) / self.speed if self.speed > 1 else None
+        head = (f" {style(1, 'rsync')}  {style(2, '·')}  {self.files_done} / {self.files_total} files"
+                f"  {style(2, '·')}  {clock(self.elapsed)} elapsed")
+        pct = f"  {int(self.frac * 100):3d}%"
+        # Longest wording that fits; the last one is the fallback.
+        variants = [
+            f" {size(self.done)} of {size(self.total)}   {size(self.speed)}/s   eta {clock(eta)}",
+            f" {size(self.done)}   {size(self.speed)}/s   eta {clock(eta)}",
+            f" {size(self.speed)}/s   eta {clock(eta)}",
+        ]
+        stats = next((v for v in variants if len(v) < cols), variants[-1])
+        cur = style(2, " ↳ " + middle(self.cur, cols - 6))
+        return [clip(l, cols - 1) for l in (head, " " + bar(self.frac, w - len(pct) - 1) + pct, stats, cur)]
+
+    def draw(self, force=False):
+        now = time.time()
+        if not TTY or not self.total or (not force and now - self._last_draw < REDRAW):
+            return
+        self._last_draw = now
+        cols = shutil.get_terminal_size((80, 24)).columns
+        buf = f"\x1b[{self._drawn}A" if self._drawn else "\x1b[?25l"
+        lines = self.lines(cols)
+        buf += "".join(f"\r\x1b[2K{l}\n" for l in lines)
+        self._drawn = len(lines)
+        OUT.write(buf)
+        OUT.flush()
+
+    def finish(self, interrupted=False):
+        """Replace the panel with one line."""
+        if TTY and self._drawn:
+            OUT.write(f"\x1b[{self._drawn}A\x1b[J")
+        if TTY:
+            OUT.write("\x1b[?25h")
+        if interrupted:
+            msg = style(33, "■ ") + f"stopped at {int(self.frac * 100)}%  ·  {self.files_done} / {self.files_total} files  ·  {size(self.done)}"
+        elif not self.total:
+            msg = style(2, "· nothing to copy")
+        elif self.files_done < self.files_total:
+            msg = style(33, "■ ") + f"ended at {int(self.frac * 100)}%  ·  {self.files_done} / {self.files_total} files  ·  {size(self.done)}"
+        else:
+            avg = self.done / max(self.elapsed, 0.001)
+            msg = (style(32, "✔ ") + f"{self.files_total} files  ·  {size(self.done)}  ·  "
+                   f"{clock(self.elapsed)}  ·  {size(avg)}/s avg")
+        OUT.write(msg + "\n")
+        OUT.flush()
+
+
+def main():
+    p = Progress()
+    interrupted = False
+    buf = bytearray()
+    fd = sys.stdin.fileno()
+    try:
+        while True:
+            chunk = os.read(fd, 4096)
+            if not chunk:
+                break
+            for byte in chunk:
+                if byte in (10, 13):      # \n or \r both end a line
+                    if buf:
+                        p.feed(buf.decode("utf-8", "replace"))
+                        buf.clear()
+                        p.draw()
+                else:
+                    buf.append(byte)
+        if buf:
+            p.feed(buf.decode("utf-8", "replace"))
+    except KeyboardInterrupt:
+        interrupted = True
+    finally:
+        p.finish(interrupted)
+    return 130 if interrupted else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

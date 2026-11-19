@@ -1,2 +1,24 @@
 # apt packages added by hand since the install, one per line.
 # `dotfiles sync` appends to this; the packages step installs it.
+
+# CLI
+cliphist
+ffmpegthumbnailer
+glances
+gping
+httpie
+lsd
+ncdu
+nmap
+nvtop
+sshpass
+tcpreplay
+tshark
+
+# Desktop apps
+filezilla
+inkscape
+obs-studio
+remmina
+solaar
+vlc

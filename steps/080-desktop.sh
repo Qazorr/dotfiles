@@ -2,7 +2,7 @@ register_step desktop \
     --desc "Terminal, shell, screenshot/clipboard, network, Qt runtime, cursor" \
     --group desktop --root --needs backports \
     --provides kitty zsh stow grim slurp wl-copy notify-send fastfetch cava \
-               /usr/share/icons/Bibata-Modern-Classic
+    /usr/share/icons/Bibata-Modern-Classic
 
 step_desktop() {
     log "Installing terminal, shell, screenshot/clipboard, network tools"
@@ -16,7 +16,7 @@ step_desktop() {
         accountsservice qt6ct mesa-utils \
         network-manager network-manager-gnome \
         network-manager-openconnect network-manager-openconnect-gnome gp-saml-gui \
-        blueman bluez \
+        blueman bluez hyprpolkitagent \
         bibata-cursor-theme
 
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic 2>/dev/null \

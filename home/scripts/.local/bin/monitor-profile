@@ -7,7 +7,10 @@ ACTIVE="$DIR/active.lua"
 UNSAVED="$DIR/hyprmon.lua"
 PLACEHOLDER="-- No monitor profile matches the connected monitors — Hyprland defaults."
 
-die() { echo "monitor-profile: $*" >&2; exit 1; }
+die() {
+    echo "monitor-profile: $*" >&2
+    exit 1
+}
 
 notify() {
     if command -v dms >/dev/null 2>&1 && pgrep -x qs >/dev/null 2>&1; then
@@ -26,7 +29,7 @@ descs_in() {
 profiles() {
     local f
     for f in "$DIR"/*.lua; do
-        case "$(basename "$f" .lua)" in active|hyprmon|hyprmon-entry) continue ;; esac
+        case "$(basename "$f" .lua)" in active | hyprmon | hyprmon-entry) continue ;; esac
         [ -f "$f" ] && basename "$f" .lua
     done
     return 0
@@ -37,7 +40,7 @@ profiles() {
 match_count() {
     local have="$1" d n=0
     while IFS= read -r d; do
-        grep -qxF -- "$d" <<< "$have" || return 0
+        grep -qxF -- "$d" <<<"$have" || return 0
         n=$((n + 1))
     done < <(descs_in "$DIR/$2.lua")
     [ "$n" -gt 0 ] && echo "$n"
@@ -49,7 +52,10 @@ pick() {
     have="$(connected)"
     while IFS= read -r name; do
         n="$(match_count "$have" "$name")"
-        [ -n "$n" ] && [ "$n" -gt "$best_n" ] && { best="$name"; best_n="$n"; }
+        [ -n "$n" ] && [ "$n" -gt "$best_n" ] && {
+            best="$name"
+            best_n="$n"
+        }
     done < <(profiles)
     printf '%s\n' "$best"
 }
@@ -64,7 +70,7 @@ current() {
 # missing file is a config error.
 set_active() {
     local tmp="$ACTIVE.tmp.$$"
-    [ -n "$1" ] || printf '%s\n' "$PLACEHOLDER" > "$UNSAVED"
+    [ -n "$1" ] || printf '%s\n' "$PLACEHOLDER" >"$UNSAVED"
     ln -s "${1:-hyprmon}.lua" "$tmp"
     mv -fT "$tmp" "$ACTIVE"
 }
@@ -111,25 +117,29 @@ settle() {
     while [ "$SECONDS" -lt "$deadline" ]; do
         rc=0
         IFS= read -r -t 1 ev || rc=$?
-        [ "$rc" -gt 128 ] && continue    # timed out, keep waiting
-        [ "$rc" -ne 0 ] && return 0      # socket closed
+        [ "$rc" -gt 128 ] && continue # timed out, keep waiting
+        [ "$rc" -ne 0 ] && return 0   # socket closed
         case "$ev" in
-            monitoradded*|monitorremoved*) deadline=$((SECONDS + 2)) ;;
+        monitoradded* | monitorremoved*) deadline=$((SECONDS + 2)) ;;
         esac
     done
 }
 
 watch() {
     # One watcher per session: exec-once plus a manual run would reload twice.
-    exec 9> "$XDG_RUNTIME_DIR/monitor-profile.lock"
-    flock -n 9 || { echo "already watching" >&2; exit 0; }
+    exec 9>"$XDG_RUNTIME_DIR/monitor-profile.lock"
+    flock -n 9 || {
+        echo "already watching" >&2
+        exit 0
+    }
     apply || true
     local ev
     while IFS= read -r ev; do
         case "$ev" in
-            monitoraddedv2\>\>*|monitorremovedv2\>\>*)
-                settle
-                apply || true ;;
+        monitoraddedv2\>\>* | monitorremovedv2\>\>*)
+            settle
+            apply || true
+            ;;
         esac
     done < <(socat -U - "UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock")
 }
@@ -175,9 +185,12 @@ save() {
 [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || die "not inside a Hyprland session"
 
 case "${1:-}" in
-    "")       apply ;;
-    --watch)  watch ;;
-    --status) status ;;
-    --save)   save "${2:-}" ;;
-    *) echo "usage: monitor-profile [--watch | --status | --save <name>]" >&2; exit 1 ;;
+"") apply ;;
+--watch) watch ;;
+--status) status ;;
+--save) save "${2:-}" ;;
+*)
+    echo "usage: monitor-profile [--watch | --status | --save <name>]" >&2
+    exit 1
+    ;;
 esac

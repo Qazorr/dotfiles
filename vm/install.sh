@@ -3,7 +3,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 ISO="${DOTFILES_TEST_ISO:-$HERE/../iso/out/dotfiles-trixie-amd64.iso}"
-[ -f "$ISO" ] || { echo "no such ISO: $ISO — build it with iso/build.sh" >&2; exit 1; }
+[ -f "$ISO" ] || {
+    echo "no such ISO: $ISO — build it with iso/build.sh" >&2
+    exit 1
+}
 ISO="$(readlink -f "$ISO")"
 
 cd "$HERE"
@@ -19,20 +22,20 @@ VM_DISPLAY="${DOTFILES_VM_DISPLAY:-gtk,gl=on}"
 
 # shellcheck disable=SC2054  # commas belong to qemu's argument syntax
 args=(
-  -enable-kvm
-  -machine q35
-  -cpu host
-  -smp 6
-  -m 6G
-  -drive file=disk/debian13.qcow2,if=virtio,cache=writeback
-  -cdrom "$ISO"
-  -boot once=d
-  -device virtio-net-pci,netdev=net0,addr=0x5
-  -netdev user,id=net0
-  -vga none
-  -device "$VM_GPU"
-  -display "$VM_DISPLAY"
-  -device virtio-tablet-pci
-  -device intel-hda -device hda-duplex
+    -enable-kvm
+    -machine q35
+    -cpu host
+    -smp 6
+    -m 6G
+    -drive file=disk/debian13.qcow2,if=virtio,cache=writeback
+    -cdrom "$ISO"
+    -boot once=d
+    -device virtio-net-pci,netdev=net0,addr=0x5
+    -netdev user,id=net0
+    -vga none
+    -device "$VM_GPU"
+    -display "$VM_DISPLAY"
+    -device virtio-tablet-pci
+    -device intel-hda -device hda-duplex
 )
 exec qemu-system-x86_64 "${args[@]}" "$@"

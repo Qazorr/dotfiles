@@ -55,7 +55,10 @@ LOG_TEE_PID=""
 start_logging() {
     [ "${DOTFILES_NO_LOG:-0}" = "1" ] && return 0
     mkdir -p "$LOG_DIR" 2>/dev/null \
-        || { warn "can't write to $LOG_DIR — this run won't be logged"; return 0; }
+        || {
+            warn "can't write to $LOG_DIR — this run won't be logged"
+            return 0
+        }
     # $$ too, so two runs in the same second don't interleave into one file.
     LOG_FILE="$LOG_DIR/bootstrap-$(date +%Y%m%d-%H%M%S)-$$.log"
     exec > >(tee -a "$LOG_FILE") 2>&1
@@ -90,7 +93,7 @@ require_disk_space() {
 
 ensure_sudo() {
     if sudo -n true 2>/dev/null; then
-        return 0    # already authenticated or passwordless
+        return 0 # already authenticated or passwordless
     fi
     if [ ! -t 0 ]; then
         die "This needs sudo but there's no terminal to ask on. Run it from a shell, or pre-authenticate with 'sudo -v' first."
@@ -98,11 +101,11 @@ ensure_sudo() {
     log "Installing system packages needs sudo — asking once, now, so the rest runs unattended."
     sudo -v || die "sudo authentication failed"
 
-    ( while true; do
-          sleep 50
-          kill -0 "$$" 2>/dev/null || exit 0
-          sudo -n true 2>/dev/null || exit 0
-      done ) &
+    (while true; do
+        sleep 50
+        kill -0 "$$" 2>/dev/null || exit 0
+        sudo -n true 2>/dev/null || exit 0
+    done) &
     SUDO_KEEPALIVE_PID=$!
 }
 
@@ -114,7 +117,7 @@ check_environment() {
     fi
 
     command -v sudo >/dev/null || die "sudo is not installed. Install it and add yourself to the sudo group first."
-    command -v apt  >/dev/null || die "apt not found — is this really Debian?"
+    command -v apt >/dev/null || die "apt not found — is this really Debian?"
 
     # getent, not curl: a fresh install has no curl yet.
     if ! getent hosts deb.debian.org >/dev/null 2>&1; then
@@ -133,15 +136,19 @@ list_steps() {
         printf '\n\033[1m%s\033[0m\n' "$g"
         for s in "${STEPS[@]}"; do
             [ "${STEP_GROUP[$s]}" = "$g" ] || continue
-            rc=0; step_installed "$s" || rc=$?
+            rc=0
+            step_installed "$s" || rc=$?
             case "$rc" in
-                0) status=$'\033[32m✓\033[0m' ;;
-                1) status=$'\033[33m·\033[0m' ;;
-                *) status=' ' ;;
+            0) status=$'\033[32m✓\033[0m' ;;
+            1) status=$'\033[33m·\033[0m' ;;
+            *) status=' ' ;;
             esac
-            root=""; step_is_root "$s" && root=" [sudo]"
-            opt=""; step_is_optional "$s" && opt=" [opt-in]"
-            needs=""; [ -n "${STEP_NEEDS[$s]}" ] && needs=" (needs: ${STEP_NEEDS[$s]% })"
+            root=""
+            step_is_root "$s" && root=" [sudo]"
+            opt=""
+            step_is_optional "$s" && opt=" [opt-in]"
+            needs=""
+            [ -n "${STEP_NEEDS[$s]}" ] && needs=" (needs: ${STEP_NEEDS[$s]% })"
             done_="$(_list_ran "$s")"
             printf '  %s %-13s %s%s%s%s%s\n' \
                 "$status" "$s" "${STEP_DESC[$s]}" "$root" "$opt" "$needs" "$done_"
@@ -153,11 +160,14 @@ list_steps() {
 
 _list_ran() {
     local rc=0
-    step_is_always "$1" && { printf '\033[2m  (always runs)\033[0m'; return 0; }
+    step_is_always "$1" && {
+        printf '\033[2m  (always runs)\033[0m'
+        return 0
+    }
     step_stamp_state "$1" || rc=$?
     case "$rc" in
-        0) printf '\033[2m  ran %s\033[0m' "$(step_stamp_when "$1")" ;;
-        2) printf '\033[33m  changed since it ran\033[0m' ;;
+    0) printf '\033[2m  ran %s\033[0m' "$(step_stamp_when "$1")" ;;
+    2) printf '\033[33m  changed since it ran\033[0m' ;;
     esac
     return 0
 }
@@ -197,7 +207,7 @@ run_steps() {
     local plan=("$@")
     local total=${#plan[@]} i=0 s rc failed=()
     RUN_DIR="$(mktemp -d)"
-    chmod 711 "$RUN_DIR"   # apt's _apt user reads .debs from scratch dirs inside
+    chmod 711 "$RUN_DIR" # apt's _apt user reads .debs from scratch dirs inside
     STAMP_SKIP_FILE="$RUN_DIR/stamp-skip"
     for s in "${plan[@]}"; do
         i=$((i + 1))
@@ -206,7 +216,10 @@ run_steps() {
         # A plain statement, not an `if` condition or `||` operand: either one
         # turns set -e off for everything the step calls.
         set +e
-        ( set -e; "step_$s" )
+        (
+            set -e
+            "step_$s"
+        )
         rc=$?
         set -e
         if [ "$rc" = "0" ]; then
@@ -239,18 +252,23 @@ FORCE=0
 declare -A NAMED=()
 
 plan_pending() {
-    PENDING=(); SKIPPED=()
+    PENDING=()
+    SKIPPED=()
     local s rc
     for s in "$@"; do
         if [ "$FORCE" = "1" ] || [ -n "${NAMED[$s]+x}" ] || step_is_always "$s"; then
-            PENDING+=("$s"); continue
+            PENDING+=("$s")
+            continue
         fi
-        rc=0; step_stamp_state "$s" || rc=$?
+        rc=0
+        step_stamp_state "$s" || rc=$?
         case "$rc" in
-            0) SKIPPED+=("$s") ;;
-            2) log "${STEP_FILE[$s]} changed since it last ran — doing it again"
-               PENDING+=("$s") ;;
-            *) PENDING+=("$s") ;;
+        0) SKIPPED+=("$s") ;;
+        2)
+            log "${STEP_FILE[$s]} changed since it last ran — doing it again"
+            PENDING+=("$s")
+            ;;
+        *) PENDING+=("$s") ;;
         esac
     done
     return 0
@@ -262,35 +280,62 @@ main() {
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            --list|-l)     list_steps; exit 0 ;;
-            --help|-h)     usage; exit 0 ;;
-            --missing)     mode=missing; shift ;;
-            --dry-run|-n)  dry=1; shift ;;
-            --keep-going|-k) KEEP_GOING=1; shift ;;
-            --force|-f)    FORCE=1; shift ;;
-            --yes|-y)      yes=1; shift ;;
-            --profile)
-                [ -n "${2:-}" ] || die "--profile needs a name (${!PROFILES[*]})"
-                [ -n "${PROFILES[$2]:-}" ] || die "unknown profile: $2 (have: ${!PROFILES[*]})"
-                mode="set"
-                for grp in core ${PROFILES[$2]}; do
-                    for s in "${STEPS[@]}"; do
-                        [ "${STEP_GROUP[$s]}" = "$grp" ] && requested+=("$s")
-                    done
-                done
-                shift 2 ;;
-            --group)
-                [ -n "${2:-}" ] || die "--group needs a name (${GROUP_ORDER[*]})"
-                [[ " ${GROUP_ORDER[*]} " == *" $2 "* ]] || die "unknown group: $2 (have: ${GROUP_ORDER[*]})"
-                mode="set"
+        --list | -l)
+            list_steps
+            exit 0
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        --missing)
+            mode=missing
+            shift
+            ;;
+        --dry-run | -n)
+            dry=1
+            shift
+            ;;
+        --keep-going | -k)
+            KEEP_GOING=1
+            shift
+            ;;
+        --force | -f)
+            FORCE=1
+            shift
+            ;;
+        --yes | -y)
+            yes=1
+            shift
+            ;;
+        --profile)
+            [ -n "${2:-}" ] || die "--profile needs a name (${!PROFILES[*]})"
+            [ -n "${PROFILES[$2]:-}" ] || die "unknown profile: $2 (have: ${!PROFILES[*]})"
+            mode="set"
+            for grp in core ${PROFILES[$2]}; do
                 for s in "${STEPS[@]}"; do
-                    [ "${STEP_GROUP[$s]}" = "$2" ] && requested+=("$s")
+                    [ "${STEP_GROUP[$s]}" = "$grp" ] && requested+=("$s")
                 done
-                shift 2 ;;
-            -*)            die "unknown option: $1 (see ./bootstrap.sh --help)" ;;
-            *)
-                step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
-                mode="set"; requested+=("$1"); NAMED[$1]=1; shift ;;
+            done
+            shift 2
+            ;;
+        --group)
+            [ -n "${2:-}" ] || die "--group needs a name (${GROUP_ORDER[*]})"
+            [[ " ${GROUP_ORDER[*]} " == *" $2 "* ]] || die "unknown group: $2 (have: ${GROUP_ORDER[*]})"
+            mode="set"
+            for s in "${STEPS[@]}"; do
+                [ "${STEP_GROUP[$s]}" = "$2" ] && requested+=("$s")
+            done
+            shift 2
+            ;;
+        -*) die "unknown option: $1 (see ./bootstrap.sh --help)" ;;
+        *)
+            step_known "$1" || die "unknown step: $1 (see ./bootstrap.sh --list)"
+            mode="set"
+            requested+=("$1")
+            NAMED[$1]=1
+            shift
+            ;;
         esac
     done
 
@@ -298,13 +343,19 @@ main() {
     check_environment
 
     case "$mode" in
-        missing) for s in "${STEPS[@]}"; do
-                     rc=0; step_installed "$s" || rc=$?
-                     [ "$rc" != "0" ] && requested+=("$s")
-                 done
-                 [ ${#requested[@]} -gt 0 ] || { log "Nothing missing."; exit 0; } ;;
-        set)     ;;
-        *)       requested=("${STEPS[@]}") ;;
+    missing)
+        for s in "${STEPS[@]}"; do
+            rc=0
+            step_installed "$s" || rc=$?
+            [ "$rc" != "0" ] && requested+=("$s")
+        done
+        [ ${#requested[@]} -gt 0 ] || {
+            log "Nothing missing."
+            exit 0
+        }
+        ;;
+    set) ;;
+    *) requested=("${STEPS[@]}") ;;
     esac
 
     local optkept=() s2
@@ -313,7 +364,10 @@ main() {
     done
     requested=("${optkept[@]}")
 
-    [ ${#requested[@]} -gt 0 ] || { log "Nothing selected."; exit 0; }
+    [ ${#requested[@]} -gt 0 ] || {
+        log "Nothing selected."
+        exit 0
+    }
 
     mapfile -t plan < <(steps_resolve "${requested[@]}")
     mapfile -t added < <(steps_added "${requested[*]}" "${plan[@]}")
@@ -326,7 +380,10 @@ main() {
     done
 
     plan=("${PENDING[@]}")
-    [ ${#plan[@]} -gt 0 ] || { log "Everything is already done. Redo it all with --force."; exit 0; }
+    [ ${#plan[@]} -gt 0 ] || {
+        log "Everything is already done. Redo it all with --force."
+        exit 0
+    }
     [ "$real" = "0" ] && log "Nothing new to install — just re-stowing."
 
     for s in "${added[@]}"; do

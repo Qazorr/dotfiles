@@ -17,6 +17,27 @@ alias ll='ls -lah'
 # VS Code needs the flag to run natively on Wayland instead of XWayland.
 alias code='code --ozone-platform=wayland --enable-features=WaylandWindowDecorations'
 
+# Transfers started from a terminal get rsync_progress's panel. Skipped when the
+# output is wanted as rsync prints it: dry runs, itemized lists, --stats, your
+# own progress options, quiet, help, or a pipe/file on stdout. `command rsync`
+# always bypasses it.
+rsync() {
+	local a skip=0
+	for a in "$@"; do
+		case $a in
+			--version|--help|-h|--list-only|--daemon|--dry-run|--itemize-changes|--stats|--info=*|--progress|--quiet) skip=1 ;;
+			--*) ;;
+			-*[niPq]*) skip=1 ;;
+		esac
+	done
+	if [[ -t 1 && $skip == 0 ]] && (( $+commands[rsync_progress] )); then
+		setopt local_options pipefail
+		command rsync --info=progress2,name1 "$@" | rsync_progress
+	else
+		command rsync "$@"
+	fi
+}
+
 # Debian renames these (fd-find -> fdfind, bat -> batcat).
 command -v fdfind >/dev/null && alias fd='fdfind'
 command -v batcat >/dev/null && alias bat='batcat'

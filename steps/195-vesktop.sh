@@ -24,8 +24,11 @@ step_vesktop() {
     log "Installing Vesktop $version"
     curl -fsSL -o "$dir/$deb" "$VESKTOP_RELEASE/$deb" || return 1
     [ "$(openssl dgst -sha512 -binary "$dir/$deb" | base64 -w0)" = "$sha512" ] \
-        || { warn "$deb: checksum mismatch"; return 1; }
-    chmod 755 "$dir"   # apt's _apt user has to read it
+        || {
+            warn "$deb: checksum mismatch"
+            return 1
+        }
+    chmod 755 "$dir" # apt's _apt user has to read it
     sudo /usr/bin/apt-get install "${APT_OPTS[@]}" "$dir/$deb"
     _apt_record vesktop
 }

@@ -17,7 +17,8 @@ step_sonora() {
     fi
 
     log "Installing Sonora $SONORA_VERSION"
-    local tmp; scratch_dir tmp
+    local tmp
+    scratch_dir tmp
     local url=https://github.com/sonorahq/sonora
     curl -fsSL -o "$tmp/sonora" \
         "$url/releases/download/v$SONORA_VERSION/sonora-v$SONORA_VERSION-x86_64-unknown-linux-gnu"
@@ -39,5 +40,5 @@ step_sonora() {
     done
     update-desktop-database "$share/applications" 2>/dev/null || true
 
-    echo "$SONORA_VERSION" > "$SONORA_DIR/.version"
+    echo "$SONORA_VERSION" >"$SONORA_DIR/.version"
 }

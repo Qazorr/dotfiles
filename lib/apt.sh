@@ -3,7 +3,10 @@ ensure_nala() {
     log "Installing nala"
     sudo apt install "${APT_OPTS[@]}" nala
 }
-_nala() { ensure_nala; sudo nala "$@"; }
+_nala() {
+    ensure_nala
+    sudo nala "$@"
+}
 
 apt_update() { _nala update; }
 
@@ -13,13 +16,16 @@ _apt_record() {
     local a skip=0
     mkdir -p "$DOTFILES_STATE_DIR" 2>/dev/null || return 0
     for a in "$@"; do
-        if [ "$skip" = "1" ]; then skip=0; continue; fi
+        if [ "$skip" = "1" ]; then
+            skip=0
+            continue
+        fi
         case "$a" in
-            -t) skip=1 ;;
-            -*) ;;
-            *)  printf '%s\n' "$a" ;;
+        -t) skip=1 ;;
+        -*) ;;
+        *) printf '%s\n' "$a" ;;
         esac
-    done >> "$PACKAGES_KNOWN"
+    done >>"$PACKAGES_KNOWN"
 }
 
 # nala autoremoves on install by default; only apt_purge should remove.
@@ -31,12 +37,16 @@ apt_install_backports() { apt_install -t trixie-backports "$@"; }
 
 # nala refuses an unauthenticated .deb URL under --yes, so verify a pinned hash
 # and hand apt-get the local file.
-apt_install_deb() {   # apt_install_deb <url> <sha256>
-    local dir; scratch_dir dir
+apt_install_deb() { # apt_install_deb <url> <sha256>
+    local dir
+    scratch_dir dir
     local deb="$dir/${1##*/}"
     curl -fsSL -o "$deb" "$1" || return 1
-    echo "$2  $deb" | sha256sum -c --quiet - || { warn "${1##*/}: checksum mismatch"; return 1; }
-    chmod 755 "$dir"   # apt's _apt user has to read it
+    echo "$2  $deb" | sha256sum -c --quiet - || {
+        warn "${1##*/}: checksum mismatch"
+        return 1
+    }
+    chmod 755 "$dir" # apt's _apt user has to read it
     sudo /usr/bin/apt-get install "${APT_OPTS[@]}" "$deb"
     _apt_record "$(dpkg-deb -f "$deb" Package)"
 }
@@ -66,7 +76,7 @@ ensure_apt_list() {
         [ "$(cat "$list_path")" = "$deb_line" ] && return 0
         log "apt source changed, rewriting $list_path"
     elif grep -Rqs "$needle" /etc/apt/sources.list.d/ 2>/dev/null; then
-        return 0    # added by hand under another filename; leave it alone
+        return 0 # added by hand under another filename; leave it alone
     fi
     echo "$deb_line" | sudo tee "$list_path" >/dev/null
     apt_update
