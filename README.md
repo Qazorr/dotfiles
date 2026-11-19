@@ -104,7 +104,9 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
   (or `plymouth shutdown`) plays the splash in a window. `./bootstrap.sh grub`
   installs them; both use a blurred copy of the current wallpaper and DMS's
   colours, and re-theme themselves whenever the wallpaper changes
-  (`journalctl -u dotfiles-boot-theme` shows each run).
+  (`journalctl -u dotfiles-boot-theme` shows each run). They use DMS's fonts
+  and follow changes to them. `boot/logo.svg` or `boot/logo.png` sets the logo;
+  the shared layout is at the top of `boot/build.sh`.
 - **PWA and app colours:** `~/.config/matugen/` holds user templates that DMS
   runs on every theme change. They colour WhatsApp Web and Teams through the
   extension in `~/.local/share/pwa-theme` (load it once per browser from
@@ -115,6 +117,11 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
   password widget: layout, input size, image size). The dms step lays them over
   the stock UI in `~/.local/share/dms/shell`, which `dms-start` points DMS at
   while its version matches the installed binary. After editing, re-run `./bootstrap.sh dms` and restart DMS.
+- **`greeter/`** holds the login screen: patches to dms-greeter's UI that make
+  it match the lock screen, re-applied after a dms-greeter upgrade or an edit
+  (`journalctl -u dotfiles-greeter-shell`), and the greeter's launcher and
+  configs, which give it your fonts and the session's monitor, input and cursor
+  settings.
 
 ## License
 

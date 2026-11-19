@@ -10,19 +10,18 @@ PLYMOUTH_DIR=/usr/share/plymouth/themes/dotfiles
 # Present only while the initramfs holds the installed splash.
 BUILT=/var/lib/dotfiles-boot-theme.built
 
-# The initramfs hook ships the fonts as these two names and fontconfig prefers
-# them. The splash keeps that font list after it moves onto the real root,
-# where the names don't exist, and text drawn from then on comes out as boxes.
-# Fontconfig on the root must not see them, or the hook copies a link to itself.
-cat >/etc/fonts/conf.d/99-dotfiles-plymouth.conf <<'EOF'
-<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
-<fontconfig>
-  <selectfont><rejectfont><glob>/usr/share/fonts/Plymouth*.ttf</glob></rejectfont></selectfont>
-</fontconfig>
-EOF
+install -m644 "$SRC/plymouth/reject-fonts.conf" /etc/fonts/conf.d/99-dotfiles-plymouth.conf
 ln -sfn "$(readlink -f "$(fc-match -f '%{file}')")" /usr/share/fonts/Plymouth.ttf
 ln -sfn "$(readlink -f "$(fc-match -f '%{file}' monospace)")" /usr/share/fonts/Plymouth-monospace.ttf
+
+# A changed hook leaves the initramfs out of date, whether or not the themes changed.
+HOOK=/etc/initramfs-tools/hooks/dotfiles-plymouth-fonts
+hook="$(sed "s|@PLYMOUTH_DIR@|$PLYMOUTH_DIR|g" "$SRC/plymouth/initramfs-hook.sh")"
+if [ "$(cat "$HOOK" 2>/dev/null)" != "$hook" ]; then
+    printf '%s\n' "$hook" >"$HOOK"
+    chmod 755 "$HOOK"
+    rm -f "$BUILT"
+fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

@@ -1,0 +1,131 @@
+--- a/Modules/Greetd/GreeterAuthWidget.qml
++++ b/Modules/Greetd/GreeterAuthWidget.qml
+@@ -39,7 +39,11 @@
+     readonly property color accentColor: Theme.primary
+     readonly property color plainColor: Theme.lockScreenContentColor
+     readonly property Item inputItem: inputField
+-    readonly property real ringSize: LockMetrics.fieldHeight * 2.5
++    readonly property real sizeScale: (cfg.sizePercent ?? 140) / 100
++    readonly property bool stacked: cfg.layout === "stacked" && !ring
++    readonly property real imageSize: LockMetrics.avatarSize * (cfg.imagePercent ?? 140) / 100
++    readonly property real fieldH: LockMetrics.fieldHeight * sizeScale
++    readonly property real ringSize: fieldH * 2.5
+     readonly property real ringStroke: Theme.spacingS
+     readonly property real minWidth: ring ? ringSize : LockMetrics.fieldWidth / 2
+     readonly property real minHeight: implicitHeight
+@@ -266,16 +270,18 @@
+             }
+         }
+ 
+-        RowLayout {
++        GridLayout {
+             LayoutMirroring.enabled: I18n.isRtl
+             LayoutMirroring.childrenInherit: true
+-            spacing: Theme.spacingM
++            columns: root.stacked ? 1 : 2
++            columnSpacing: Theme.spacingM
++            rowSpacing: Theme.spacingM
+             Layout.fillWidth: true
+ 
+             Item {
+-                Layout.preferredWidth: LockMetrics.avatarSize
+-                Layout.preferredHeight: LockMetrics.avatarSize
+-                Layout.alignment: Qt.AlignTop
++                Layout.preferredWidth: root.imageSize
++                Layout.preferredHeight: root.imageSize
++                Layout.alignment: root.stacked ? Qt.AlignHCenter : Qt.AlignTop
+                 visible: root.showProfileImage && !root.ring
+ 
+                 DCircularImage {
+@@ -349,6 +355,7 @@
+ 
+                 transform: Translate {
+                     x: Math.max(-LockMetrics.shakeDistance, Math.min(LockMetrics.shakeDistance, passwordBox.errorOffset))
++                    y: root.stacked ? (1 - passwordBox.opacity) * -Theme.spacingXL : 0
+                 }
+ 
+                 Layout.fillWidth: true
+@@ -356,13 +363,13 @@
+                     if (root.ring)
+                         return 0;
+                     if (root.pickerPhase && (root.host?.userListOpen ?? false))
+-                        return Math.max(LockMetrics.fieldHeight, userPicker.implicitHeight + Theme.spacingM * 2);
+-                    return LockMetrics.fieldHeight;
++                        return Math.max(root.fieldH, userPicker.implicitHeight + Theme.spacingM * 2);
++                    return root.fieldH;
+                 }
+ 
+                 clip: true
+                 opacity: root.inputVisible ? 1 : 0
+-                radius: root.morph ? Theme.cornerRadiusXL : Theme.fullRadius(width, LockMetrics.fieldHeight)
++                radius: root.morph ? Theme.cornerRadiusXL : Theme.fullRadius(width, root.fieldH)
+                 color: {
+                     if (!root.contained)
+                         return "transparent";
+@@ -430,7 +437,7 @@
+                     anchors.leftMargin: root.morph ? Theme.spacingS : Theme.spacingM
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: !root.pickerPhase && !root.dots && !root.ring && !root.minimal
+-                    width: !visible ? 0 : (root.morph ? LockMetrics.fieldHeight - Theme.spacingS * 2 : Theme.iconSizeSmall)
++                    width: !visible ? 0 : (root.morph ? root.fieldH - Theme.spacingS * 2 : Theme.iconSizeSmall)
+                     height: root.morph ? width : Theme.iconSizeSmall
+ 
+                     DMaterialShape {
+@@ -513,12 +520,13 @@
+                     opacity: root.pickerPhase && !GreeterState.showPasswordInput ? 0 : 1
+                     focus: !root.pickerPhase || GreeterState.showPasswordInput
+                     echoMode: masked ? TextInput.Password : TextInput.Normal
++                    // Dots mode draws shapes below, so their roundness follows the corner setting.
+                     textColor: {
+                         if (dotted)
+-                            return root.failed ? Theme.error : root.accentColor;
++                            return "transparent";
+                         return root.contained ? Theme.surfaceText : root.plainColor;
+                     }
+-                    font.pixelSize: masked ? (root.contained ? Theme.fontSizeLarge : Theme.fontSizeXLarge) : Theme.fontSizeMedium
++                    font.pixelSize: (masked ? (root.contained ? Theme.fontSizeLarge : Theme.fontSizeXLarge) : Theme.fontSizeMedium) * root.sizeScale
+                     font.letterSpacing: dotted ? Theme.spacingXS : 0
+                     keyNavigationTab: tabStartsExternalAuth ? null : (virtualKeyboardButton.visible ? virtualKeyboardButton : (root.host?.sessionDropdownItem ?? inputField))
+                     keyNavigationBacktab: root.host?.sessionDropdownItem ?? inputField
+@@ -642,7 +650,7 @@
+                 Rectangle {
+                     anchors.left: placeholder.left
+                     anchors.verticalCenter: parent.verticalCenter
+-                    width: Theme.iconSizeSmall
++                    width: Theme.iconSizeSmall * root.sizeScale
+                     height: width
+                     radius: Theme.fullRadius(width, height)
+                     color: "transparent"
+@@ -652,6 +660,32 @@
+                     visible: inputField.dotted && inputField.text.length === 0
+                 }
+ 
++                Item {
++                    anchors.left: placeholder.left
++                    anchors.right: placeholder.right
++                    anchors.top: parent.top
++                    anchors.bottom: parent.bottom
++                    clip: true
++                    visible: inputField.dotted && inputField.text.length > 0
++
++                    Row {
++                        anchors.verticalCenter: parent.verticalCenter
++                        spacing: Theme.spacingS
++
++                        Repeater {
++                            model: inputField.text.length
++
++                            Rectangle {
++                                anchors.verticalCenter: parent.verticalCenter
++                                width: Theme.iconSizeSmall * root.sizeScale
++                                height: width
++                                radius: Theme.fullRadius(width, height)
++                                color: root.failed ? Theme.error : root.accentColor
++                            }
++                        }
++                    }
++                }
++
+                 LockActionButton {
+                     id: revealButton
+ 

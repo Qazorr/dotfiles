@@ -3,6 +3,15 @@ register_step login \
     --group desktop --root --needs hyprland duxrepo quickshell \
     --provides /etc/greetd/config.toml
 
+# The login screen: dms-greeter with greeter/'s patches and settings, started
+# by greetd through GREETER_LAUNCHER.
+GREETER_SRC="$REPO/greeter"
+GREETER_SHELL=/usr/local/share/dotfiles/greeter-shell
+GREETER_UNIT=dotfiles-greeter-shell
+GREETER_LAUNCHER=/usr/local/libexec/dotfiles/greeter
+GREETER_HYPR=/etc/greetd/dotfiles-hypr.lua
+GREETER_FONTS=/etc/greetd/dotfiles-fonts.conf
+
 register_option login DOTFILES_SESSION_ENTRIES \
     --prompt "Which sessions should the login screen offer?" \
     --choices \
@@ -118,10 +127,34 @@ _login_dms() {
         || warn "dms-greeter sync failed — the greeter works, it just won't match your theme. Re-run 'dms-greeter sync' once DMS is set up."
 }
 
+_login_greeter_shell() {
+    local unit
+    log "Building the patched greeter UI"
+    sudo "$GREETER_SRC/install.sh" "$USER"
+    for unit in "$GREETER_UNIT.path" "$GREETER_UNIT.service"; do
+        render_to "/etc/systemd/system/$unit" "$GREETER_SRC/systemd/$unit" \
+            REPO="$REPO" USER="$USER"
+    done
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now "$GREETER_UNIT.path" >/dev/null
+}
+
+_login_greeter_files() {
+    render_to "$GREETER_FONTS" "$GREETER_SRC/fonts.conf" HOME="$HOME"
+    render_to "$GREETER_HYPR" "$GREETER_SRC/hyprland.lua" HOME="$HOME"
+    sudo install -d "${GREETER_LAUNCHER%/*}"
+    render_to "$GREETER_LAUNCHER" "$GREETER_SRC/launcher.sh" \
+        FONTS="$GREETER_FONTS" SHELL_DIR="$GREETER_SHELL" HYPR="$GREETER_HYPR"
+    sudo chmod 755 "$GREETER_LAUNCHER"
+    sudo sed -i "s|^command = \"/usr/bin/dms-greeter |command = \"$GREETER_LAUNCHER |" /etc/greetd/config.toml
+}
+
 step_login() {
     _login_free_display_manager
 
     _login_dms
+    _login_greeter_shell
+    _login_greeter_files
 
     log "Adding the greeter user to video/render/input"
     sudo usermod -aG video,render,input greeter

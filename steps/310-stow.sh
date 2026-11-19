@@ -63,8 +63,11 @@ step_stow() {
     fi
 
     # DMS writes the theme's colours here on its first start.
-    local colors="$HOME/.config/hypr/dms/colors.lua"
-    [ -f "$colors" ] || printf '%s\n' "-- Written by DMS on every theme change." >"$colors"
+    local name file
+    for name in colors background; do
+        file="$HOME/.config/hypr/dms/$name.lua"
+        [ -f "$file" ] || printf '%s\n' "-- Written by DMS on every theme change." >"$file"
+    done
 
     # DMS points qt6ct at its KDE-format DankMatugen.colors, which qt6ct can't
     # read. colors/matugen.conf is the qt6ct-format palette it writes too.

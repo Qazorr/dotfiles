@@ -1,0 +1,9 @@
+[Unit]
+Description=Rebuild the patched greeter UI when dms-greeter or its patches change
+
+[Path]
+PathChanged=/usr/bin/dms-greeter
+PathChanged=@REPO@/greeter/patches
+
+[Install]
+WantedBy=multi-user.target

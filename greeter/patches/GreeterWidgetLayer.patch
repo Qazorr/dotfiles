@@ -1,0 +1,55 @@
+--- a/Modules/Greetd/GreeterWidgetLayer.qml
++++ b/Modules/Greetd/GreeterWidgetLayer.qml
+@@ -36,20 +36,10 @@
+         return null;
+     }
+ 
+-    function dateForClock(item) {
+-        const date = itemOfType("lockDate");
+-        return item && item === itemOfType("desktopClock") && date && !date.hasSavedPosition ? date : null;
+-    }
+-
+-    function dateOffset(item) {
+-        const date = dateForClock(item);
+-        return date ? date.height + Theme.spacingS : 0;
+-    }
+-
+     // DMS publishes the placement it resolved per screen; a screen the greeter names differently
+     // falls back to another screen's placement scaled to this size.
+     function publishedPosition(instanceId) {
+-        return positionFrom(SessionData.greeterAutoPositions, instanceId) ?? positionFrom(SessionData.lockScreenAutoPositions, instanceId);
++        return positionFrom(SessionData.lockScreenAutoPositions, instanceId) ?? positionFrom(SessionData.greeterAutoPositions, instanceId);
+     }
+ 
+     function positionFrom(all, instanceId) {
+@@ -72,7 +62,6 @@
+     // Same stock layout as the DMS lock screen.
+     function stockRect(widgetType, item) {
+         const centerX = (width - item.width) / 2;
+-        const clock = itemOfType("desktopClock");
+         switch (widgetType) {
+         case "desktopClock":
+             {
+@@ -81,17 +70,14 @@
+                     return published;
+                 return {
+                     x: Math.max(0, centerX),
+-                    y: edgeInset + dateOffset(item)
++                    y: edgeInset
+                 };
+             }
+         case "lockDate":
+-            {
+-                const attached = item === dateForClock(clock);
+-                return {
+-                    x: attached ? (clock.x + clock.width / 2 > width / 2 ? clock.x + clock.width - item.width : clock.x) : edgeInset,
+-                    y: attached ? Math.max(0, clock.y - Theme.spacingS - item.height) : edgeInset
+-                };
+-            }
++            return {
++                x: edgeInset,
++                y: edgeInset
++            };
+         case "lockAuth":
+             return {
+                 x: centerX,
