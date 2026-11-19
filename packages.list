@@ -1,24 +1,9 @@
 # apt packages added by hand since the install, one per line.
-# `dotfiles sync` appends to this; the packages step installs it.
+# `dotfiles sync` appends to this; the packages step installs it on every
+# machine and profile, so machine-specific packages belong in an opt-in step.
 
-# CLI
-cliphist
 ffmpegthumbnailer
-glances
 gping
-httpie
-lsd
 ncdu
 nmap
 nvtop
-sshpass
-tcpreplay
-tshark
-
-# Desktop apps
-filezilla
-inkscape
-obs-studio
-remmina
-solaar
-vlc

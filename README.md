@@ -89,6 +89,8 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
   on the ISO. RTX 5000-series needs `DOTFILES_NVIDIA_MODE=open`. With Secure
   Boot on, an unsigned module means a black screen.
   On hybrid laptops `prime-run <app>` uses the NVIDIA card.
+- **Also opt-in:** `work` (tshark, tcpreplay, sshpass, Remmina, FileZilla),
+  `solaar`, `tailscale`, `imhex` and `walls`.
 - **Monitors:** arrange them with `SUPER+SHIFT+M` and save a profile. It
   applies whenever those monitors are connected.
 - **Screen sharing:** `~/.config/hypr/screenshare.conf` holds Hyprland

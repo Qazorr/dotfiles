@@ -1,6 +1,6 @@
 register_step tailscale \
-    --desc "Tailscale, from its own apt repo (run 'sudo tailscale up' once to log in)" \
-    --group apps --root --needs prereqs \
+    --desc "Tailscale, from its own apt repo; 'sudo tailscale up' to log in (opt-in: ./bootstrap.sh tailscale)" \
+    --group apps --root --optional --needs prereqs \
     --provides tailscale
 
 step_tailscale() {

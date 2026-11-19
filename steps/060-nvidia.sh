@@ -125,7 +125,7 @@ _nvidia_initramfs_modules() {
 # nvidia-driver blacklists nouveau in modprobe.d already; also on the kernel
 # command line, so it can't win the race from the initramfs.
 _nvidia_grub_cmdline() {
-    local add="rd.driver.blacklist=nouveau modprobe.blacklist=nouveau nvidia-drm.modeset=1"
+    local add="modprobe.blacklist=nouveau nvidia-drm.modeset=1"
     [ -f /etc/default/grub ] || {
         warn "no /etc/default/grub — skipping the nouveau blacklist on the kernel command line"
         return 1

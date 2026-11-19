@@ -1,13 +1,13 @@
 register_step rust \
-    --desc "rustup toolchain and cargo tools: spotify_player" \
-    --group dev --root --needs prereqs \
-    --provides rustup cargo spotify_player
+    --desc "Rust toolchain via rustup" \
+    --group dev --needs prereqs \
+    --provides "$HOME/.cargo/bin/rustup" "$HOME/.cargo/bin/cargo"
 
 step_rust() {
-    if ! command -v rustup >/dev/null 2>&1 && [ ! -x "$HOME/.cargo/bin/rustup" ]; then
-        log "Installing rustup"
-        curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path
+    if [ -x "$HOME/.cargo/bin/rustup" ]; then
+        log "rustup already installed, skipping"
+        return 0
     fi
-    # shellcheck disable=SC1091
-    . "$HOME/.cargo/env"
+    log "Installing rustup"
+    curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path
 }
