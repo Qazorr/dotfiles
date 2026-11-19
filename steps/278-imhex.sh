@@ -1,10 +1,10 @@
-IMHEX_BIN="$HOME/.local/bin/ImHex.AppImage"
+IMHEX_BIN="$HOME/.local/lib/imhex/ImHex.AppImage"
 
 # The .deb on the releases page is built for Ubuntu (libmbedtls14, which Debian
 # 13 doesn't have), so the AppImage is the upstream build that runs here.
 register_step imhex \
-    --desc "ImHex hex editor: latest upstream AppImage in ~/.local/bin" \
-    --group apps --root --needs prereqs \
+    --desc "ImHex hex editor, latest upstream AppImage (opt-in: ./bootstrap.sh imhex)" \
+    --group apps --root --optional --needs prereqs \
     --provides "$IMHEX_BIN"
 
 # Prints the newest release tag. /releases/latest redirects to
