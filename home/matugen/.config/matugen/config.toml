@@ -16,3 +16,7 @@ post_hook = '$HOME/.local/bin/sonora-theme'
 [templates.outlook]
 input_path = '~/.config/matugen/templates/outlook.css'
 output_path = '~/.local/share/pwa-theme/outlook.css'
+
+[templates.hypr-background]
+input_path = '~/.config/matugen/templates/hypr-background.lua'
+output_path = '~/.config/hypr/dms/background.lua'

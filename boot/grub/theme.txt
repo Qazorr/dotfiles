@@ -1,27 +1,28 @@
+# Mirrors the Plymouth splash layout. boot/build.sh fills the @-placeholders.
 title-text: ""
 desktop-image: "background.png"
 desktop-color: "@BG@"
-terminal-font: "DejaVu Sans Mono Regular 16"
-terminal-left: "64"
+terminal-font: "@MONO_FONT@"
+terminal-left: "@MARGIN@"
 terminal-top: "48"
 terminal-width: "100%-128"
 terminal-height: "100%-96"
 terminal-border: "0"
 
 + image {
-    left = 50%-36
-    top = 26%
-    width = 72
-    height = 72
+    left = 50%-@LOGO_HALF@
+    top = @LOGO_AT@%-@LOGO_HALF@
+    width = @LOGO_PX@
+    height = @LOGO_PX@
     file = "logo.png"
 }
 
 + boot_menu {
     left = 50%-260
-    top = 26%+120
+    top = @LOGO_AT@%+@MENU_AT@
     width = 520
-    height = 40%
-    item_font = "DejaVu Sans Regular 18"
+    height = 30%
+    item_font = "@MENU_FONT@"
     item_color = "@SUB@"
     selected_item_color = "@FG@"
     item_height = 32
@@ -35,43 +36,37 @@ terminal-border: "0"
     scrollbar = false
 }
 
-+ label {
-    left = 64
-    top = 100%-88
-    width = 50%
-    align = "left"
-    text = "@HOST@"
-    font = "DejaVu Sans Regular 14"
-    color = "@FG@"
-}
-
-+ label {
-    left = 64
-    top = 100%-64
-    width = 50%
-    align = "left"
-    text = "@OS@"
-    font = "DejaVu Sans Regular 14"
-    color = "@MUTED@"
-}
-
-+ label {
-    left = 50%
-    top = 100%-88
-    width = 50%-64
-    align = "right"
-    text = "↑↓ select   enter boot   e edit"
-    font = "DejaVu Sans Regular 14"
-    color = "@MUTED@"
++ image {
+    left = @MARGIN@
+    top = 100%-@CORNER_1@
+    width = @KEYS_W@
+    height = @KEYS_H@
+    file = "keys.png"
 }
 
 + label {
     id = "__timeout__"
-    left = 50%
-    top = 100%-64
-    width = 50%-64
-    align = "right"
+    left = @MARGIN@
+    top = 100%-@CORNER_0@
+    width = 50%-@MARGIN@
+    align = "left"
     text = "booting in %d s"
-    font = "DejaVu Sans Regular 14"
+    font = "@MONO_FONT@"
     color = "@ACCENT@"
+}
+
++ image {
+    left = 100%-@HOST_R@
+    top = 100%-@CORNER_1@
+    width = @HOST_W@
+    height = @HOST_H@
+    file = "host.png"
+}
+
++ image {
+    left = 100%-@OS_R@
+    top = 100%-@CORNER_0@
+    width = @OS_W@
+    height = @OS_H@
+    file = "os.png"
 }

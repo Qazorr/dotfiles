@@ -1,0 +1,8 @@
+[Unit]
+Description=Re-theme the boot screens
+
+[Service]
+Type=oneshot
+ExecStart=@REPO@/boot/install.sh @USER@
+Nice=10
+IOSchedulingClass=idle

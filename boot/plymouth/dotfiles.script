@@ -1,15 +1,15 @@
-# The @-placeholders (host, OS, DMS colours) are filled in by boot/build.sh.
+# boot/build.sh fills the @-placeholders.
 
 W = Window.GetWidth();
 H = Window.GetHeight();
 X = Window.GetX();
 Y = Window.GetY();
 
-MARGIN = 64;
+MARGIN = @MARGIN@;
 LOG_LINES = 7;
-LOG_STEP = 24;
-MONO = "DejaVu Sans Mono 11";
-SANS = "DejaVu Sans 11";
+LOG_STEP = @LINE@;
+MONO = "@MONO@ @TEXT_PT@";
+SANS = "@SANS@ @TEXT_PT@";
 FPS = 50;
 
 Window.SetBackgroundTopColor(@BG_RGB@);
@@ -20,12 +20,12 @@ bg.sprite.SetPosition(X, Y, -100);
 
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);
-logo.y = Y + H * 0.42 - logo.image.GetHeight() / 2;
+logo.y = Y + H * @LOGO_AT@ / 100 - logo.image.GetHeight() / 2;
 logo.sprite.SetPosition(X + W / 2 - logo.image.GetWidth() / 2, logo.y, 10);
 
 track.image = Image("track.png");
 track.x = X + W / 2 - track.image.GetWidth() / 2;
-track.y = logo.y + logo.image.GetHeight() + 40;
+track.y = logo.y + logo.image.GetHeight() + @BAR_GAP@;
 track.sprite = Sprite(track.image);
 track.sprite.SetPosition(track.x, track.y, 10);
 
@@ -173,8 +173,8 @@ prompt.entry = Sprite();
 
 fun show_prompt(text, answer)
 {
-    a = Image.Text(text, @SUB_RGB@, 1, "DejaVu Sans 14");
-    b = Image.Text(answer + "_", @FG_RGB@, 1, "DejaVu Sans Mono 16");
+    a = Image.Text(text, @SUB_RGB@, 1, "@SANS@ 14");
+    b = Image.Text(answer + "_", @FG_RGB@, 1, "@MONO@ 16");
     global.prompt.label.SetImage(a);
     global.prompt.label.SetPosition(X + W / 2 - a.GetWidth() / 2, track.y + 48, 20);
     global.prompt.label.SetOpacity(1);

@@ -16,7 +16,7 @@ step_desktop() {
         accountsservice qt6ct mesa-utils \
         network-manager network-manager-gnome \
         network-manager-openconnect network-manager-openconnect-gnome gp-saml-gui \
-        blueman bluez hyprpolkitagent \
+        blueman bluez \
         bibata-cursor-theme
 
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic 2>/dev/null \

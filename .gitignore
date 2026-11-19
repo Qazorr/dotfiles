@@ -14,6 +14,7 @@ home/cava/.config/cava/shaders/
 # stow symlinks into this repo, so the writes land here. Scoped to the
 # generated files only: binds-user.lua and windowrules.lua next to colors.lua
 # ARE ours.
+home/hypr/.config/hypr/dms/background.lua
 home/hypr/.config/hypr/dms/colors.lua
 home/hypr/.config/hypr/dms/input.lua
 home/hypr/.config/hypr/dms/layout.lua

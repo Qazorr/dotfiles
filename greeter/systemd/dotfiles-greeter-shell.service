@@ -1,0 +1,6 @@
+[Unit]
+Description=Rebuild the patched greeter UI
+
+[Service]
+Type=oneshot
+ExecStart=@REPO@/greeter/install.sh @USER@

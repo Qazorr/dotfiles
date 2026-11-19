@@ -1,0 +1,11 @@
+[Unit]
+Description=Re-theme the boot screens when what they're built from changes
+
+[Path]
+PathChanged=@HOME@/.cache/dms/dms-colors.json
+PathChanged=@HOME@/.config/dms/settings.json
+PathChanged=@HOME@/.local/share/fonts
+PathChanged=@REPO@/boot
+
+[Install]
+WantedBy=multi-user.target
