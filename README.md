@@ -79,6 +79,9 @@ Pushing over https needs `gh auth login && gh auth setup-git` once.
 - **A config:** `dotfiles track <path>`. Every directory under `home/` is
   stowed into `$HOME`.
 - **A package:** install it, then `dotfiles sync`.
+- **A DMS plugin from the registry:** install it in DMS, then
+  `dms plugins lock -o ~/dotfiles/dms-plugins.lock.json`; the dmsplugins step
+  restores everything pinned there.
 - **An install step:** one file in `steps/`, named `<NNN>-<name>.sh`, with a
   `register_step` line and a `step_<name>` function. Copy a neighbour.
   Nothing may install into `~/.local/bin`: it is a symlink into this repo.
