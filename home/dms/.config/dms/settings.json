@@ -405,7 +405,8 @@
   "powerMenuActions": [
     "reboot",
     "poweroff",
-    "restart"
+    "restart",
+    "logout"
   ],
   "powerMenuDefaultAction": "poweroff",
   "powerMenuGridLayout": true,
@@ -534,6 +535,10 @@
           "enabled": true
         },
         {
+          "id": "aiQuotas",
+          "enabled": true
+        },
+        {
           "id": "systemTray",
           "enabled": true,
           "trayPopupSingleLine": true,
@@ -565,7 +570,7 @@
           "showDoNotDisturbIcon": false
         },
         {
-          "id": "battery",
+          "id": "batteryDrain",
           "enabled": true,
           "showBatteryPercent": true,
           "showBatteryPercentOnlyOnBattery": false,
@@ -622,7 +627,6 @@
       "hoverPopoutDelay": 150,
       "followInterfaceStyle": false,
       "widgetFollowInterfaceStyle": false,
-      "island": false,
       "dot": false,
       "barLengthMode": "full",
       "widgetStyle": "pills",
@@ -817,7 +821,6 @@
       "hoverPopoutDelay": 150,
       "followInterfaceStyle": false,
       "widgetFollowInterfaceStyle": false,
-      "island": false,
       "dot": true,
       "barLengthMode": "full",
       "widgetStyle": "pills",

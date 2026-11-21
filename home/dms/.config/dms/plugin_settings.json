@@ -23,6 +23,28 @@
     "itemHeight": 450
   },
   "dankscale": {
-    "enabled": true
+    "enabled": true,
+    "lastAccount": "Qazorr@github"
+  },
+  "batteryDrain": {
+    "enabled": true,
+    "highlight": true,
+    "pulse": true,
+    "showRate": true,
+    "showTime": true
+  },
+  "aiQuotas": {
+    "enabled": true,
+    "codexEnabled": false,
+    "copilotEnabled": false,
+    "openCodeEnabled": false,
+    "zaiEnabled": false,
+    "kimiEnabled": false,
+    "deepSeekEnabled": false,
+    "openRouterEnabled": false,
+    "grokEnabled": false,
+    "antigravityEnabled": false,
+    "claudeEnabled": true,
+    "displayMode": "used"
   }
 }

@@ -1,0 +1,14 @@
+{
+    "id": "batteryDrain",
+    "name": "Battery Drain",
+    "description": "The stock battery widget, filled with a matugen color (error when low) with drain rate and time left while running on battery",
+    "version": "0.1.0",
+    "author": "kacper",
+    "type": "widget",
+    "capabilities": ["dankbar-widget"],
+    "component": "./BatteryDrain.qml",
+    "settings": "./BatteryDrainSettings.qml",
+    "icon": "battery_alert",
+    "requires_dms": ">=2.0.0",
+    "permissions": ["settings_read", "settings_write"]
+}

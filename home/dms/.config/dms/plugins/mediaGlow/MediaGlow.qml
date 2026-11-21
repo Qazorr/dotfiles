@@ -14,6 +14,9 @@ PluginComponent {
 
     property var widgetData: null
     readonly property bool playing: media.activePlayer?.playbackState === 1
+    // Output, player stream or player muted or at zero: nothing is heard, so a short segment in the error color swings
+    // back and forth along the top instead of running around.
+    readonly property bool silenced: media.silenced
 
     // Hidden once nothing has played for a while; playing again brings it back.
     property bool idleHidden: false
@@ -69,7 +72,7 @@ PluginComponent {
     property real phase: 0
 
     Loader {
-        active: root.playing && CavaService.cavaAvailable
+        active: root.playing && !root.silenced && CavaService.cavaAvailable
         sourceComponent: Ref { service: CavaService }
     }
 
@@ -104,15 +107,24 @@ PluginComponent {
         to: 1
         duration: 3500
         loops: Animation.Infinite
-        running: root.playing
+        running: root.playing && !root.silenced
+    }
+
+    property real swing: 0.04
+
+    SequentialAnimation on swing {
+        loops: Animation.Infinite
+        running: root.playing && root.silenced
+        NumberAnimation { from: 0.04; to: 0.38; duration: 1300; easing.type: Easing.InOutSine }
+        NumberAnimation { from: 0.38; to: 0.04; duration: 1300; easing.type: Easing.InOutSine }
     }
 
     Shape {
         id: glow
 
         readonly property real sw: 2
-        readonly property real thickness: 0.25 + 3 * root.level
-        readonly property real segment: 0.22 + 0.18 * root.slowLevel
+        readonly property real thickness: root.silenced ? 1.5 : 0.25 + 3 * root.level
+        readonly property real segment: root.silenced ? 0.14 : 0.22 + 0.18 * root.slowLevel
         readonly property real r: Math.min(media.outerRadius, media.height / 2)
         readonly property real w: width - sw
         readonly property real h: height - sw
@@ -134,10 +146,10 @@ PluginComponent {
             strokeWidth: glow.thickness
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
-            strokeColor: Qt.alpha(Theme.primary, 0.15 + 0.85 * root.level)
+            strokeColor: root.silenced ? Qt.alpha(Theme.error, 0.75) : Qt.alpha(Theme.primary, 0.15 + 0.85 * root.level)
             // Dash lengths are in stroke widths.
             dashPattern: [glow.segment * glow.perimeter / glow.thickness, (1 - glow.segment) * glow.perimeter / glow.thickness]
-            dashOffset: -root.phase * glow.perimeter / glow.thickness
+            dashOffset: -(root.silenced ? root.swing : root.phase) * glow.perimeter / glow.thickness
 
             startX: glow.sw / 2 + glow.r
             startY: glow.sw / 2

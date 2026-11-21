@@ -29,6 +29,28 @@ BasePill {
         return id.includes("chrome") || id.includes("chromium");
     }
     readonly property bool usePlayerVolume: activePlayer && activePlayer.volumeSupported && !__isChromeBrowser
+    // Only Sonora gets the muted state: the output, its PipeWire stream or its own volume at zero or muted.
+    readonly property bool isSonora: activePlayer?.desktopEntry === "sonora"
+    readonly property var playerStream: isSonora ? (AudioService.pipewireNodes.find(n => n.isStream && n.audio && n.properties?.["application.name"] === "Sonora") ?? null) : null
+    readonly property bool streamSilent: AudioService.isSilent(playerStream)
+    readonly property bool playerSilent: isSonora && activePlayer.volumeSupported && activePlayer.volume === 0
+    readonly property bool silenced: isSonora && (AudioService.sinkSilent || streamSilent || playerSilent)
+
+    function unsilence() {
+        const sink = AudioService.sink?.audio;
+        if (sink?.muted)
+            sink.muted = false;
+        else if (sink && sink.volume === 0)
+            AudioService.adjustDefaultSinkVolume(AudioService.wheelVolumeStep, 1);
+        const stream = playerStream?.audio;
+        if (stream?.muted)
+            stream.muted = false;
+        else if (stream && stream.volume === 0)
+            stream.volume = 1;
+        if (playerSilent)
+            activePlayer.volume = 0.3;
+    }
+
     property bool compactMode: false
     property var widgetData: null
     readonly property bool adaptiveWidthEnabled: SettingsData.widgetOption("music", widgetData, "mediaAdaptiveWidthEnabled")
@@ -233,7 +255,7 @@ BasePill {
                     return 0;
                 return Math.min(root.maxTextWidth, Math.ceil(rawWidth));
             }
-            readonly property real fixedContentWidth: root.badgeExtent + 64 * root.contentScale + Theme.spacingXS * 2
+            readonly property real fixedContentWidth: root.badgeExtent + 64 * root.contentScale + Theme.spacingXS * 2 + (root.silenced ? BarMetrics.mediaControlSize * root.contentScale : 0)
             readonly property real textBudget: root.allottedPrimarySize > 0 ? Math.max(0, root.allottedPrimarySize - root.horizontalPadding * 2 - fixedContentWidth - Theme.spacingXS) : Infinity
             readonly property real measuredTextWidth: Math.min(naturalTextWidth, textBudget)
             readonly property real naturalContentWidth: fixedContentWidth + (naturalTextWidth > 0 ? naturalTextWidth + Theme.spacingXS : 0)
@@ -453,6 +475,28 @@ BasePill {
                                     MprisController.next();
                                 }
                             }
+                        }
+                    }
+
+                    // Shown while the output, the player's stream or the player itself is muted or at zero.
+                    Rectangle {
+                        width: BarMetrics.mediaControlSize * root.contentScale
+                        height: BarMetrics.mediaControlSize * root.contentScale
+                        radius: Theme.cornerRadiusFull
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: "transparent"
+                        visible: root.playerAvailable && root.silenced
+
+                        DIcon {
+                            anchors.centerIn: parent
+                            name: "volume_off"
+                            size: 12 * root.contentScale
+                            color: Theme.error
+                        }
+
+                        StateLayer {
+                            stateColor: Theme.error
+                            onClicked: root.unsilence()
                         }
                     }
                 }
