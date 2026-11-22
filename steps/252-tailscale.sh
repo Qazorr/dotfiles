@@ -13,6 +13,21 @@ step_tailscale() {
         "deb [signed-by=$key] https://pkgs.tailscale.com/stable/debian $codename main" \
         "pkgs.tailscale.com/stable/debian"
 
+    # Without it Tailscale owns /etc/resolv.conf and VPN DNS stops resolving;
+    # resolved routes each domain to its own link's DNS.
+    log "Installing systemd-resolved"
+    apt_install systemd-resolved
+    sudo systemctl enable --now systemd-resolved
+    printf '[main]\ndns=systemd-resolved\n' \
+        | sudo tee /etc/NetworkManager/conf.d/dns-resolved.conf >/dev/null
+    local stub=/run/systemd/resolve/stub-resolv.conf
+    if [ "$(readlink /etc/resolv.conf)" != "$stub" ]; then
+        sudo ln -sf "$stub" /etc/resolv.conf
+        # Both pick their DNS backend at startup; this drops an active VPN.
+        sudo systemctl restart NetworkManager
+        ! systemctl is-active -q tailscaled || sudo systemctl restart tailscaled
+    fi
+
     log "Installing Tailscale"
     apt_install tailscale
     sudo systemctl enable --now tailscaled

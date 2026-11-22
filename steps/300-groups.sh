@@ -1,6 +1,6 @@
-# DRM/input access without a display manager, and docker without sudo. Each
-# is joined only if it exists.
-USER_GROUPS=(video render input docker)
+# DRM/input access without a display manager, docker without sudo, and the
+# system journal (adm). Each is joined only if it exists.
+USER_GROUPS=(video render input docker adm)
 
 register_step groups \
     --desc "${USER_GROUPS[*]} groups, and zsh as the login shell" \
