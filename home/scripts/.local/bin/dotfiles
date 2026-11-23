@@ -96,6 +96,12 @@ cmd_sync() {
     fi
 
     g add -A
+    # The repo is public and add -A takes everything, so check even without
+    # the pre-commit hook installed.
+    if ! (cd "$REPO" && .github/scripts/scan-secrets.sh --staged); then
+        g reset --quiet
+        die "not committing: the staged files look like they hold credentials (above)"
+    fi
     if g diff --cached --quiet; then
         log "Nothing new to commit."
     else

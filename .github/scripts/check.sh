@@ -12,6 +12,13 @@ bad() {
 skip() { printf '  \033[1;33mskip\033[0m  %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Public repo: a credential pushed here is leaked even after it's removed.
+if .github/scripts/scan-secrets.sh --tracked; then
+    ok "no credentials in tracked files"
+else
+    bad "credentials in tracked files (see above)"
+fi
+
 mapfile -t scripts < <(git ls-files home/scripts/.local/bin)
 mapfile -t shell < <(
     git ls-files '*.sh'
