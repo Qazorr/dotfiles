@@ -17,6 +17,12 @@ source "$HERE/config"
 # shellcheck source=/dev/null
 [ -f "$HERE/config.local" ] && source "$HERE/config.local"
 
+# Whole-disk install erases INSTALL_DISK without a question, on whatever machine boots
+# the ISO. Ask for the disk twice so a stale or mistyped value can't wipe a data disk.
+if [ -n "${INSTALL_DISK:-}" ] && [ "${INSTALL_DISK_ERASE:-}" != "$INSTALL_DISK" ]; then
+    die "INSTALL_DISK=$INSTALL_DISK erases that whole disk unasked. Leave it empty to partition by hand, or also set INSTALL_DISK_ERASE=\"$INSTALL_DISK\" to confirm."
+fi
+
 for tool in xorriso cpio gzip curl git sha256sum; do
     command -v "$tool" >/dev/null || die "$tool is not installed — sudo apt install xorriso cpio curl git"
 done
@@ -117,4 +123,9 @@ xorriso -indev "$BASE" -outdev "$OUT" \
 
 log "Built $OUT ($(du -h "$OUT" | cut -f1))"
 printf '\n    sudo dd if=%s of=/dev/sdX bs=4M status=progress oflag=sync\n' "$OUT"
+# dd erases the target completely: show which disks are USB so the right one is picked.
+printf '\nUSB disks now (pick the stick for /dev/sdX; everything on it is lost):\n'
+lsblk -o NAME,SIZE,TRAN,MODEL,LABEL -e 7 \
+    | awk 'NR == 1 { print; next } /^[a-z]/ { usb = ($3 == "usb") } usb' | sed 's/^/    /'
+
 printf '    vm/install.sh    try it in a VM first\n'

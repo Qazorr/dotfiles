@@ -4,6 +4,7 @@
 
 ffmpegthumbnailer
 gping
+inotify-tools
 ncdu
 nmap
 nvtop

@@ -14,8 +14,10 @@ INSTALL_KEYMAP="pl"
 INSTALL_TIMEZONE="Europe/Warsaw"
 
 # A whole disk, e.g. /dev/nvme0n1. It is ERASED without a question.
-# Empty: partition in the installer.
+# Empty: partition in the installer (the safe choice on a machine with data disks).
+# Setting it also needs INSTALL_DISK_ERASE set to the same disk, or build.sh refuses.
 INSTALL_DISK=""
+INSTALL_DISK_ERASE=""
 
 # What the first boot runs: ./bootstrap.sh --profile <profile> <steps>
 INSTALL_PROFILE="full"
